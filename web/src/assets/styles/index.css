@@ -1,0 +1,135 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+:root {
+  --primary-color: #1890ff;
+  --background-color: #f0f2f5;
+  --sidebar-width: 200px;
+  --collapsed-sidebar-width: 80px;
+}
+
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-sider {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.ant-layout-sider-collapsed + .ant-layout {
+  margin-left: var(--collapsed-sidebar-width);
+}
+
+.ant-layout-sider:not(.ant-layout-sider-collapsed) + .ant-layout {
+  margin-left: var(--sidebar-width);
+}
+
+.logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.site-layout .site-layout-background {
+  background: #fff;
+}
+
+.vnc-viewer {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+}
+
+.vnc-toolbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #d9d9d9;
+}
+
+.vnc-container {
+  flex: 1;
+  background: #000;
+}
+
+.vnc-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.vm-status-running {
+  color: #52c41a;
+}
+
+.vm-status-stopped {
+  color: #ff4d4f;
+}
+
+.vm-status-suspended {
+  color: #faad14;
+}
+
+.dashboard-statistics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statistic-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.statistic-card .icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.statistic-card .value {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.statistic-card .label {
+  color: #666;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.template-card {
+  transition: all 0.3s;
+}
+
+.template-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    display: none;
+  }
+
+  .ant-layout-sider + .ant-layout {
+    margin-left: 0 !important;
+  }
+}

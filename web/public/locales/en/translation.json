@@ -1,0 +1,85 @@
+{
+  "en": {
+    "translation": {
+      "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "create": "Create",
+        "search": "Search",
+        "loading": "Loading...",
+        "noData": "No data",
+        "confirm": "Confirm",
+        "success": "Success",
+        "error": "Error",
+        "warning": "Warning",
+        "back": "Back",
+        "next": "Next",
+        "submit": "Submit",
+        "reset": "Reset"
+      },
+      "auth": {
+        "login": "Login",
+        "logout": "Logout",
+        "register": "Register",
+        "username": "Username",
+        "password": "Password",
+        "email": "Email",
+        "forgotPassword": "Forgot Password?",
+        "rememberMe": "Remember me",
+        "noAccount": "Don't have an account?",
+        "hasAccount": "Already have an account?"
+      },
+      "vm": {
+        "name": "VM Name",
+        "status": "Status",
+        "cpu": "CPU",
+        "memory": "Memory",
+        "disk": "Disk",
+        "ipAddress": "IP Address",
+        "console": "Console",
+        "start": "Start",
+        "stop": "Stop",
+        "restart": "Restart",
+        "suspend": "Suspend",
+        "resume": "Resume",
+        "delete": "Delete",
+        "createVM": "Create VM",
+        "vmList": "VM List",
+        "running": "Running",
+        "stopped": "Stopped",
+        "suspended": "Suspended",
+        "creating": "Creating",
+        "pending": "Pending",
+        "all": "All"
+      },
+      "template": {
+        "name": "Template Name",
+        "upload": "Upload Template",
+        "download": "Download",
+        "public": "Public Template",
+        "private": "Private Template",
+        "osType": "OS Type",
+        "architecture": "Architecture",
+        "format": "Format"
+      },
+      "admin": {
+        "userManagement": "User Management",
+        "systemSettings": "System Settings",
+        "auditLogs": "Audit Logs",
+        "totalUsers": "Total Users",
+        "totalVMs": "Total VMs",
+        "runningVMs": "Running VMs"
+      },
+      "console": {
+        "connected": "Connected",
+        "connecting": "Connecting...",
+        "disconnected": "Disconnected",
+        "ctrlAltDel": "Ctrl+Alt+Del",
+        "fullscreen": "Fullscreen",
+        "disconnect": "Disconnect"
+      }
+    }
+  }
+}

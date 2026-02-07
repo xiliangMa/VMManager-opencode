@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: vmmanager-db
+    environment:
+      POSTGRES_USER: vmmanager
+      POSTGRES_PASSWORD: vmmanager123
+      POSTGRES_DB: vmmanager
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - vmmanager-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: vmmanager-redis
+    command: redis-server --requirepass vmmanager123
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - vmmanager-net
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vmmanager-api
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=vmmanager
+      - DB_PASSWORD=vmmanager123
+      - DB_NAME=vmmanager
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=vmmanager123
+      - LIBVIRT_URI=qemu:///system
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - ./templates:/app/templates
+      - ./uploads:/app/uploads
+      - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock
+    networks:
+      - vmmanager-net
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: vmmanager-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./web/dist:/usr/share/nginx/html
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    networks:
+      - vmmanager-net
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  vmmanager-net:
+    driver: bridge

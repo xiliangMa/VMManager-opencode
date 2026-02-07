@@ -1,0 +1,155 @@
+import axios from 'axios'
+
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1'
+
+const client = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+export interface VM {
+  id: string
+  name: string
+  description?: string
+  status: string
+  cpu_allocated: number
+  memory_allocated: number
+  disk_allocated: number
+  ip_address?: string
+  mac_address?: string
+  vnc_port?: number
+  template_id?: string
+  owner_id: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Template {
+  id: string
+  name: string
+  description?: string
+  os_type: string
+  os_version?: string
+  architecture: string
+  format: string
+  cpu_min: number
+  cpu_max: number
+  memory_min: number
+  memory_max: number
+  disk_min: number
+  disk_max: number
+  template_path: string
+  icon_url?: string
+  disk_size: number
+  is_public: boolean
+  is_active: boolean
+  downloads: number
+  created_at: string
+}
+
+export interface User {
+  id: string
+  username: string
+  email: string
+  role: string
+  is_active: boolean
+  quota_cpu: number
+  quota_memory: number
+  quota_disk: number
+  quota_vm_count: number
+  created_at: string
+}
+
+export const vmsApi = {
+  list: (params?: { page?: number; page_size?: number; status?: string; search?: string }) =>
+    client.get('/vms', { params }).then(res => res.data),
+
+  get: (id: string) =>
+    client.get(`/vms/${id}`).then(res => res.data),
+
+  create: (data: Partial<VM>) =>
+    client.post('/vms', data).then(res => res.data),
+
+  update: (id: string, data: Partial<VM>) =>
+    client.put(`/vms/${id}`, data).then(res => res.data),
+
+  delete: (id: string) =>
+    client.delete(`/vms/${id}`).then(res => res.data),
+
+  start: (id: string) =>
+    client.post(`/vms/${id}/start`).then(res => res.data),
+
+  stop: (id: string) =>
+    client.post(`/vms/${id}/stop`).then(res => res.data),
+
+  forceStop: (id: string) =>
+    client.post(`/vms/${id}/force-stop`).then(res => res.data),
+
+  restart: (id: string) =>
+    client.post(`/vms/${id}/restart`).then(res => res.data),
+
+  suspend: (id: string) =>
+    client.post(`/vms/${id}/suspend`).then(res => res.data),
+
+  resume: (id: string) =>
+    client.post(`/vms/${id}/resume`).then(res => res.data),
+
+  getConsole: (id: string) =>
+    client.get(`/vms/${id}/console`).then(res => res.data),
+
+  getStats: (id: string) =>
+    client.get(`/vms/${id}/stats`).then(res => res.data)
+}
+
+export const templatesApi = {
+  list: (params?: { page?: number; page_size?: number }) =>
+    client.get('/templates', { params }).then(res => res.data),
+
+  get: (id: string) =>
+    client.get(`/templates/${id}`).then(res => res.data),
+
+  create: (data: Partial<Template>) =>
+    client.post('/templates', data).then(res => res.data),
+
+  update: (id: string, data: Partial<Template>) =>
+    client.put(`/templates/${id}`, data).then(res => res.data),
+
+  delete: (id: string) =>
+    client.delete(`/templates/${id}`).then(res => res.data)
+}
+
+export const usersApi = {
+  list: (params?: { page?: number; page_size?: number }) =>
+    client.get('/admin/users', { params }).then(res => res.data),
+
+  get: (id: string) =>
+    client.get(`/admin/users/${id}`).then(res => res.data),
+
+  create: (data: Partial<User>) =>
+    client.post('/admin/users', data).then(res => res.data),
+
+  update: (id: string, data: Partial<User>) =>
+    client.put(`/admin/users/${id}`, data).then(res => res.data),
+
+  delete: (id: string) =>
+    client.delete(`/admin/users/${id}`).then(res => res.data),
+
+  updateQuota: (id: string, quota: Partial<User>) =>
+    client.put(`/admin/users/${id}/quota`, quota).then(res => res.data),
+
+  updateRole: (id: string, role: { role: string }) =>
+    client.put(`/admin/users/${id}/role`, role).then(res => res.data)
+}
+
+export const systemApi = {
+  getInfo: () =>
+    client.get('/admin/system/info').then(res => res.data),
+
+  getStats: () =>
+    client.get('/admin/system/stats').then(res => res.data),
+
+  getAuditLogs: () =>
+    client.get('/admin/audit-logs').then(res => res.data)
+}
