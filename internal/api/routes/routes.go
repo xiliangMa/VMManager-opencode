@@ -76,9 +76,15 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			templates.POST("", middleware.AdminRequired(), templateHandler.CreateTemplate)
 			templates.PUT("/:id", middleware.AdminRequired(), templateHandler.UpdateTemplate)
 			templates.DELETE("/:id", middleware.AdminRequired(), templateHandler.DeleteTemplate)
-			templates.POST("/upload/init", middleware.AdminRequired(), templateHandler.InitTemplateUpload)
-			templates.POST("/upload/part", middleware.AdminRequired(), templateHandler.UploadTemplatePart)
-			templates.POST("/upload/complete", middleware.AdminRequired(), templateHandler.CompleteTemplateUpload)
+
+			uploads := templates.Group("/upload")
+			{
+				uploads.POST("/init", middleware.AdminRequired(), templateHandler.InitTemplateUpload)
+				uploads.POST("/part", middleware.AdminRequired(), templateHandler.UploadTemplatePart)
+				uploads.POST("/complete/:id", middleware.AdminRequired(), templateHandler.CompleteTemplateUpload)
+				uploads.DELETE("/:id", middleware.AdminRequired(), templateHandler.AbortUpload)
+				uploads.GET("/:id/status", middleware.AdminRequired(), templateHandler.GetUploadStatus)
+			}
 		}
 
 		admin := api.Group("/admin")

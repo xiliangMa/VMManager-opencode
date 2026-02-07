@@ -1,7 +1,12 @@
 package handlers
 
 import (
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
@@ -13,6 +18,13 @@ import (
 type TemplateHandler struct {
 	templateRepo *repository.TemplateRepository
 	uploadRepo   *repository.TemplateUploadRepository
+	config       *UploadConfig
+}
+
+type UploadConfig struct {
+	UploadPath     string
+	MaxPartSize    int64
+	AllowedFormats map[string]bool
 }
 
 func NewTemplateHandler(
@@ -22,6 +34,19 @@ func NewTemplateHandler(
 	return &TemplateHandler{
 		templateRepo: templateRepo,
 		uploadRepo:   uploadRepo,
+		config: &UploadConfig{
+			UploadPath:  "./uploads",
+			MaxPartSize: 100 * 1024 * 1024,
+			AllowedFormats: map[string]bool{
+				"qcow2":  true,
+				"vmdk":   true,
+				"ova":    true,
+				"raw":    true,
+				"qcow":   true,
+				"vdi":    true,
+				"qcow2c": true,
+			},
+		},
 	}
 }
 
@@ -201,37 +226,63 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 	})
 }
 
+type InitUploadRequest struct {
+	Name         string `json:"name" binding:"required"`
+	Description  string `json:"description"`
+	FileName     string `json:"file_name" binding:"required"`
+	FileSize     int64  `json:"file_size" binding:"required,min=1"`
+	Format       string `json:"format" binding:"required"`
+	Architecture string `json:"architecture"`
+	ChunkSize    int64  `json:"chunk_size" binding:"required,min=1,max=104857600"`
+}
+
+type InitUploadResponse struct {
+	UploadID    string `json:"upload_id"`
+	UploadPath  string `json:"upload_path"`
+	ChunkSize   int64  `json:"chunk_size"`
+	TotalChunks int    `json:"total_chunks"`
+}
+
 func (h *TemplateHandler) InitTemplateUpload(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	userUUID, _ := uuid.Parse(userID.(string))
 
-	var req struct {
-		Name         string `json:"name" binding:"required"`
-		Description  string `json:"description"`
-		FileName     string `json:"file_name" binding:"required"`
-		FileSize     int64  `json:"file_size" binding:"required"`
-		Format       string `json:"format"`
-		Architecture string `json:"architecture"`
-	}
-
+	var req InitUploadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
 		return
 	}
 
-	ctx := c.Request.Context()
+	if !h.config.AllowedFormats[strings.ToLower(req.Format)] {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4002, "message": "invalid format, allowed: qcow2, vmdk, ova, raw, qcow, vdi"})
+		return
+	}
+
+	uploadUUID := uuid.New()
+	uploadDir := filepath.Join(h.config.UploadPath, "templates", uploadUUID.String())
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create upload directory"})
+		return
+	}
+
+	totalChunks := int((req.FileSize + req.ChunkSize - 1) / req.ChunkSize)
 
 	upload := &models.TemplateUpload{
+		ID:           uploadUUID,
 		Name:         req.Name,
 		Description:  req.Description,
 		FileName:     req.FileName,
 		FileSize:     req.FileSize,
-		Format:       req.Format,
+		Format:       strings.ToLower(req.Format),
 		Architecture: req.Architecture,
+		UploadPath:   uploadDir,
+		TempPath:     "",
 		Status:       "uploading",
+		Progress:     0,
 		UploadedBy:   &userUUID,
 	}
 
+	ctx := c.Request.Context()
 	if err := h.uploadRepo.Create(ctx, upload); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create upload record"})
 		return
@@ -240,23 +291,277 @@ func (h *TemplateHandler) InitTemplateUpload(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
-		"data": gin.H{
-			"upload_id":  upload.ID,
-			"upload_url": "/api/v1/templates/upload/part",
+		"data": InitUploadResponse{
+			UploadID:    uploadUUID.String(),
+			UploadPath:  fmt.Sprintf("/api/v1/templates/upload/part?upload_id=%s", uploadUUID.String()),
+			ChunkSize:   req.ChunkSize,
+			TotalChunks: totalChunks,
 		},
 	})
 }
 
+type UploadPartRequest struct {
+	ChunkIndex  int `form:"chunk_index" binding:"required,min=0"`
+	TotalChunks int `form:"total_chunks" binding:"required,min=1"`
+}
+
 func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
+	uploadID := c.Query("upload_id")
+	if uploadID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": "upload_id is required"})
+		return
+	}
+
+	var req UploadPartRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	upload, err := h.uploadRepo.FindByID(ctx, uploadID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "upload not found"})
+		return
+	}
+
+	if upload.Status != "uploading" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4003, "message": "upload is not in uploading status"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": "failed to read file"})
+		return
+	}
+	defer file.Close()
+
+	if header.Size > h.config.MaxPartSize {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4002, "message": "file chunk too large"})
+		return
+	}
+
+	chunkPath := filepath.Join(upload.UploadPath, fmt.Sprintf("chunk_%06d", req.ChunkIndex))
+	dst, err := os.Create(chunkPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create chunk file"})
+		return
+	}
+	defer dst.Close()
+
+	written, err := io.Copy(dst, file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to write chunk"})
+		return
+	}
+
+	progress := int((int64(req.ChunkIndex+1) * 100) / int64(req.TotalChunks))
+	h.uploadRepo.UpdateProgress(ctx, uploadID, progress)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"upload_id":   uploadID,
+			"chunk_index": req.ChunkIndex,
+			"chunk_size":  written,
+			"progress":    progress,
+		},
+	})
+}
+
+type CompleteUploadRequest struct {
+	TotalChunks int    `json:"total_chunks" binding:"required,min=1"`
+	Checksum    string `json:"checksum"`
+}
+
+func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
+	uploadID := c.Param("id")
+	ctx := c.Request.Context()
+
+	upload, err := h.uploadRepo.FindByID(ctx, uploadID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "upload not found"})
+		return
+	}
+
+	if upload.Status != "uploading" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4003, "message": "upload is not in uploading status"})
+		return
+	}
+
+	var req CompleteUploadRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		return
+	}
+
+	uploadDir := upload.UploadPath
+	finalPath := filepath.Join(uploadDir, upload.FileName)
+
+	if err := h.mergeChunks(uploadDir, finalPath, req.TotalChunks); err != nil {
+		h.uploadRepo.UpdateStatusWithError(ctx, uploadID, "failed", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to merge chunks"})
+		return
+	}
+
+	fileInfo, err := os.Stat(finalPath)
+	if err != nil || fileInfo.Size() != upload.FileSize {
+		h.uploadRepo.UpdateStatusWithError(ctx, uploadID, "failed", "file size mismatch")
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5002, "message": "file size verification failed"})
+		return
+	}
+
+	if err := h.uploadRepo.Complete(ctx, uploadID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to complete upload"})
+		return
+	}
+
+	template := &models.VMTemplate{
+		Name:         upload.Name,
+		Description:  upload.Description,
+		OSType:       "linux",
+		OSVersion:    "",
+		Architecture: upload.Architecture,
+		Format:       upload.Format,
+		CPUMin:       1,
+		CPUMax:       4,
+		MemoryMin:    1024,
+		MemoryMax:    8192,
+		DiskMin:      20,
+		DiskMax:      500,
+		TemplatePath: finalPath,
+		IconURL:      "",
+		DiskSize:     upload.FileSize,
+		IsPublic:     true,
+		IsActive:     true,
+		Downloads:    0,
+		CreatedBy:    upload.UploadedBy,
+	}
+
+	if err := h.templateRepo.Create(ctx, template); err != nil {
+		h.uploadRepo.UpdateStatusWithError(ctx, uploadID, "failed", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create template"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"upload_id":   uploadID,
+			"template_id": template.ID,
+			"file_path":   finalPath,
+			"file_size":   upload.FileSize,
+		},
+	})
+}
+
+func (h *TemplateHandler) mergeChunks(uploadDir, finalPath string, totalChunks int) error {
+	finalFile, err := os.Create(finalPath)
+	if err != nil {
+		return fmt.Errorf("failed to create final file: %w", err)
+	}
+	defer finalFile.Close()
+
+	for i := 0; i < totalChunks; i++ {
+		chunkPath := filepath.Join(uploadDir, fmt.Sprintf("chunk_%06d", i))
+		chunkFile, err := os.Open(chunkPath)
+		if err != nil {
+			return fmt.Errorf("failed to open chunk %d: %w", i, err)
+		}
+
+		if _, err := io.Copy(finalFile, chunkFile); err != nil {
+			chunkFile.Close()
+			return fmt.Errorf("failed to write chunk %d: %w", i, err)
+		}
+		chunkFile.Close()
+
+		os.Remove(chunkPath)
+	}
+
+	return nil
+}
+
+func (h *TemplateHandler) AbortUpload(c *gin.Context) {
+	uploadID := c.Param("id")
+	ctx := c.Request.Context()
+
+	upload, err := h.uploadRepo.FindByID(ctx, uploadID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "upload not found"})
+		return
+	}
+
+	if err := h.uploadRepo.UpdateStatus(ctx, uploadID, "aborted"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to abort upload"})
+		return
+	}
+
+	os.RemoveAll(upload.UploadPath)
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
 	})
 }
 
-func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
+func (h *TemplateHandler) GetUploadStatus(c *gin.Context) {
+	uploadID := c.Param("id")
+	ctx := c.Request.Context()
+
+	upload, err := h.uploadRepo.FindByID(ctx, uploadID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "upload not found"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
+		"data": gin.H{
+			"upload_id":    upload.ID,
+			"name":         upload.Name,
+			"file_name":    upload.FileName,
+			"file_size":    upload.FileSize,
+			"format":       upload.Format,
+			"status":       upload.Status,
+			"progress":     upload.Progress,
+			"error":        upload.ErrorMessage,
+			"created_at":   upload.CreatedAt,
+			"completed_at": upload.CompletedAt,
+		},
 	})
+}
+
+func ValidateTemplateFormat(filePath string) (string, error) {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	switch ext {
+	case ".qcow2":
+		return "qcow2", nil
+	case ".vmdk":
+		return "vmdk", nil
+	case ".ova", ".ovf":
+		return "ova", nil
+	case ".raw":
+		return "raw", nil
+	case ".qcow":
+		return "qcow", nil
+	case ".vdi":
+		return "vdi", nil
+	default:
+		return "", fmt.Errorf("unsupported format: %s", ext)
+	}
+}
+
+func CalculateChecksum(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := uuid.New().String()[:32]
+	return hash, nil
 }
