@@ -10,7 +10,9 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  TranslationOutlined
+  TranslationOutlined,
+  BellOutlined,
+  MonitorOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
@@ -34,6 +36,11 @@ const MainLayout: React.FC = () => {
       label: t('Dashboard')
     },
     {
+      key: '/dashboard',
+      icon: <MonitorOutlined />,
+      label: 'System Monitor'
+    },
+    {
       key: '/vms',
       icon: <DesktopOutlined />,
       label: t('vm.vmList')
@@ -43,11 +50,23 @@ const MainLayout: React.FC = () => {
       icon: <FileOutlined />,
       label: t('template.upload')
     },
-    ...(user?.role === 'admin' ? [{
-      key: '/admin/users',
-      icon: <UserOutlined />,
-      label: t('admin.userManagement')
-    }] : [])
+    ...(user?.role === 'admin' ? [
+      {
+        key: '/admin/users',
+        icon: <UserOutlined />,
+        label: t('admin.userManagement')
+      },
+      {
+        key: '/admin/audit-logs',
+        icon: <BellOutlined />,
+        label: 'Audit Logs'
+      },
+      {
+        key: '/admin/alerts',
+        icon: <BellOutlined />,
+        label: 'Alert Rules'
+      }
+    ] : [])
   ]
 
   const userMenuItems = [

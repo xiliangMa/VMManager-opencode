@@ -153,3 +153,45 @@ export const systemApi = {
   getAuditLogs: () =>
     client.get('/admin/audit-logs').then(res => res.data)
 }
+
+export interface DataPoint {
+  timestamp: string
+  value: number
+}
+
+export interface VMResourceStats {
+  cpuUsage: number
+  memoryUsage: number
+  diskUsage: number
+  networkIn: number
+  networkOut: number
+  cpuHistory: DataPoint[]
+  memoryHistory: DataPoint[]
+  diskHistory: DataPoint[]
+}
+
+export interface SystemResourceStats {
+  totalCpu: number
+  usedCpu: number
+  cpuPercent: number
+  totalMemory: number
+  usedMemory: number
+  memoryPercent: number
+  totalDisk: number
+  usedDisk: number
+  diskPercent: number
+  vmCount: number
+  runningVmCount: number
+  activeUsers: number
+}
+
+export const statsApi = {
+  getVMStats: (id: string) =>
+    client.get(`/vms/${id}/stats`).then(res => res.data),
+
+  getVMHistory: (id: string) =>
+    client.get(`/vms/${id}/history`).then(res => res.data),
+
+  getSystemStats: () =>
+    client.get('/admin/system/stats').then(res => res.data)
+}

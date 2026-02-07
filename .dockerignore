@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+bin/
+obj/
+out/
+
+# Documentation
+README.md
+CONTRIBUTING.md
+docs/
+
+# Testing
+coverage.out
+*.coverprofile
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*~
+.env
+
+# Web build (handled separately)
+web/dist/
+web/node_modules/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.test
+*.out
+
+# Local development files
+docker-compose.override.yml
+.local/

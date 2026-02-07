@@ -1,0 +1,590 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "VMManager API",
+    "description": "虚拟机管理平台 API 文档",
+    "version": "1.0.0",
+    "contact": {
+      "name": "VMManager Team"
+    }
+  },
+  "host": "localhost:8080",
+  "basePath": "/api/v1",
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "用户登录",
+        "description": "使用用户名和密码登录获取 JWT token",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LoginRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "schema": {
+              "$ref": "#/definitions/LoginResponse"
+            }
+          },
+          "401": {
+            "description": "用户名或密码错误"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "用户注册",
+        "description": "注册新用户账户",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RegisterRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "注册成功"
+          },
+          "400": {
+            "description": "参数错误"
+          }
+        }
+      }
+    },
+    "/vms": {
+      "get": {
+        "tags": ["Virtual Machines"],
+        "summary": "获取虚拟机列表",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "type": "integer",
+            "default": 1
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "type": "integer",
+            "default": 20
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取虚拟机列表",
+            "schema": {
+              "$ref": "#/definitions/VMListResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "创建虚拟机",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateVMRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "虚拟机创建成功"
+          },
+          "400": {
+            "description": "参数错误"
+          }
+        }
+      }
+    },
+    "/vms/{id}": {
+      "get": {
+        "tags": ["Virtual Machines"],
+        "summary": "获取虚拟机详情",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取虚拟机详情",
+            "schema": {
+              "$ref": "#/definitions/VMDetail"
+            }
+          },
+          "404": {
+            "description": "虚拟机不存在"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Virtual Machines"],
+        "summary": "删除虚拟机",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/start": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "启动虚拟机",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "启动成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/stop": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "停止虚拟机",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "停止成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/restart": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "重启虚拟机",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "重启成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/console": {
+      "get": {
+        "tags": ["Virtual Machines"],
+        "summary": "获取 VNC 控制台 URL",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取控制台信息",
+            "schema": {
+              "$ref": "#/definitions/ConsoleResponse"
+            }
+          }
+        }
+      }
+    },
+    "/templates": {
+      "get": {
+        "tags": ["Templates"],
+        "summary": "获取模板列表",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "type": "integer"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取模板列表"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Templates"],
+        "summary": "创建模板",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateTemplateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "创建成功"
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "获取用户列表",
+        "security": [{"Bearer": []}],
+        "responses": {
+          "200": {
+            "description": "成功获取用户列表"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "创建用户",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateUserRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "创建成功"
+          }
+        }
+      }
+    },
+    "/admin/audit-logs": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "获取审计日志",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "type": "integer"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取审计日志"
+          }
+        }
+      }
+    },
+    "/admin/system/info": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "获取系统信息",
+        "security": [{"Bearer": []}],
+        "responses": {
+          "200": {
+            "description": "成功获取系统信息"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "LoginRequest": {
+      "type": "object",
+      "required": ["username", "password"],
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "用户名"
+        },
+        "password": {
+          "type": "string",
+          "description": "密码"
+        }
+      }
+    },
+    "LoginResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string"
+            },
+            "refresh_token": {
+              "type": "string"
+            },
+            "user": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        }
+      }
+    },
+    "RegisterRequest": {
+      "type": "object",
+      "required": ["username", "password", "email"],
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
+      }
+    },
+    "VMDetail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["running", "stopped", "suspended", "pending", "creating"]
+        },
+        "cpu_allocated": {
+          "type": "integer"
+        },
+        "memory_allocated": {
+          "type": "integer"
+        },
+        "disk_allocated": {
+          "type": "integer"
+        },
+        "ip_address": {
+          "type": "string"
+        }
+      }
+    },
+    "VMListResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/VMDetail"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "properties": {
+            "page": {
+              "type": "integer"
+            },
+            "per_page": {
+              "type": "integer"
+            },
+            "total": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "CreateVMRequest": {
+      "type": "object",
+      "required": ["name", "template_id", "cpu", "memory", "disk"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "虚拟机名称"
+        },
+        "template_id": {
+          "type": "string",
+          "description": "模板 ID"
+        },
+        "cpu": {
+          "type": "integer",
+          "description": "CPU 核心数"
+        },
+        "memory": {
+          "type": "integer",
+          "description": "内存大小 (MB)"
+        },
+        "disk": {
+          "type": "integer",
+          "description": "磁盘大小 (GB)"
+        }
+      }
+    },
+    "ConsoleResponse": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "VNC WebSocket URL"
+        },
+        "port": {
+          "type": "integer"
+        }
+      }
+    },
+    "CreateTemplateRequest": {
+      "type": "object",
+      "required": ["name", "os_type", "architecture", "format"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "os_type": {
+          "type": "string"
+        },
+        "architecture": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "cpu_min": {
+          "type": "integer"
+        },
+        "cpu_max": {
+          "type": "integer"
+        },
+        "memory_min": {
+          "type": "integer"
+        },
+        "memory_max": {
+          "type": "integer"
+        },
+        "is_public": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CreateUserRequest": {
+      "type": "object",
+      "required": ["username", "password", "email", "role"],
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "user", "viewer"]
+        }
+      }
+    },
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

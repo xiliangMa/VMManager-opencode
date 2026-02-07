@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm } from 'antd'
@@ -12,7 +12,7 @@ const VMs: React.FC = () => {
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState<string>('')
 
-  const { data, loading, pagination, refresh, search, setSearch, filters, setFilters } = useTable<VM>({
+  const { data, loading, pagination, refresh, search, setSearch } = useTable<VM>({
     api: vmsApi.list
   })
 

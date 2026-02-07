@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 
 interface UseTableOptions<T> {
   api: (params?: any) => Promise<{ data: T[]; meta: any }>
@@ -23,7 +22,6 @@ interface UseTableResult<T> {
 }
 
 export function useTable<T>(options: UseTableOptions<T>): UseTableResult<T> {
-  const { t } = useTranslation()
   const { api, initialPageSize = 20 } = options
 
   const [data, setData] = useState<T[]>([])

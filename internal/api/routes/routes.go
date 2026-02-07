@@ -18,8 +18,10 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats)
 	templateHandler := handlers.NewTemplateHandler(repos.Template, repos.TemplateUpload)
 	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
+	auditHandler := handlers.NewAuditHandler(repos.AuditLog)
 	snapshotHandler := handlers.NewSnapshotHandler(repos.VM)
 	batchHandler := handlers.NewBatchHandler(repos.VM)
+	statsHandler := handlers.NewVMStatsHandler(repos.VMStats)
 
 	api := router.Group("/api/v1")
 	{
@@ -48,7 +50,8 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			vms.POST("/:id/suspend", vmHandler.SuspendVM)
 			vms.POST("/:id/resume", vmHandler.ResumeVM)
 			vms.GET("/:id/console", vmHandler.GetConsole)
-			vms.GET("/:id/stats", vmHandler.GetVMStats)
+			vms.GET("/:id/stats", statsHandler.GetVMStats)
+			vms.GET("/:id/history", statsHandler.GetVMHistory)
 
 			snapshots := vms.Group("/:id/snapshots")
 			{
@@ -102,9 +105,13 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 				users.PUT("/:id/role", adminHandler.UpdateUserRole)
 			}
 
-			admin.GET("/audit-logs", adminHandler.ListAuditLogs)
+			admin.GET("/audit-logs", auditHandler.ListAuditLogs)
+			admin.GET("/audit-logs/:id", auditHandler.GetAuditLog)
+			admin.GET("/audit-logs/user/:id", auditHandler.ListByUser)
+			admin.GET("/audit-logs/action/:action", auditHandler.ListByAction)
+			admin.GET("/audit-logs/export", auditHandler.ExportAuditLogs)
 			admin.GET("/system/info", adminHandler.GetSystemInfo(libvirtClient))
-			admin.GET("/system/stats", adminHandler.GetSystemStats(libvirtClient))
+			admin.GET("/system/stats", statsHandler.GetSystemStats)
 		}
 	}
 }

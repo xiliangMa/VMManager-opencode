@@ -15,11 +15,16 @@ services:
     networks:
       - vmmanager-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vmmanager -d vmmanager"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: vmmanager-redis
-    command: redis-server --requirepass vmmanager123
+    command: redis-server --requirepass vmmanager123 --appendonly yes
     volumes:
       - redis_data:/data
     ports:
@@ -27,6 +32,11 @@ services:
     networks:
       - vmmanager-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -39,23 +49,40 @@ services:
       - DB_USER=vmmanager
       - DB_PASSWORD=vmmanager123
       - DB_NAME=vmmanager
+      - DB_SSLMODE=disable
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=vmmanager123
       - LIBVIRT_URI=qemu:///system
+      - APP_HOST=0.0.0.0
+      - APP_HTTP_PORT=8080
+      - APP_WS_PORT=8081
+      - APP_DEBUG=false
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRY=24h
+      - JWT_REFRESH_EXPIRY=168h
     ports:
       - "8080:8080"
       - "8081:8081"
     volumes:
-      - ./templates:/app/templates
-      - ./uploads:/app/uploads
+      - app_data:/app/data
+      - app_templates:/app/templates
+      - app_uploads:/app/uploads
+      - app_logs:/app/logs
       - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock
     networks:
       - vmmanager-net
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   nginx:
     image: nginx:alpine
@@ -64,19 +91,34 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./web/dist:/usr/share/nginx/html
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/nginx/ssl
+      - web_dist:/usr/share/nginx/html
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
     networks:
       - vmmanager-net
     depends_on:
       - api
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres_data:
   redis_data:
+  app_data:
+  app_templates:
+  app_uploads:
+  app_logs:
+  web_dist:
+  nginx_logs:
 
 networks:
   vmmanager-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
