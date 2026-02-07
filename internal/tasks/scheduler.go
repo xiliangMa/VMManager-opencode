@@ -4,21 +4,23 @@
 package tasks
 
 import (
+	"context"
 	"log"
 	"time"
 
 	"vmmanager/internal/models"
-
-	"gorm.io/gorm"
+	"vmmanager/internal/repository"
 )
 
 type Scheduler struct {
-	db       *gorm.DB
-	libvirt  interface{}
-	stopChan chan struct{}
+	db        interface{}
+	vmRepo    *repository.VMRepository
+	statsRepo *repository.VMStatsRepository
+	libvirt   interface{}
+	stopChan  chan struct{}
 }
 
-func NewScheduler(db *gorm.DB, libvirtClient interface{}) *Scheduler {
+func NewScheduler(db interface{}, libvirtClient interface{}) *Scheduler {
 	return &Scheduler{
 		db:       db,
 		libvirt:  libvirtClient,
@@ -50,11 +52,13 @@ func (s *Scheduler) Stop() {
 }
 
 func (s *Scheduler) collectStats() {
-	var vms []models.VirtualMachine
-	s.db.Where("status = ? AND deleted_at IS NULL", "running").Find(&vms)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	vms, _, _ := s.vmRepo.List(ctx, 0, 0)
 
 	for _, vm := range vms {
-		if s.libvirt == nil {
+		if s.libvirt == nil || vm.Status != "running" {
 			continue
 		}
 
@@ -66,6 +70,6 @@ func (s *Scheduler) collectStats() {
 			CollectedAt: time.Now(),
 		}
 
-		s.db.Create(&stats)
+		s.statsRepo.Create(ctx, &stats)
 	}
 }
