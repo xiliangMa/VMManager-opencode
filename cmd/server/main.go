@@ -31,7 +31,12 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	db, err := database.NewPostgreSQL(cfg.Database)
+	log.Printf("Starting VMManager with %s database...", cfg.Database.Driver)
+	if cfg.Database.Driver == "sqlite" {
+		log.Printf("SQLite database path: %s", cfg.Database.Path)
+	}
+
+	db, err := database.NewDatabase(cfg.Database)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -71,12 +76,26 @@ func main() {
 
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())
+	router.Use(middleware.MetricsMiddleware())
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":    "healthy",
 			"timestamp": time.Now().Format(time.RFC3339),
 		})
+	})
+
+	router.GET("/metrics", middleware.MetricsHandler())
+
+	router.GET("/swagger", func(c *gin.Context) {
+		c.Redirect(302, "/swagger/")
+	})
+
+	router.Static("/swagger/", "./docs/swagger")
+
+	router.GET("/ws/vnc/:vm_id", func(c *gin.Context) {
+		vmID := c.Param("vm_id")
+		wsHandler.HandleVNC(c.Writer, c.Request, vmID)
 	})
 
 	routes.Register(router, cfg, repos, libvirtClient, wsHandler)

@@ -41,6 +41,8 @@ type DatabaseConfig struct {
 	MaxOpenConns    int           `mapstructure:"max_open_conns"`
 	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+	Driver          string        `mapstructure:"driver"`
+	Path            string        `mapstructure:"path"`
 }
 
 type RedisConfig struct {

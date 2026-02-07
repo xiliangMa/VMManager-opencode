@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type User struct {
-	ID           uuid.UUID        `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID           uuid.UUID        `gorm:"type:uuid;primaryKey" json:"id"`
 	Username     string           `gorm:"uniqueIndex:idx_users_username;size:50;not null" json:"username"`
 	Email        string           `gorm:"uniqueIndex:idx_users_email;size:100;not null" json:"email"`
 	PasswordHash string           `gorm:"size:255;not null" json:"-"`
@@ -31,8 +32,15 @@ type User struct {
 	Templates    []VMTemplate     `gorm:"foreignKey:CreatedBy" json:"-"`
 }
 
+func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
+	if u.ID == uuid.Nil {
+		u.ID = uuid.New()
+	}
+	return
+}
+
 type VMTemplate struct {
-	ID             uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
 	Name           string     `gorm:"size:100;not null" json:"name"`
 	Description    string     `gorm:"type:text" json:"description"`
 	OSType         string     `gorm:"size:50;not null" json:"osType"`
@@ -58,7 +66,7 @@ type VMTemplate struct {
 }
 
 type VirtualMachine struct {
-	ID                uuid.UUID   `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID                uuid.UUID   `gorm:"type:uuid;primaryKey" json:"id"`
 	Name              string      `gorm:"size:100;not null" json:"name"`
 	Description       string      `gorm:"type:text" json:"description"`
 	TemplateID        *uuid.UUID  `gorm:"type:uuid" json:"templateId"`
@@ -91,7 +99,7 @@ type VirtualMachine struct {
 }
 
 type VMStats struct {
-	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID          uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	VMID        uuid.UUID `gorm:"type:uuid;not null;index:idx_vm_stats_vm_id" json:"vmId"`
 	CPUUsage    float64   `gorm:"type:decimal(5,2);default:0" json:"cpuUsage"`
 	MemoryUsage int64     `gorm:"default:0" json:"memoryUsage"`
@@ -100,11 +108,11 @@ type VMStats struct {
 	DiskWrite   int64     `gorm:"default:0" json:"diskWrite"`
 	NetworkRX   int64     `gorm:"default:0" json:"networkRx"`
 	NetworkTX   int64     `gorm:"default:0" json:"networkTx"`
-	CollectedAt time.Time `gorm:"default:now();index:idx_vm_stats_collected" json:"collectedAt"`
+	CollectedAt time.Time `gorm:"index:idx_vm_stats_collected" json:"collectedAt"`
 }
 
 type AuditLog struct {
-	ID           uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
 	UserID       *uuid.UUID `gorm:"type:uuid;index:idx_audit_user" json:"userId"`
 	Action       string     `gorm:"size:50;not null;index:idx_audit_action" json:"action"`
 	ResourceType string     `gorm:"size:50;not null;index:idx_audit_resource" json:"resourceType"`
@@ -118,7 +126,7 @@ type AuditLog struct {
 }
 
 type TemplateUpload struct {
-	ID           uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
 	Name         string     `gorm:"size:100;not null" json:"name"`
 	Description  string     `gorm:"type:text" json:"description"`
 	FileName     string     `gorm:"size:255;not null" json:"fileName"`
@@ -149,4 +157,39 @@ func GenerateVNCPassword(length int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(bytes)[:length], nil
+}
+
+func (t *VMTemplate) BeforeCreate(tx *gorm.DB) (err error) {
+	if t.ID == uuid.Nil {
+		t.ID = uuid.New()
+	}
+	return
+}
+
+func (vm *VirtualMachine) BeforeCreate(tx *gorm.DB) (err error) {
+	if vm.ID == uuid.Nil {
+		vm.ID = uuid.New()
+	}
+	return
+}
+
+func (s *VMStats) BeforeCreate(tx *gorm.DB) (err error) {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return
+}
+
+func (a *AuditLog) BeforeCreate(tx *gorm.DB) (err error) {
+	if a.ID == uuid.Nil {
+		a.ID = uuid.New()
+	}
+	return
+}
+
+func (u *TemplateUpload) BeforeCreate(tx *gorm.DB) (err error) {
+	if u.ID == uuid.Nil {
+		u.ID = uuid.New()
+	}
+	return
 }

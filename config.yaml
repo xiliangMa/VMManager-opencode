@@ -9,9 +9,11 @@ app:
   template_path: "./templates"
   log_path: "./logs"
 
-# Database Configuration (PostgreSQL)
+# Database Configuration (SQLite by default, set host for PostgreSQL)
 database:
-  host: "localhost"
+  driver: "sqlite"
+  path: "./vmmanager.db"
+  host: ""
   port: 5432
   username: "vmmanager"
   password: "vmmanager123"
