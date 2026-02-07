@@ -18,6 +18,8 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats)
 	templateHandler := handlers.NewTemplateHandler(repos.Template, repos.TemplateUpload)
 	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
+	snapshotHandler := handlers.NewSnapshotHandler(repos.VM)
+	batchHandler := handlers.NewBatchHandler(repos.VM)
 
 	api := router.Group("/api/v1")
 	{
@@ -47,6 +49,23 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			vms.POST("/:id/resume", vmHandler.ResumeVM)
 			vms.GET("/:id/console", vmHandler.GetConsole)
 			vms.GET("/:id/stats", vmHandler.GetVMStats)
+
+			snapshots := vms.Group("/:id/snapshots")
+			{
+				snapshots.POST("", snapshotHandler.CreateSnapshot)
+				snapshots.GET("", snapshotHandler.ListSnapshots)
+				snapshots.GET("/:name", snapshotHandler.GetSnapshot)
+				snapshots.POST("/:name/restore", snapshotHandler.RestoreSnapshot)
+				snapshots.DELETE("/:name", snapshotHandler.DeleteSnapshot)
+			}
+
+			batch := vms.Group("/batch")
+			{
+				batch.POST("/start", batchHandler.BatchStart)
+				batch.POST("/stop", batchHandler.BatchStop)
+				batch.POST("/restart", batchHandler.BatchRestart)
+				batch.DELETE("", batchHandler.BatchDelete)
+			}
 		}
 
 		templates := api.Group("/templates")

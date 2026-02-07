@@ -1,9 +1,7 @@
-//go:build !linux || mock
-// +build !linux mock
-
 package libvirt
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
@@ -18,12 +16,25 @@ type Client struct {
 type MockConnection struct{}
 
 type MockDomain struct {
-	Name    string
-	UUID    string
-	State   int
-	CPUTime uint64
-	MaxMem  uint64
-	MemUsed uint64
+	Name         string
+	UUID         string
+	State        int
+	CPUTime      uint64
+	MaxMem       uint64
+	MemUsed      uint64
+	DiskPath     string
+	VNCPort      int
+	XMLDesc      string
+	Autostart    bool
+	SnapshotList []*MockSnapshot
+}
+
+type MockSnapshot struct {
+	Name        string
+	Description string
+	CreatedAt   time.Time
+	State       int
+	MemoryFile  string
 }
 
 func NewClient(uri string) (*Client, error) {
@@ -48,7 +59,7 @@ func (c *Client) GetLibVersion() (uint32, error) {
 
 func (c *Client) GetHostInfo() (*HostInfo, error) {
 	return &HostInfo{
-		Model:          "Mock Host",
+		Model:          "Mock Host - QEMU/KVM",
 		CPUs:           8,
 		MHz:            2400,
 		Nodes:          1,
@@ -73,15 +84,60 @@ type HostInfo struct {
 }
 
 func (c *Client) ListAllDomains() ([]*MockDomain, error) {
-	return []*MockDomain{}, nil
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	domains := make([]*MockDomain, 0, len(c.Domains))
+	for _, d := range c.Domains {
+		domains = append(domains, d)
+	}
+	return domains, nil
 }
 
 func (c *Client) LookupByName(name string) (*MockDomain, error) {
-	return &MockDomain{}, nil
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if d, ok := c.Domains[name]; ok {
+		return d, nil
+	}
+	return nil, fmt.Errorf("domain not found: %s", name)
+}
+
+func (c *Client) LookupByUUID(uuid string) (*MockDomain, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for _, d := range c.Domains {
+		if d.UUID == uuid {
+			return d, nil
+		}
+	}
+	return nil, fmt.Errorf("domain not found: %s", uuid)
 }
 
 func (c *Client) DomainCreateXML(xml string, flags uint32) (*MockDomain, error) {
-	return &MockDomain{}, nil
+	domain := &MockDomain{
+		Name:    "new-vm",
+		UUID:    "new-uuid",
+		State:   1,
+		CPUTime: 0,
+		MaxMem:  4194304,
+		MemUsed: 0,
+	}
+	return domain, nil
+}
+
+func (c *Client) DefineXML(xml string) (*MockDomain, error) {
+	domain := &MockDomain{
+		Name:    "defined-vm",
+		UUID:    "defined-uuid",
+		State:   0,
+		CPUTime: 0,
+		MaxMem:  4194304,
+		MemUsed: 0,
+	}
+	return domain, nil
 }
 
 func (d *MockDomain) GetName() (string, error) {
@@ -130,11 +186,10 @@ func (d *MockDomain) Free() error {
 }
 
 func (d *MockDomain) GetXMLDesc(flags uint32) (string, error) {
-	return "<domain><name>" + d.Name + "</name></domain>", nil
-}
-
-func (c *Client) DefineXML(xml string) (*MockDomain, error) {
-	return &MockDomain{}, nil
+	if d.XMLDesc != "" {
+		return d.XMLDesc, nil
+	}
+	return fmt.Sprintf("<domain><name>%s</name><uuid>%s</uuid></domain>", d.Name, d.UUID), nil
 }
 
 func (c *Client) DomainEventLifecycleRegister(cb interface{}) (int, error) {
@@ -142,7 +197,23 @@ func (c *Client) DomainEventLifecycleRegister(cb interface{}) (int, error) {
 }
 
 func (c *Client) GetDomainStats(statsTypes []string, flags uint16) ([]*DomainStats, error) {
-	return []*DomainStats{}, nil
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	stats := make([]*DomainStats, 0, len(c.Domains))
+	for _, d := range c.Domains {
+		stats = append(stats, &DomainStats{
+			State:       d.State,
+			CPUTime:     int64(d.CPUTime),
+			MemoryUsage: int64(d.MemUsed),
+			MemoryTotal: int64(d.MaxMem),
+			DiskRead:    1024,
+			DiskWrite:   2048,
+			NetworkRX:   10240,
+			NetworkTX:   20480,
+		})
+	}
+	return stats, nil
 }
 
 type DomainStats struct {
@@ -150,6 +221,10 @@ type DomainStats struct {
 	CPUTime     int64
 	MemoryUsage int64
 	MemoryTotal int64
+	DiskRead    int64
+	DiskWrite   int64
+	NetworkRX   int64
+	NetworkTX   int64
 }
 
 func (c *Client) StoragePoolLookupByName(name string) error {
@@ -157,7 +232,7 @@ func (c *Client) StoragePoolLookupByName(name string) error {
 }
 
 func (c *Client) ListStoragePools() ([]string, error) {
-	return []string{}, nil
+	return []string{"default", "images"}, nil
 }
 
 func (c *Client) NodeGetCPUMap(flags uint32) ([]int, error) {
@@ -168,11 +243,12 @@ func (c *Client) NodeGetMemoryStats(cellNum int, flags uint32) (map[string]int64
 	return map[string]int64{
 		"total": 16777216,
 		"free":  8388608,
+		"used":  8388608,
 	}, nil
 }
 
 func (c *Client) ListInterfaces() ([]string, error) {
-	return []string{}, nil
+	return []string{"eth0", "br0"}, nil
 }
 
 func (c *Client) InterfaceLookupByName(name string) error {
@@ -184,7 +260,7 @@ func (c *Client) GetNetwork(name string) error {
 }
 
 func (c *Client) ListNetworks() ([]string, error) {
-	return []string{}, nil
+	return []string{"default", "host-only"}, nil
 }
 
 func (c *Client) NetworkLookupByName(name string) error {
@@ -208,6 +284,7 @@ func (c *Client) DomainOpenConsole(domain *MockDomain, stream interface{}, flags
 }
 
 func (c *Client) DomainCreate(domain *MockDomain, flags uint32) error {
+	domain.State = 1
 	return nil
 }
 
@@ -216,10 +293,11 @@ func (c *Client) DomainUndefine(domain *MockDomain) error {
 }
 
 func (c *Client) DomainGetInfo(domain *MockDomain) (uint8, uint64, uint64, error) {
-	return 1, 1024, 2048, nil
+	return uint8(domain.State), domain.MaxMem, domain.CPUTime, nil
 }
 
 func (c *Client) DomainSetMemory(domain *MockDomain, memory uint, flags uint32) error {
+	domain.MaxMem = uint64(memory)
 	return nil
 }
 
@@ -256,7 +334,7 @@ func (c *Client) DomainManagedSaveRemove(domain *MockDomain, flags uint32) error
 }
 
 func (c *Client) DomainGetMaxMemory(domain *MockDomain) (uint64, error) {
-	return 8192, nil
+	return domain.MaxMem, nil
 }
 
 func (c *Client) DomainGetMaxVcpus(domain *MockDomain) (int, error) {
@@ -272,6 +350,7 @@ func (c *Client) DomainGetMetadata(domain *MockDomain, metadataType int, uri str
 }
 
 func (c *Client) DomainRename(domain *MockDomain, name string, flags uint32) error {
+	domain.Name = name
 	return nil
 }
 
@@ -296,10 +375,11 @@ func (c *Client) DomainGetJobInfo(domain *MockDomain) (int64, int64, int64, int6
 }
 
 func (c *Client) DomainGetAutostart(domain *MockDomain) (bool, error) {
-	return false, nil
+	return domain.Autostart, nil
 }
 
 func (c *Client) DomainSetAutostart(domain *MockDomain, autostart int) error {
+	domain.Autostart = autostart == 1
 	return nil
 }
 
@@ -335,14 +415,17 @@ func (c *Client) SendKey(domain *MockDomain, codeset int, holdtime uint32, keyco
 }
 
 func (c *Client) DomainDestroyFlags(domain *MockDomain, flags uint32) error {
+	domain.State = 0
 	return nil
 }
 
 func (c *Client) DomainSave(domain *MockDomain, to string, flags uint32) error {
+	domain.State = 0
 	return nil
 }
 
 func (c *Client) DomainRestore(domain *MockDomain, from string, flags uint32) error {
+	domain.State = 1
 	return nil
 }
 
@@ -379,23 +462,41 @@ func (c *Client) DomainBlockCommit(domain *MockDomain, disk string, base string,
 }
 
 func (c *Client) DomainBlockStats(domain *MockDomain, path string) (int64, int64, int64, int64, int64, error) {
-	return 0, 0, 0, 0, 0, nil
+	return 1024, 2048, 4096, 8192, 0, nil
 }
 
 func (c *Client) DomainInterfaceStats(domain *MockDomain, path string) (int64, int64, int64, int64, error) {
-	return 0, 0, 0, 0, nil
+	return 10240, 100, 20480, 200, nil
 }
 
 func (c *Client) DomainMemoryStats(domain *MockDomain, flags uint32) (map[string]uint64, error) {
-	return map[string]uint64{}, nil
+	return map[string]uint64{
+		"total":     domain.MaxMem,
+		"unused":    domain.MaxMem - domain.MemUsed,
+		"available": domain.MaxMem - domain.MemUsed,
+		"used":      domain.MemUsed,
+	}, nil
 }
 
 func (c *Client) DomainBlockStatsFlags(domain *MockDomain, path string, flags uint32) (map[string]int64, error) {
-	return map[string]int64{}, nil
+	return map[string]int64{
+		"rd_req":   100,
+		"rd_bytes": 102400,
+		"wr_req":   200,
+		"wr_bytes": 204800,
+		"errs":     0,
+	}, nil
 }
 
 func (c *Client) DomainInterfaceStatsFlags(domain *MockDomain, path string, flags uint32) (map[string]int64, error) {
-	return map[string]int64{}, nil
+	return map[string]int64{
+		"rx_bytes":   102400,
+		"rx_packets": 1000,
+		"tx_bytes":   204800,
+		"tx_packets": 2000,
+		"errs":       0,
+		"drop":       0,
+	}, nil
 }
 
 func (c *Client) DomainGetOSType(domain *MockDomain) (string, error) {
@@ -403,11 +504,11 @@ func (c *Client) DomainGetOSType(domain *MockDomain) (string, error) {
 }
 
 func (c *Client) DomainGetID(domain *MockDomain) (uint32, error) {
-	return 0, nil
+	return uint32(domain.State), nil
 }
 
 func (c *Client) DomainIsActive(domain *MockDomain) (bool, error) {
-	return true, nil
+	return domain.State == 1, nil
 }
 
 func (c *Client) DomainIsPersistent(domain *MockDomain) (bool, error) {
@@ -471,11 +572,11 @@ func (c *Client) DomainSetEmulatorPinInfo(domain *MockDomain, cpumap []byte, fla
 }
 
 func (c *Client) DomainGetVcpus(domain *MockDomain, flags uint32) ([]int, []byte, error) {
-	return []int{}, []byte{}, nil
+	return []int{0, 1, 2, 3}, []byte{}, nil
 }
 
 func (c *Client) DomainGetVcpuBitmap(domain *MockDomain, id int, flags uint32) ([]byte, error) {
-	return []byte{}, nil
+	return []byte{0xFF}, nil
 }
 
 func (c *Client) DomainPinVcpu(domain *MockDomain, vcpu uint, cpumap []byte) error {
@@ -519,15 +620,15 @@ func (c *Client) DomainGetInterfaceParameters(domain *MockDomain, path string, f
 }
 
 func (c *Client) DomainMemoryPeek(domain *MockDomain, start uint64, size uint64, flags uint32) ([]byte, error) {
-	return []byte{}, nil
+	return make([]byte, size), nil
 }
 
 func (c *Client) DomainBlockPeek(domain *MockDomain, path string, start uint64, size uint64, flags uint32) ([]byte, error) {
-	return []byte{}, nil
+	return make([]byte, size), nil
 }
 
 func (c *Client) DomainGetBlockInfo(domain *MockDomain, path string, flags uint32) (uint64, uint64, uint64, error) {
-	return 0, 0, 0, nil
+	return 10737418240, 5368709120, 512, nil
 }
 
 func (c *Client) DomainGetTime(domain *MockDomain, flags uint32) (int64, error) {
@@ -699,7 +800,7 @@ func (c *Client) StorageVolGetXMLDesc(vol string, flags uint32) (string, error) 
 }
 
 func (c *Client) StorageVolGetInfo(vol string, flags uint32) (uint64, uint64, error) {
-	return 0, 0, nil
+	return 10737418240, 5368709120, nil
 }
 
 func (c *Client) StorageVolGetPath(vol string) (string, error) {
@@ -719,7 +820,14 @@ func (c *Client) StorageVolDefFindByPath(path string) error {
 }
 
 func (c *Client) ListDomains() ([]string, error) {
-	return []string{}, nil
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	domains := make([]string, 0, len(c.Domains))
+	for _, d := range c.Domains {
+		domains = append(domains, d.Name)
+	}
+	return domains, nil
 }
 
 func (c *Client) ListDefinedDomains() ([]string, error) {
@@ -727,7 +835,7 @@ func (c *Client) ListDefinedDomains() ([]string, error) {
 }
 
 func (c *Client) ListDefinedStoragePools() ([]string, error) {
-	return []string{}, nil
+	return []string{"default", "images"}, nil
 }
 
 func (c *Client) ListDefinedInterfaces() ([]string, error) {
@@ -760,22 +868,6 @@ func (c *Client) ListInterfaceCaps() ([]string, error) {
 
 func (c *Client) ListHostname() (string, error) {
 	return "mock-host", nil
-}
-
-func (c *Client) ListNodeGetSecurityModel() ([]byte, int, error) {
-	return []byte{}, 0, nil
-}
-
-func (c *Client) ListNodeGetCPUMap(flags uint32) ([]int, error) {
-	return []int{}, nil
-}
-
-func (c *Client) ListNodeGetCellsFreeMemory(startCell int, maxCells int) ([]int64, error) {
-	return []int64{}, nil
-}
-
-func (c *Client) GetNodeInfo() (int, int, int, int, int, int, error) {
-	return 8, 2400, 1, 1, 4, 2, nil
 }
 
 func (c *Client) ConnectGetAllDomainStats(domains []*MockDomain, statsTypes []string, flags uint16) (map[string][]byte, error) {
