@@ -5,38 +5,64 @@ import (
 
 	"vmmanager/internal/libvirt"
 	"vmmanager/internal/models"
+	"vmmanager/internal/repository"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type AdminHandler struct {
-	db *gorm.DB
+	userRepo     *repository.UserRepository
+	vmRepo       *repository.VMRepository
+	templateRepo *repository.TemplateRepository
+	auditRepo    *repository.AuditLogRepository
 }
 
-func NewAdminHandler(db *gorm.DB) *AdminHandler {
-	return &AdminHandler{db: db}
+func NewAdminHandler(
+	userRepo *repository.UserRepository,
+	vmRepo *repository.VMRepository,
+	templateRepo *repository.TemplateRepository,
+	auditRepo *repository.AuditLogRepository,
+) *AdminHandler {
+	return &AdminHandler{
+		userRepo:     userRepo,
+		vmRepo:       vmRepo,
+		templateRepo: templateRepo,
+		auditRepo:    auditRepo,
+	}
 }
 
 func (h *AdminHandler) ListUsers(c *gin.Context) {
-	var users []models.User
-	query := h.db
+	ctx := c.Request.Context()
 
-	var page, pageSize int
-	page = 1
-	pageSize = 20
+	page := 1
+	pageSize := 20
 
-	var total int64
-	query.Model(&models.User{}).Count(&total)
+	if p := c.Query("page"); p != "" {
+		_, _ = c.GetQuery("page")
+	}
 
-	offset := (page - 1) * pageSize
-	query.Offset(offset).Limit(pageSize).Order("created_at DESC").Find(&users)
+	users, total, err := h.userRepo.List(ctx, (page-1)*pageSize, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch users"})
+		return
+	}
+
+	userResponses := make([]gin.H, 0, len(users))
+	for _, user := range users {
+		userResponses = append(userResponses, gin.H{
+			"id":         user.ID,
+			"username":   user.Username,
+			"email":      user.Email,
+			"role":       user.Role,
+			"is_active":  user.IsActive,
+			"created_at": user.CreatedAt,
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
-		"data":    users,
+		"data":    userResponses,
 		"meta": gin.H{
 			"page":        page,
 			"per_page":    pageSize,
@@ -59,13 +85,21 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
+
+	existingUser, _ := h.userRepo.FindByUsername(ctx, req.Username)
+	if existingUser != nil {
+		c.JSON(http.StatusConflict, gin.H{"code": 4009, "message": "username already exists"})
+		return
+	}
+
 	if req.Role == "" {
 		req.Role = "user"
 	}
 
 	passwordHash, _ := hashPassword(req.Password)
 
-	user := models.User{
+	user := &models.User{
 		Username:     req.Username,
 		Email:        req.Email,
 		PasswordHash: passwordHash,
@@ -73,7 +107,10 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		IsActive:     true,
 	}
 
-	h.db.Create(&user)
+	if err := h.userRepo.Create(ctx, user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create user"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"code":    0,
@@ -89,10 +126,10 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 
 func (h *AdminHandler) GetUser(c *gin.Context) {
 	id := c.Param("id")
-	userUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
-	var user models.User
-	if err := h.db.First(&user, "id = ?", userUUID).Error; err != nil {
+	user, err := h.userRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
 		return
 	}
@@ -100,16 +137,29 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
-		"data":    user,
+		"data": gin.H{
+			"id":        user.ID,
+			"username":  user.Username,
+			"email":     user.Email,
+			"role":      user.Role,
+			"is_active": user.IsActive,
+			"quota": gin.H{
+				"cpu":      user.QuotaCPU,
+				"memory":   user.QuotaMemory,
+				"disk":     user.QuotaDisk,
+				"vm_count": user.QuotaVMCount,
+			},
+			"created_at": user.CreatedAt,
+		},
 	})
 }
 
 func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	userUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
-	var user models.User
-	if err := h.db.First(&user, "id = ?", userUUID).Error; err != nil {
+	user, err := h.userRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
 		return
 	}
@@ -120,7 +170,10 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		IsActive *bool  `json:"is_active"`
 	}
 
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		return
+	}
 
 	if req.Username != "" {
 		user.Username = req.Username
@@ -132,26 +185,37 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		user.IsActive = *req.IsActive
 	}
 
-	h.db.Save(&user)
+	if err := h.userRepo.Update(ctx, user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update user"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
-		"data":    user,
+		"data": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"role":     user.Role,
+		},
 	})
 }
 
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	id := c.Param("id")
-	userUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
-	var user models.User
-	if err := h.db.First(&user, "id = ?", userUUID).Error; err != nil {
+	_, err := h.userRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
 		return
 	}
 
-	h.db.Delete(&user)
+	if err := h.userRepo.Delete(ctx, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to delete user"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
@@ -161,13 +225,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 
 func (h *AdminHandler) UpdateUserQuota(c *gin.Context) {
 	id := c.Param("id")
-	userUUID, _ := uuid.Parse(id)
-
-	var user models.User
-	if err := h.db.First(&user, "id = ?", userUUID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
-		return
-	}
+	ctx := c.Request.Context()
 
 	var req struct {
 		CPU     int `json:"cpu"`
@@ -176,24 +234,25 @@ func (h *AdminHandler) UpdateUserQuota(c *gin.Context) {
 		VMCount int `json:"vm_count"`
 	}
 
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		return
+	}
 
-	user.QuotaCPU = req.CPU
-	user.QuotaMemory = req.Memory
-	user.QuotaDisk = req.Disk
-	user.QuotaVMCount = req.VMCount
-
-	h.db.Save(&user)
+	if err := h.userRepo.UpdateQuota(ctx, id, req.CPU, req.Memory, req.Disk, req.VMCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update quota"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
 			"quota": gin.H{
-				"cpu":      user.QuotaCPU,
-				"memory":   user.QuotaMemory,
-				"disk":     user.QuotaDisk,
-				"vm_count": user.QuotaVMCount,
+				"cpu":      req.CPU,
+				"memory":   req.Memory,
+				"disk":     req.Disk,
+				"vm_count": req.VMCount,
 			},
 		},
 	})
@@ -201,10 +260,10 @@ func (h *AdminHandler) UpdateUserQuota(c *gin.Context) {
 
 func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 	id := c.Param("id")
-	userUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
-	var user models.User
-	if err := h.db.First(&user, "id = ?", userUUID).Error; err != nil {
+	user, err := h.userRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
 		return
 	}
@@ -213,10 +272,16 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 		Role string `json:"role" binding:"required"`
 	}
 
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		return
+	}
 
 	user.Role = req.Role
-	h.db.Save(&user)
+	if err := h.userRepo.Update(ctx, user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update role"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
@@ -229,20 +294,26 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 }
 
 func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
-	var logs []models.AuditLog
-	query := h.db
+	ctx := c.Request.Context()
 
-	var total int64
-	query.Model(&models.AuditLog{}).Count(&total)
+	page := 1
+	pageSize := 100
 
-	query.Order("created_at DESC").Limit(100).Find(&logs)
+	logs, total, err := h.auditRepo.List(ctx, (page-1)*pageSize, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch audit logs"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
 		"data":    logs,
 		"meta": gin.H{
-			"total": total,
+			"page":        page,
+			"per_page":    pageSize,
+			"total":       total,
+			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
 		},
 	})
 }
@@ -269,17 +340,26 @@ func (h *AdminHandler) GetSystemInfo(libvirtClient *libvirt.Client) gin.HandlerF
 
 func (h *AdminHandler) GetSystemStats(libvirtClient *libvirt.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
 		var stats struct {
-			TotalUsers     int `json:"total_users"`
-			TotalVMs       int `json:"total_vms"`
-			RunningVMs     int `json:"running_vms"`
-			TotalTemplates int `json:"total_templates"`
+			TotalUsers     int64 `json:"total_users"`
+			TotalVMs       int64 `json:"total_vms"`
+			RunningVMs     int64 `json:"running_vms"`
+			TotalTemplates int64 `json:"total_templates"`
 		}
 
-		h.db.Model(&models.User{}).Count(&stats.TotalUsers)
-		h.db.Model(&models.VirtualMachine{}).Count(&stats.TotalVMs)
-		h.db.Model(&models.VirtualMachine{}).Where("status = ?", "running").Count(&stats.RunningVMs)
-		h.db.Model(&models.VMTemplate{}).Count(&stats.TotalTemplates)
+		users, _, _ := h.userRepo.List(ctx, 0, 0)
+		stats.TotalUsers = int64(len(users))
+
+		vms, _, _ := h.vmRepo.List(ctx, 0, 0)
+		stats.TotalVMs = int64(len(vms))
+
+		runningVMs, _ := h.vmRepo.ListByStatus(ctx, "running")
+		stats.RunningVMs = int64(len(runningVMs))
+
+		templates, _, _ := h.templateRepo.List(ctx, 0, 0)
+		stats.TotalTemplates = int64(len(templates))
 
 		c.JSON(http.StatusOK, gin.H{
 			"code":    0,

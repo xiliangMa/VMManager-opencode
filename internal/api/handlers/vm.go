@@ -1,50 +1,47 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
 
+	"vmmanager/internal/models"
+	"vmmanager/internal/repository"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type VMHandler struct {
-	db *gorm.DB
+	vmRepo       *repository.VMRepository
+	userRepo     *repository.UserRepository
+	templateRepo *repository.TemplateRepository
+	statsRepo    *repository.VMStatsRepository
 }
 
-func NewVMHandler(db *gorm.DB) *VMHandler {
-	return &VMHandler{db: db}
+func NewVMHandler(
+	vmRepo *repository.VMRepository,
+	userRepo *repository.UserRepository,
+	templateRepo *repository.TemplateRepository,
+	statsRepo *repository.VMStatsRepository,
+) *VMHandler {
+	return &VMHandler{
+		vmRepo:       vmRepo,
+		userRepo:     userRepo,
+		templateRepo: templateRepo,
+		statsRepo:    statsRepo,
+	}
 }
 
 func (h *VMHandler) ListVMs(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
 
-	var vms []models.VirtualMachine
-	query := h.db.Preload("Owner").Preload("Template")
-
-	if role != "admin" {
-		query = query.Where("owner_id = ?", userUUID)
-	}
-
-	var status string
-	if status = c.Query("status"); status != "" {
-		query = query.Where("status = ?", status)
-	}
-
-	var search string
-	if search = c.Query("search"); search != "" {
-		query = query.Where("name ILIKE ?", "%"+search+"%")
-	}
-
-	var page, pageSize int
-	page = 1
-	pageSize = 20
+	page := 1
+	pageSize := 20
 
 	if p := c.Query("page"); p != "" {
 		fmt.Sscanf(p, "%d", &page)
@@ -53,12 +50,17 @@ func (h *VMHandler) ListVMs(c *gin.Context) {
 		fmt.Sscanf(ps, "%d", &pageSize)
 	}
 
-	offset := (page - 1) * pageSize
-
+	var vms []models.VirtualMachine
 	var total int64
-	query.Model(&models.VirtualMachine{}).Count(&total)
+	var err error
 
-	if err := query.Offset(offset).Limit(pageSize).Order("created_at DESC").Find(&vms).Error; err != nil {
+	if role != "admin" {
+		vms, total, err = h.vmRepo.FindByOwner(ctx, userUUID.String(), (page-1)*pageSize, pageSize)
+	} else {
+		vms, total, err = h.vmRepo.List(ctx, (page-1)*pageSize, pageSize)
+	}
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch VMs"})
 		return
 	}
@@ -78,25 +80,20 @@ func (h *VMHandler) ListVMs(c *gin.Context) {
 
 func (h *VMHandler) GetVM(c *gin.Context) {
 	id := c.Param("id")
-	vmUUID, err := uuid.Parse(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": "invalid VM ID"})
-		return
-	}
+	ctx := c.Request.Context()
 
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
 
-	var vm models.VirtualMachine
-	query := h.db.Preload("Owner").Preload("Template")
-
-	if role != "admin" {
-		query = query.Where("owner_id = ?", userUUID)
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		return
 	}
 
-	if err := query.First(&vm, "id = ?", vmUUID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
 		return
 	}
 
@@ -128,19 +125,18 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := h.db.First(&user, "id = ?", userUUID).Error; err != nil {
+	ctx := c.Request.Context()
+
+	user, err := h.userRepo.FindByID(ctx, userUUID.String())
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
 		return
 	}
 
-	if user.QuotaVMCount > 0 {
-		var vmCount int64
-		h.db.Model(&models.VirtualMachine{}).Where("owner_id = ? AND deleted_at IS NULL", userUUID).Count(&vmCount)
-		if int(vmCount) >= user.QuotaVMCount {
-			c.JSON(http.StatusForbidden, gin.H{"code": 4006, "message": "VM quota exceeded"})
-			return
-		}
+	vmCount, _ := h.vmRepo.CountByOwner(ctx, userUUID.String())
+	if user.QuotaVMCount > 0 && int(vmCount) >= user.QuotaVMCount {
+		c.JSON(http.StatusForbidden, gin.H{"code": 4006, "message": "VM quota exceeded"})
+		return
 	}
 
 	if req.CPUAllocated > user.QuotaCPU {
@@ -177,7 +173,7 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 		vm.TemplateID = &templateUUID
 	}
 
-	if err := h.db.Create(&vm).Error; err != nil {
+	if err := h.vmRepo.Create(ctx, &vm); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create VM"})
 		return
 	}
@@ -191,21 +187,20 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 
 func (h *VMHandler) UpdateVM(c *gin.Context) {
 	id := c.Param("id")
-	vmUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
 
-	var vm models.VirtualMachine
-	query := h.db
-
-	if role != "admin" {
-		query = query.Where("owner_id = ?", userUUID)
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		return
 	}
 
-	if err := query.First(&vm, "id = ?", vmUUID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
 		return
 	}
 
@@ -217,7 +212,10 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 		Tags      []string `json:"tags"`
 	}
 
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		return
+	}
 
 	if req.Name != "" {
 		vm.Name = req.Name
@@ -233,7 +231,10 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 		vm.Tags = req.Tags
 	}
 
-	h.db.Save(&vm)
+	if err := h.vmRepo.Update(ctx, vm); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update VM"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
@@ -244,29 +245,27 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 
 func (h *VMHandler) DeleteVM(c *gin.Context) {
 	id := c.Param("id")
-	vmUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
 
-	var vm models.VirtualMachine
-	query := h.db
-
-	if role != "admin" {
-		query = query.Where("owner_id = ?", userUUID)
-	}
-
-	if err := query.First(&vm, "id = ?", vmUUID).Error; err != nil {
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
 		return
 	}
 
-	now := time.Now()
-	vm.DeletedAt = &now
-	vm.Status = "deleted"
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		return
+	}
 
-	h.db.Save(&vm)
+	if err := h.vmRepo.Delete(ctx, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to delete VM"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
@@ -299,60 +298,60 @@ func (h *VMHandler) ResumeVM(c *gin.Context) {
 }
 
 func (h *VMHandler) updateVMStatus(id string, c *gin.Context, status string) {
-	vmUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
 
-	var vm models.VirtualMachine
-	query := h.db
-
-	if role != "admin" {
-		query = query.Where("owner_id = ?", userUUID)
-	}
-
-	if err := query.First(&vm, "id = ?", vmUUID).Error; err != nil {
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
 		return
 	}
 
-	vm.Status = status
-	h.db.Save(&vm)
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		return
+	}
+
+	if err := h.vmRepo.UpdateStatus(ctx, id, status); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update VM status"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
 			"id":     vm.ID,
-			"status": vm.Status,
+			"status": status,
 		},
 	})
 }
 
 func (h *VMHandler) GetConsole(c *gin.Context) {
 	id := c.Param("id")
-	vmUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
 
-	var vm models.VirtualMachine
-	query := h.db
-
-	if role != "admin" {
-		query = query.Where("owner_id = ?", userUUID)
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		return
 	}
 
-	if err := query.First(&vm, "id = ?", vmUUID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
 		return
 	}
 
 	if vm.VNCPassword == "" {
 		vm.VNCPassword, _ = models.GenerateVNCPassword(12)
-		h.db.Save(&vm)
+		h.vmRepo.Update(ctx, vm)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -371,10 +370,19 @@ func (h *VMHandler) GetConsole(c *gin.Context) {
 
 func (h *VMHandler) GetVMStats(c *gin.Context) {
 	id := c.Param("id")
-	vmUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
-	var stats []models.VMStats
-	h.db.Where("vm_id = ?", vmUUID).Order("collected_at DESC").Limit(100).Find(&stats)
+	vmUUID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": "invalid VM ID"})
+		return
+	}
+
+	stats, err := h.statsRepo.FindByVMID(ctx, vmUUID.String(), 100)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch VM stats"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,

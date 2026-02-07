@@ -2,67 +2,64 @@ package routes
 
 import (
 	"vmmanager/config"
-
 	"vmmanager/internal/api/handlers"
 	"vmmanager/internal/api/middleware"
 	"vmmanager/internal/libvirt"
+	"vmmanager/internal/repository"
 	"vmmanager/internal/websocket"
 
 	"github.com/gin-gonic/gin"
-	"github.com/swaggo/gin-swagger"
-	"github.com/swaggo/swag/example/basic/docs"
 )
 
-func Register(router *gin.Engine, cfg *config.Config, db interface{}, libvirtClient *libvirt.Client, wsHandler *websocket.Handler) {
-	docs.SwaggerInfo.Title = "VMManager API"
-	docs.SwaggerInfo.Description = "虚拟机管理平台 API 文档"
-	docs.SwaggerInfo.Version = "1.0"
-	docs.SwaggerInfo.Host = "localhost:8080"
-	docs.SwaggerInfo.BasePath = "/api/v1"
-
+func Register(router *gin.Engine, cfg *config.Config, repos *repository.Repositories, libvirtClient *libvirt.Client, wsHandler *websocket.Handler) {
 	jwtMiddleware := middleware.JWTRequired(cfg.JWT.Secret)
+
+	authHandler := handlers.NewAuthHandler(repos.User, cfg.JWT)
+	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats)
+	templateHandler := handlers.NewTemplateHandler(repos.Template, repos.TemplateUpload)
+	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
 
 	api := router.Group("/api/v1")
 	{
 		auth := api.Group("/auth")
 		{
-			auth.POST("/register", handlers.Register)
-			auth.POST("/login", handlers.Login(cfg))
-			auth.POST("/logout", jwtMiddleware, handlers.Logout)
-			auth.GET("/profile", jwtMiddleware, handlers.GetProfile)
-			auth.PUT("/profile", jwtMiddleware, handlers.UpdateProfile)
-			auth.POST("/refresh", handlers.RefreshToken(cfg))
+			auth.POST("/register", authHandler.Register)
+			auth.POST("/login", authHandler.Login)
+			auth.POST("/logout", jwtMiddleware, authHandler.Logout)
+			auth.GET("/profile", jwtMiddleware, authHandler.GetProfile)
+			auth.PUT("/profile", jwtMiddleware, authHandler.UpdateProfile)
+			auth.POST("/refresh", authHandler.RefreshToken)
 		}
 
 		vms := api.Group("/vms")
 		{
 			vms.Use(jwtMiddleware)
-			vms.GET("", handlers.ListVMs)
-			vms.POST("", handlers.CreateVM)
-			vms.GET("/:id", handlers.GetVM)
-			vms.PUT("/:id", handlers.UpdateVM)
-			vms.DELETE("/:id", handlers.DeleteVM)
-			vms.POST("/:id/start", handlers.StartVM)
-			vms.POST("/:id/stop", handlers.StopVM)
-			vms.POST("/:id/force-stop", handlers.ForceStopVM)
-			vms.POST("/:id/restart", handlers.RebootVM)
-			vms.POST("/:id/suspend", handlers.SuspendVM)
-			vms.POST("/:id/resume", handlers.ResumeVM)
-			vms.GET("/:id/console", handlers.GetConsole)
-			vms.GET("/:id/stats", handlers.GetVMStats)
+			vms.GET("", vmHandler.ListVMs)
+			vms.POST("", vmHandler.CreateVM)
+			vms.GET("/:id", vmHandler.GetVM)
+			vms.PUT("/:id", vmHandler.UpdateVM)
+			vms.DELETE("/:id", vmHandler.DeleteVM)
+			vms.POST("/:id/start", vmHandler.StartVM)
+			vms.POST("/:id/stop", vmHandler.StopVM)
+			vms.POST("/:id/force-stop", vmHandler.ForceStopVM)
+			vms.POST("/:id/restart", vmHandler.RebootVM)
+			vms.POST("/:id/suspend", vmHandler.SuspendVM)
+			vms.POST("/:id/resume", vmHandler.ResumeVM)
+			vms.GET("/:id/console", vmHandler.GetConsole)
+			vms.GET("/:id/stats", vmHandler.GetVMStats)
 		}
 
 		templates := api.Group("/templates")
 		{
 			templates.Use(jwtMiddleware)
-			templates.GET("", handlers.ListTemplates)
-			templates.GET("/:id", handlers.GetTemplate)
-			templates.POST("", middleware.AdminRequired(), handlers.CreateTemplate)
-			templates.PUT("/:id", middleware.AdminRequired(), handlers.UpdateTemplate)
-			templates.DELETE("/:id", middleware.AdminRequired(), handlers.DeleteTemplate)
-			templates.POST("/upload/init", middleware.AdminRequired(), handlers.InitTemplateUpload)
-			templates.POST("/upload/part", middleware.AdminRequired(), handlers.UploadTemplatePart)
-			templates.POST("/upload/complete", middleware.AdminRequired(), handlers.CompleteTemplateUpload)
+			templates.GET("", templateHandler.ListTemplates)
+			templates.GET("/:id", templateHandler.GetTemplate)
+			templates.POST("", middleware.AdminRequired(), templateHandler.CreateTemplate)
+			templates.PUT("/:id", middleware.AdminRequired(), templateHandler.UpdateTemplate)
+			templates.DELETE("/:id", middleware.AdminRequired(), templateHandler.DeleteTemplate)
+			templates.POST("/upload/init", middleware.AdminRequired(), templateHandler.InitTemplateUpload)
+			templates.POST("/upload/part", middleware.AdminRequired(), templateHandler.UploadTemplatePart)
+			templates.POST("/upload/complete", middleware.AdminRequired(), templateHandler.CompleteTemplateUpload)
 		}
 
 		admin := api.Group("/admin")
@@ -71,18 +68,18 @@ func Register(router *gin.Engine, cfg *config.Config, db interface{}, libvirtCli
 		{
 			users := admin.Group("/users")
 			{
-				users.GET("", handlers.ListUsers)
-				users.POST("", handlers.CreateUser)
-				users.GET("/:id", handlers.GetUser)
-				users.PUT("/:id", handlers.UpdateUser)
-				users.DELETE("/:id", handlers.DeleteUser)
-				users.PUT("/:id/quota", handlers.UpdateUserQuota)
-				users.PUT("/:id/role", handlers.UpdateUserRole)
+				users.GET("", adminHandler.ListUsers)
+				users.POST("", adminHandler.CreateUser)
+				users.GET("/:id", adminHandler.GetUser)
+				users.PUT("/:id", adminHandler.UpdateUser)
+				users.DELETE("/:id", adminHandler.DeleteUser)
+				users.PUT("/:id/quota", adminHandler.UpdateUserQuota)
+				users.PUT("/:id/role", adminHandler.UpdateUserRole)
 			}
 
-			admin.GET("/audit-logs", handlers.ListAuditLogs)
-			admin.GET("/system/info", handlers.GetSystemInfo(libvirtClient))
-			admin.GET("/system/stats", handlers.GetSystemStats(libvirtClient))
+			admin.GET("/audit-logs", adminHandler.ListAuditLogs)
+			admin.GET("/system/info", adminHandler.GetSystemInfo(libvirtClient))
+			admin.GET("/system/stats", adminHandler.GetSystemStats(libvirtClient))
 		}
 	}
 }

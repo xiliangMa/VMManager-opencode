@@ -4,27 +4,32 @@ import (
 	"net/http"
 
 	"vmmanager/internal/models"
+	"vmmanager/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type TemplateHandler struct {
-	db *gorm.DB
+	templateRepo *repository.TemplateRepository
+	uploadRepo   *repository.TemplateUploadRepository
 }
 
-func NewTemplateHandler(db *gorm.DB) *TemplateHandler {
-	return &TemplateHandler{db: db}
+func NewTemplateHandler(
+	templateRepo *repository.TemplateRepository,
+	uploadRepo *repository.TemplateUploadRepository,
+) *TemplateHandler {
+	return &TemplateHandler{
+		templateRepo: templateRepo,
+		uploadRepo:   uploadRepo,
+	}
 }
 
 func (h *TemplateHandler) ListTemplates(c *gin.Context) {
-	var templates []models.VMTemplate
-	query := h.db.Where("is_active = ? AND is_public = ?", true, true)
+	ctx := c.Request.Context()
 
-	var page, pageSize int
-	page = 1
-	pageSize = 20
+	page := 1
+	pageSize := 20
 
 	if p := c.Query("page"); p != "" {
 		_, _ = c.GetQuery("page")
@@ -34,11 +39,11 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 		_, _ = c.GetQuery("page_size")
 	}
 
-	var total int64
-	query.Model(&models.VMTemplate{}).Count(&total)
-
-	offset := (page - 1) * pageSize
-	query.Offset(offset).Limit(pageSize).Order("created_at DESC").Find(&templates)
+	templates, total, err := h.templateRepo.ListPublic(ctx, (page-1)*pageSize, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch templates"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
@@ -55,10 +60,10 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 
 func (h *TemplateHandler) GetTemplate(c *gin.Context) {
 	id := c.Param("id")
-	templateUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
-	var template models.VMTemplate
-	if err := h.db.First(&template, "id = ?", templateUUID).Error; err != nil {
+	template, err := h.templateRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "template not found"})
 		return
 	}
@@ -98,13 +103,21 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 		return
 	}
 
-	template := models.VMTemplate{
+	ctx := c.Request.Context()
+
+	template := &models.VMTemplate{
 		Name:         req.Name,
 		Description:  req.Description,
 		OSType:       req.OSType,
 		OSVersion:    req.OSVersion,
 		Architecture: req.Architecture,
 		Format:       req.Format,
+		CPUMin:       req.CPUMin,
+		CPUMax:       req.CPUMax,
+		MemoryMin:    req.MemoryMin,
+		MemoryMax:    req.MemoryMax,
+		DiskMin:      req.DiskMin,
+		DiskMax:      req.DiskMax,
 		TemplatePath: req.TemplatePath,
 		IconURL:      req.IconURL,
 		DiskSize:     req.DiskSize,
@@ -112,7 +125,10 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 		CreatedBy:    &userUUID,
 	}
 
-	h.db.Create(&template)
+	if err := h.templateRepo.Create(ctx, template); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create template"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"code":    0,
@@ -123,10 +139,10 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 
 func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 	id := c.Param("id")
-	templateUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
-	var template models.VMTemplate
-	if err := h.db.First(&template, "id = ?", templateUUID).Error; err != nil {
+	template, err := h.templateRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "template not found"})
 		return
 	}
@@ -139,7 +155,10 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 		IsActive    bool   `json:"is_active"`
 	}
 
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		return
+	}
 
 	if req.Name != "" {
 		template.Name = req.Name
@@ -149,7 +168,10 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 	template.IsPublic = req.IsPublic
 	template.IsActive = req.IsActive
 
-	h.db.Save(&template)
+	if err := h.templateRepo.Update(ctx, template); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update template"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
@@ -160,15 +182,18 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 
 func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 	id := c.Param("id")
-	templateUUID, _ := uuid.Parse(id)
+	ctx := c.Request.Context()
 
-	var template models.VMTemplate
-	if err := h.db.First(&template, "id = ?", templateUUID).Error; err != nil {
+	_, err := h.templateRepo.FindByID(ctx, id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "template not found"})
 		return
 	}
 
-	h.db.Delete(&template)
+	if err := h.templateRepo.Delete(ctx, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to delete template"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
@@ -189,9 +214,14 @@ func (h *TemplateHandler) InitTemplateUpload(c *gin.Context) {
 		Architecture string `json:"architecture"`
 	}
 
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		return
+	}
 
-	upload := models.TemplateUpload{
+	ctx := c.Request.Context()
+
+	upload := &models.TemplateUpload{
 		Name:         req.Name,
 		Description:  req.Description,
 		FileName:     req.FileName,
@@ -202,7 +232,10 @@ func (h *TemplateHandler) InitTemplateUpload(c *gin.Context) {
 		UploadedBy:   &userUUID,
 	}
 
-	h.db.Create(&upload)
+	if err := h.uploadRepo.Create(ctx, upload); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create upload record"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,

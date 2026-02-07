@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"vmmanager/internal/libvirt"
 
@@ -73,9 +74,9 @@ func (c *Client) readPump(h *Handler) {
 	}()
 
 	c.conn.SetReadLimit(512 * 1024)
-	c.conn.SetReadDeadline(nil)
+	c.conn.SetReadDeadline(time.Time{})
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(nil)
+		c.conn.SetReadDeadline(time.Time{})
 		return nil
 	})
 
@@ -102,11 +103,13 @@ func (c *Client) readPump(h *Handler) {
 }
 
 func (c *Client) writePump() {
-	ticker := *ticker
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(nil)
+			c.conn.SetWriteDeadline(time.Time{})
 			if !ok {
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
@@ -116,7 +119,7 @@ func (c *Client) writePump() {
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(nil)
+			c.conn.SetWriteDeadline(time.Time{})
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
