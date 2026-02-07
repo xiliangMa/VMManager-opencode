@@ -1,3 +1,6 @@
+//go:build !linux || mock
+// +build !linux mock
+
 package tasks
 
 import (
@@ -7,16 +10,15 @@ import (
 	"vmmanager/internal/models"
 
 	"gorm.io/gorm"
-	"libvirt.org/go/libvirt"
 )
 
 type Scheduler struct {
 	db       *gorm.DB
-	libvirt  *libvirt.Client
+	libvirt  interface{}
 	stopChan chan struct{}
 }
 
-func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client) *Scheduler {
+func NewScheduler(db *gorm.DB, libvirtClient interface{}) *Scheduler {
 	return &Scheduler{
 		db:       db,
 		libvirt:  libvirtClient,

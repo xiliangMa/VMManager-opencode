@@ -4,7 +4,6 @@
 package libvirt
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -18,7 +17,14 @@ type Client struct {
 
 type MockConnection struct{}
 
-type MockDomain struct{}
+type MockDomain struct {
+	Name    string
+	UUID    string
+	State   int
+	CPUTime uint64
+	MaxMem  uint64
+	MemUsed uint64
+}
 
 func NewClient(uri string) (*Client, error) {
 	return &Client{
@@ -79,26 +85,29 @@ func (c *Client) DomainCreateXML(xml string, flags uint32) (*MockDomain, error) 
 }
 
 func (d *MockDomain) GetName() (string, error) {
-	return "mock-domain", nil
+	return d.Name, nil
 }
 
 func (d *MockDomain) GetUUIDString() (string, error) {
-	return "mock-uuid-1234", nil
+	return d.UUID, nil
 }
 
 func (d *MockDomain) GetState() (int, uint32, error) {
-	return 1, 0, nil
+	return d.State, 0, nil
 }
 
 func (d *MockDomain) Create() error {
+	d.State = 1
 	return nil
 }
 
 func (d *MockDomain) Destroy() error {
+	d.State = 0
 	return nil
 }
 
 func (d *MockDomain) Shutdown() error {
+	d.State = 0
 	return nil
 }
 
@@ -107,10 +116,12 @@ func (d *MockDomain) Reset() error {
 }
 
 func (d *MockDomain) Suspend() error {
+	d.State = 3
 	return nil
 }
 
 func (d *MockDomain) Resume() error {
+	d.State = 1
 	return nil
 }
 
@@ -119,7 +130,7 @@ func (d *MockDomain) Free() error {
 }
 
 func (d *MockDomain) GetXMLDesc(flags uint32) (string, error) {
-	return "<domain><name>mock</name></domain>", nil
+	return "<domain><name>" + d.Name + "</name></domain>", nil
 }
 
 func (c *Client) DefineXML(xml string) (*MockDomain, error) {
@@ -135,9 +146,10 @@ func (c *Client) GetDomainStats(statsTypes []string, flags uint16) ([]*DomainSta
 }
 
 type DomainStats struct {
-	State        string
-	CPUTime      int64
-	MemoryUsaged int64
+	State       int
+	CPUTime     int64
+	MemoryUsage int64
+	MemoryTotal int64
 }
 
 func (c *Client) StoragePoolLookupByName(name string) error {
@@ -654,10 +666,6 @@ func (c *Client) StoragePoolBuild(pool string, flags uint32) error {
 	return nil
 }
 
-func (c *Client) StoragePoolUndefine(pool string) error {
-	return nil
-}
-
 func (c *Client) StorageVolLookupByName(pool string, name string) error {
 	return nil
 }
@@ -718,15 +726,7 @@ func (c *Client) ListDefinedDomains() ([]string, error) {
 	return []string{}, nil
 }
 
-func (c *Client) ListStoragePools() ([]string, error) {
-	return []string{}, nil
-}
-
 func (c *Client) ListDefinedStoragePools() ([]string, error) {
-	return []string{}, nil
-}
-
-func (c *Client) ListInterfaces() ([]string, error) {
 	return []string{}, nil
 }
 
@@ -734,15 +734,7 @@ func (c *Client) ListDefinedInterfaces() ([]string, error) {
 	return []string{}, nil
 }
 
-func (c *Client) ListNetworks() ([]string, error) {
-	return []string{}, nil
-}
-
 func (c *Client) ListDefinedNetworks() ([]string, error) {
-	return []string{}, nil
-}
-
-func (c *Client) ListSecrets() ([]string, error) {
 	return []string{}, nil
 }
 
@@ -776,10 +768,6 @@ func (c *Client) ListNodeGetSecurityModel() ([]byte, int, error) {
 
 func (c *Client) ListNodeGetCPUMap(flags uint32) ([]int, error) {
 	return []int{}, nil
-}
-
-func (c *Client) ListNodeGetMemoryStats(cellNum int, flags uint32) (map[string]int64, error) {
-	return map[string]int64{}, nil
 }
 
 func (c *Client) ListNodeGetCellsFreeMemory(startCell int, maxCells int) ([]int64, error) {
@@ -838,10 +826,6 @@ func (c *Client) ListSecretGetXMLDesc(secret string, flags uint32) (string, erro
 	return "", nil
 }
 
-func (c *Client) ListNWFilters() ([]string, error) {
-	return []string{}, nil
-}
-
 func (c *Client) ListNWFilterLookupByName(name string) error {
 	return nil
 }
@@ -856,66 +840,4 @@ func (c *Client) ListNWFilterUndefine(nwfilter string) error {
 
 func (c *Client) ListNWFilterGetXMLDesc(nwfilter string, flags uint32) (string, error) {
 	return "", nil
-}
-
-type MockConnection struct{}
-
-type MockDomain struct{}
-
-func NewClient(uri string) (*Client, error) {
-	return &Client{
-		conn:    &MockConnection{},
-		uri:     uri,
-		Domains: make(map[string]*MockDomain),
-	}, nil
-}
-
-func (c *Client) Close() error {
-	return nil
-}
-
-func (c *Client) IsConnected() bool {
-	return true
-}
-
-func (c *Client) GetLibVersion() (uint32, error) {
-	return 1000000, nil
-}
-
-func (c *Client) GetHostInfo() (*HostInfo, error) {
-	return &HostInfo{
-		Model:          "Mock Host",
-		CPUs:           8,
-		MHz:            2400,
-		Nodes:          1,
-		Sockets:        1,
-		CoresPerSocket: 4,
-		ThreadsPerCore: 2,
-		MaxMemory:      16777216,
-		FreeMemory:     8388608,
-	}, nil
-}
-
-func (c *Client) ListAllDomains() ([]*MockDomain, error) {
-	return []*MockDomain{}, nil
-}
-
-func (c *Client) LookupByName(name string) (*MockDomain, error) {
-	return &MockDomain{}, nil
-}
-
-func (c *Client) DomainCreateXML(xml string, flags uint32) (*MockDomain, error) {
-	return &MockDomain{}, nil
-}
-
-type HostInfo struct {
-	Model          string
-	CPUs           int
-	MHz            int
-	Nodes          int
-	Sockets        int
-	CoresPerSocket int
-	ThreadsPerCore int
-	MaxMemory      int64
-	FreeMemory     int64
 }

@@ -1,3 +1,6 @@
+//go:build !linux || mock
+// +build !linux mock
+
 package main
 
 import (

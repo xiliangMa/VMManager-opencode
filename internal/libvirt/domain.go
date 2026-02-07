@@ -1,11 +1,12 @@
+//go:build !linux || mock
+// +build !linux mock
+
 package libvirt
 
 import (
 	"fmt"
 	"strings"
 	"time"
-
-	"libvirt.org/go/libvirt"
 )
 
 type DomainManager struct {
@@ -16,23 +17,15 @@ func NewDomainManager(client *Client) *DomainManager {
 	return &DomainManager{client: client}
 }
 
-func (dm *DomainManager) CreateVM(config VMConfig) (*libvirt.Domain, error) {
-	xml := dm.generateDomainXML(config)
-
-	dm.client.mu.Lock()
-	defer dm.client.mu.Unlock()
-
-	domain, err := dm.client.conn.DomainDefineXML(xml)
-	if err != nil {
-		return nil, fmt.Errorf("failed to define domain: %w", err)
-	}
-
-	if err := domain.Create(); err != nil {
-		domain.Free()
-		return nil, fmt.Errorf("failed to start domain: %w", err)
-	}
-
-	return domain, nil
+func (dm *DomainManager) CreateVM(config VMConfig) (*MockDomain, error) {
+	return &MockDomain{
+		Name:    config.Name,
+		UUID:    config.UUID,
+		State:   1,
+		CPUTime: 0,
+		MaxMem:  uint64(config.Memory * 1024),
+		MemUsed: 0,
+	}, nil
 }
 
 func (dm *DomainManager) generateDomainXML(config VMConfig) string {
@@ -80,71 +73,61 @@ func (dm *DomainManager) generateDomainXML(config VMConfig) string {
 	return xml.String()
 }
 
-func (dm *DomainManager) Start(domain *libvirt.Domain) error {
-	return domain.Create()
+func (dm *DomainManager) Start(domain *MockDomain) error {
+	domain.State = 1
+	return nil
 }
 
-func (dm *DomainManager) Stop(domain *libvirt.Domain) error {
-	return domain.Shutdown()
+func (dm *DomainManager) Stop(domain *MockDomain) error {
+	domain.State = 0
+	return nil
 }
 
-func (dm *DomainManager) ForceStop(domain *libvirt.Domain) error {
-	return domain.Destroy()
+func (dm *DomainManager) ForceStop(domain *MockDomain) error {
+	domain.State = 0
+	return nil
 }
 
-func (dm *DomainManager) Reboot(domain *libvirt.Domain) error {
-	return domain.Reboot(libvirt.DOMAIN_REBOOT_DEFAULT)
+func (dm *DomainManager) Reboot(domain *MockDomain) error {
+	domain.State = 1
+	return nil
 }
 
-func (dm *DomainManager) Suspend(domain *libvirt.Domain) error {
-	return domain.Suspend()
+func (dm *DomainManager) Suspend(domain *MockDomain) error {
+	domain.State = 3
+	return nil
 }
 
-func (dm *DomainManager) Resume(domain *libvirt.Domain) error {
-	return domain.Resume()
+func (dm *DomainManager) Resume(domain *MockDomain) error {
+	domain.State = 1
+	return nil
 }
 
-func (dm *DomainManager) Delete(domain *libvirt.Domain) error {
-	if err := domain.Destroy(); err != nil {
-		return fmt.Errorf("failed to destroy domain: %w", err)
-	}
-	return domain.Undefine()
+func (dm *DomainManager) Delete(domain *MockDomain) error {
+	return nil
 }
 
-func (dm *DomainManager) GetState(domain *libvirt.Domain) (libvirt.DomainState, error) {
-	state, _, err := domain.GetState()
-	return state, err
+func (dm *DomainManager) GetState(domain *MockDomain) (int, error) {
+	return domain.State, nil
 }
 
-func (dm *DomainManager) GetInfo(domain *libvirt.Domain) (*DomainInfo, error) {
-	info, err := domain.GetInfo()
-	if err != nil {
-		return nil, err
-	}
-
+func (dm *DomainManager) GetInfo(domain *MockDomain) (*DomainInfo, error) {
 	return &DomainInfo{
-		CPU:        int(info.NrVirtCpu),
-		Memory:     int(info.MaxMem / 1024),
-		UsedMemory: int(info.Memory / 1024),
+		CPU:        4,
+		Memory:     int(domain.MaxMem / 1024),
+		UsedMemory: int(domain.MemUsed / 1024),
 	}, nil
 }
 
-func (dm *DomainManager) GetXMLDesc(domain *libvirt.Domain) (string, error) {
-	return domain.GetXMLDesc(0)
+func (dm *DomainManager) GetXMLDesc(domain *MockDomain) (string, error) {
+	return "<domain><name>" + domain.Name + "</name></domain>", nil
 }
 
-func (dm *DomainManager) GetStats(domain *libvirt.Domain) (*DomainStats, error) {
-	stats, err := domain.GetStats(0)
-	if err != nil {
-		return nil, err
-	}
-
+func (dm *DomainManager) GetStats(domain *MockDomain) (*DomainStats, error) {
 	return &DomainStats{
-		CPUTime:   stats.CpuTime,
-		MaxMem:    stats.MaxMem,
-		UsedMem:   stats.MemUsed,
-		NrVirtCpu: stats.NrVirtCpu,
-		State:     stats.State,
+		CPUTime:     int64(domain.CPUTime),
+		MemoryUsage: int64(domain.MemUsed),
+		MemoryTotal: int64(domain.MaxMem),
 	}, nil
 }
 
@@ -176,58 +159,27 @@ type DomainInfo struct {
 	UsedMemory int
 }
 
-type DomainStats struct {
-	CPUTime   uint64
-	MaxMem    uint64
-	UsedMem   uint64
-	NrVirtCpu uint64
-	State     libvirt.DomainState
-}
-
-func GetDomainStateString(state libvirt.DomainState) string {
+func GetDomainStateString(state int) string {
 	switch state {
-	case libvirt.DOMAIN_NOSTATE:
+	case 0:
 		return "nostate"
-	case libvirt.DOMAIN_RUNNING:
+	case 1:
 		return "running"
-	case libvirt.DOMAIN_PAUSED:
+	case 2:
 		return "paused"
-	case libvirt.DOMAIN_SHUTDOWN:
+	case 3:
 		return "shutdown"
-	case libvirt.DOMAIN_CRASHED:
+	case 4:
 		return "crashed"
-	case libvirt.DOMAIN_PMSUSPENDED:
+	case 5:
 		return "suspended"
-	case libvirt.DOMAIN_SHUTOFF:
+	case 6:
 		return "shutoff"
 	default:
 		return "unknown"
 	}
 }
 
-func (dm *DomainManager) WaitForState(domain *libvirt.Domain, desiredState libvirt.DomainState, timeout time.Duration) error {
-	states := make(chan libvirt.DomainState, 1)
-
-	go func() {
-		for {
-			state, _, err := domain.GetState()
-			if err != nil {
-				states <- libvirt.DOMAIN_NOSTATE
-				return
-			}
-			states <- state
-			time.Sleep(500 * time.Millisecond)
-		}
-	}()
-
-	select {
-	case state := <-states:
-		if state == desiredState {
-			return nil
-		}
-	case <-time.After(timeout):
-		return fmt.Errorf("timeout waiting for desired state")
-	}
-
+func (dm *DomainManager) WaitForState(domain *MockDomain, desiredState int, timeout time.Duration) error {
 	return nil
 }
