@@ -102,6 +102,7 @@ func Migrate(db *gorm.DB) error {
 		&models.VMStats{},
 		&models.AuditLog{},
 		&models.TemplateUpload{},
+		&models.AlertRule{},
 	)
 }
 

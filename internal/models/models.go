@@ -143,6 +143,32 @@ type TemplateUpload struct {
 	CompletedAt  *time.Time `json:"completedAt"`
 }
 
+type AlertRule struct {
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name           string     `gorm:"size:100;not null" json:"name"`
+	Description    string     `gorm:"type:text" json:"description"`
+	Metric         string     `gorm:"size:50;not null" json:"metric"`
+	Condition      string     `gorm:"size:10;not null" json:"condition"`
+	Threshold      float64    `gorm:"not null" json:"threshold"`
+	Duration       int        `gorm:"default:5" json:"duration"`
+	Severity       string     `gorm:"size:20;not null" json:"severity"`
+	Enabled        bool       `gorm:"default:true" json:"enabled"`
+	NotifyChannels []string   `gorm:"type:text[]" json:"notifyChannels"`
+	NotifyUsers    []string   `gorm:"type:text[]" json:"notifyUsers"`
+	VMIDs          []string   `gorm:"type:text[]" json:"vmIds"`
+	IsGlobal       bool       `gorm:"default:false" json:"isGlobal"`
+	CreatedBy      *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
+}
+
+func (a *AlertRule) BeforeCreate(tx *gorm.DB) (err error) {
+	if a.ID == uuid.Nil {
+		a.ID = uuid.New()
+	}
+	return
+}
+
 func GenerateMACAddress() (string, error) {
 	bytes := make([]byte, 3)
 	if _, err := rand.Read(bytes); err != nil {

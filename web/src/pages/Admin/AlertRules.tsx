@@ -1,76 +1,41 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, Table, Button, Tag, Space, Modal, Form, Input, InputNumber, Select, Switch, message, Popconfirm } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, BellOutlined } from '@ant-design/icons'
-
-interface AlertRule {
-  id: string
-  name: string
-  metric: string
-  condition: string
-  threshold: number
-  duration: number
-  severity: string
-  enabled: boolean
-  notifyChannels: string[]
-  createdAt: string
-}
-
-const initialRules: AlertRule[] = [
-  {
-    id: '1',
-    name: 'High CPU Usage',
-    metric: 'cpu_usage',
-    condition: '>',
-    threshold: 90,
-    duration: 5,
-    severity: 'critical',
-    enabled: true,
-    notifyChannels: ['email', 'dingtalk'],
-    createdAt: '2024-01-01 00:00:00'
-  },
-  {
-    id: '2',
-    name: 'High Memory Usage',
-    metric: 'memory_usage',
-    condition: '>',
-    threshold: 85,
-    duration: 5,
-    severity: 'warning',
-    enabled: true,
-    notifyChannels: ['email'],
-    createdAt: '2024-01-01 00:00:00'
-  },
-  {
-    id: '3',
-    name: 'Disk Usage High',
-    metric: 'disk_usage',
-    condition: '>',
-    threshold: 80,
-    duration: 10,
-    severity: 'warning',
-    enabled: true,
-    notifyChannels: ['email'],
-    createdAt: '2024-01-01 00:00:00'
-  },
-  {
-    id: '4',
-    name: 'VM Down',
-    metric: 'vm_status',
-    condition: '=',
-    threshold: 0,
-    duration: 1,
-    severity: 'critical',
-    enabled: true,
-    notifyChannels: ['email', 'dingtalk'],
-    createdAt: '2024-01-01 00:00:00'
-  }
-]
+import { PlusOutlined, EditOutlined, DeleteOutlined, BellOutlined, ReloadOutlined } from '@ant-design/icons'
+import { alertRulesApi, AlertRule } from '../../api/client'
+import { useAuthStore } from '../../stores/authStore'
 
 const AlertRules: React.FC = () => {
-  const [rules, setRules] = useState<AlertRule[]>(initialRules)
+  const [rules, setRules] = useState<AlertRule[]>([])
+  const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null)
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
   const [form] = Form.useForm()
+
+  const { token } = useAuthStore()
+
+  const fetchRules = useCallback(async (page = 1, pageSize = 10) => {
+    setLoading(true)
+    try {
+      const response = await alertRulesApi.list({ page, page_size: pageSize })
+      if (response.code === 0) {
+        setRules(response.data || [])
+        setPagination({
+          current: page,
+          pageSize,
+          total: response.meta?.total || 0
+        })
+      }
+    } catch (error) {
+      message.error('Failed to load alert rules')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchRules()
+  }, [fetchRules])
 
   const metricOptions = [
     { label: 'CPU Usage (%)', value: 'cpu_usage' },
@@ -108,35 +73,51 @@ const AlertRules: React.FC = () => {
 
   const handleEdit = (rule: AlertRule) => {
     setEditingRule(rule)
-    form.setFieldsValue(rule)
+    form.setFieldsValue({
+      ...rule,
+      notifyChannels: rule.notifyChannels || []
+    })
     setIsModalOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setRules(rules.filter(r => r.id !== id))
-    message.success('Alert rule deleted')
+  const handleDelete = async (id: string) => {
+    try {
+      await alertRulesApi.delete(id)
+      message.success('Alert rule deleted')
+      fetchRules(pagination.current, pagination.pageSize)
+    } catch (error) {
+      message.error('Failed to delete alert rule')
+    }
   }
 
   const handleSubmit = async (values: any) => {
-    if (editingRule) {
-      setRules(rules.map(r => r.id === editingRule.id ? { ...r, ...values } : r))
-      message.success('Alert rule updated')
-    } else {
-      const newRule: AlertRule = {
-        id: Date.now().toString(),
-        ...values,
-        createdAt: new Date().toLocaleString()
+    try {
+      if (editingRule) {
+        await alertRulesApi.update(editingRule.id, values)
+        message.success('Alert rule updated')
+      } else {
+        await alertRulesApi.create(values)
+        message.success('Alert rule created')
       }
-      setRules([...rules, newRule])
-      message.success('Alert rule created')
+      setIsModalOpen(false)
+      fetchRules(pagination.current, pagination.pageSize)
+    } catch (error) {
+      message.error('Failed to save alert rule')
     }
-    setIsModalOpen(false)
   }
 
-  const handleToggle = (id: string) => {
-    setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r))
-    const rule = rules.find(r => r.id === id)
-    message.success(`Alert rule ${rule?.enabled ? 'disabled' : 'enabled'}`)
+  const handleToggle = async (id: string) => {
+    try {
+      await alertRulesApi.toggle(id)
+      message.success('Alert rule status updated')
+      fetchRules(pagination.current, pagination.pageSize)
+    } catch (error) {
+      message.error('Failed to update alert rule')
+    }
+  }
+
+  const handleTableChange = (paginationInfo: any) => {
+    fetchRules(paginationInfo.current, paginationInfo.pageSize)
   }
 
   const columns = [
@@ -182,7 +163,7 @@ const AlertRules: React.FC = () => {
       key: 'notifyChannels',
       render: (channels: string[]) => (
         <Space>
-          {channels.map(c => (
+          {channels?.map(c => (
             <Tag key={c}>{c}</Tag>
           ))}
         </Space>
@@ -232,16 +213,23 @@ const AlertRules: React.FC = () => {
           </Space>
         }
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            Add Rule
-          </Button>
+          <Space>
+            <Button icon={<ReloadOutlined />} onClick={() => fetchRules()}>
+              Refresh
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+              Add Rule
+            </Button>
+          </Space>
         }
       >
         <Table
           columns={columns}
           dataSource={rules}
           rowKey="id"
-          pagination={{ pageSize: 10 }}
+          loading={loading}
+          pagination={pagination}
+          onChange={handleTableChange}
         />
       </Card>
 
@@ -250,6 +238,7 @@ const AlertRules: React.FC = () => {
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
+        width={600}
       >
         <Form
           form={form}
@@ -265,14 +254,22 @@ const AlertRules: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            name="metric"
-            label="Metric"
-            rules={[{ required: true, message: 'Please select metric' }]}
+            name="description"
+            label="Description"
           >
-            <Select placeholder="Select metric" options={metricOptions} />
+            <Input.TextArea placeholder="Optional description" rows={2} />
           </Form.Item>
 
           <Space style={{ width: '100%' }} size={16}>
+            <Form.Item
+              name="metric"
+              label="Metric"
+              rules={[{ required: true, message: 'Please select metric' }]}
+              style={{ flex: 1 }}
+            >
+              <Select placeholder="Select metric" options={metricOptions} />
+            </Form.Item>
+
             <Form.Item
               name="condition"
               label="Condition"

@@ -195,3 +195,44 @@ export const statsApi = {
   getSystemStats: () =>
     client.get('/admin/system/stats').then(res => res.data)
 }
+
+export interface AlertRule {
+  id: string
+  name: string
+  description?: string
+  metric: string
+  condition: string
+  threshold: number
+  duration: number
+  severity: string
+  enabled: boolean
+  notifyChannels: string[]
+  notifyUsers?: string[]
+  vmIds?: string[]
+  isGlobal: boolean
+  created_at: string
+  updated_at: string
+}
+
+export const alertRulesApi = {
+  list: (params?: { page?: number; page_size?: number }) =>
+    client.get('/admin/alert-rules', { params }).then(res => res.data),
+
+  get: (id: string) =>
+    client.get(`/admin/alert-rules/${id}`).then(res => res.data),
+
+  create: (data: Partial<AlertRule>) =>
+    client.post('/admin/alert-rules', data).then(res => res.data),
+
+  update: (id: string, data: Partial<AlertRule>) =>
+    client.put(`/admin/alert-rules/${id}`, data).then(res => res.data),
+
+  delete: (id: string) =>
+    client.delete(`/admin/alert-rules/${id}`).then(res => res.data),
+
+  toggle: (id: string) =>
+    client.post(`/admin/alert-rules/${id}/toggle`).then(res => res.data),
+
+  getStats: () =>
+    client.get('/admin/alert-rules/stats/summary').then(res => res.data)
+}
