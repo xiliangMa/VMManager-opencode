@@ -59,14 +59,33 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 	pageSize := 20
 
 	if p := c.Query("page"); p != "" {
-		_, _ = c.GetQuery("page")
+		if v, err := strconv.Atoi(p); err == nil {
+			page = v
+		}
 	}
 
 	if ps := c.Query("page_size"); ps != "" {
-		_, _ = c.GetQuery("page_size")
+		if v, err := strconv.Atoi(ps); err == nil {
+			pageSize = v
+		}
 	}
 
-	templates, total, err := h.templateRepo.ListPublic(ctx, (page-1)*pageSize, pageSize)
+	isPublicStr := c.Query("is_public")
+
+	var templates []models.VMTemplate
+	var total int64
+	var err error
+
+	if isPublicStr == "true" {
+		templates, total, err = h.templateRepo.ListPublic(ctx, (page-1)*pageSize, pageSize)
+	} else if isPublicStr == "false" {
+		userID, _ := c.Get("user_id")
+		templates, total, err = h.templateRepo.ListByUser(ctx, userID.(string), (page-1)*pageSize, pageSize)
+	} else {
+		userID, _ := c.Get("user_id")
+		templates, total, err = h.templateRepo.ListByUser(ctx, userID.(string), (page-1)*pageSize, pageSize)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch templates", err.Error()))
 		return

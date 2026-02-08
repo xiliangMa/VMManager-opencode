@@ -83,7 +83,7 @@ const Templates: React.FC = () => {
       key: 'actions',
       render: (_: any, record: Template) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} />
+          <Button type="text" icon={<EditOutlined />} onClick={() => navigate(`/templates/${record.id}/edit`)} />
           <Popconfirm
             title={t('common.delete')}
             description="Are you sure to delete this template?"
