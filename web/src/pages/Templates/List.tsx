@@ -36,7 +36,7 @@ const Templates: React.FC = () => {
     },
     {
       title: t('template.osType'),
-      dataIndex: 'os_type',
+      dataIndex: 'osType',
       key: 'os_type',
       render: (os: string) => os || '-'
     },
@@ -55,16 +55,16 @@ const Templates: React.FC = () => {
     {
       title: 'CPU',
       key: 'cpu',
-      render: (_: any, record: Template) => `${record.cpu_min} - ${record.cpu_max}`
+      render: (_: any, record: Template) => `${record.cpuMin} - ${record.cpuMax}`
     },
     {
       title: t('vm.memory'),
       key: 'memory',
-      render: (_: any, record: Template) => `${record.memory_min} - ${record.memory_max} MB`
+      render: (_: any, record: Template) => `${record.memoryMin} - ${record.memoryMax} MB`
     },
     {
       title: t('template.public'),
-      dataIndex: 'is_public',
+      dataIndex: 'isPublic',
       key: 'is_public',
       render: (isPublic: boolean) => (
         <Tag color={isPublic ? 'green' : 'blue'}>
@@ -74,7 +74,7 @@ const Templates: React.FC = () => {
     },
     {
       title: 'Created At',
-      dataIndex: 'created_at',
+      dataIndex: 'createdAt',
       key: 'created_at',
       render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm')
     },

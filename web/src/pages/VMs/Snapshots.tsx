@@ -258,8 +258,8 @@ const VMSnapshots: React.FC = () => {
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="Name">{selectedSnapshot.name}</Descriptions.Item>
             <Descriptions.Item label="State">
-              <Tag color={getStateColor(selectedSnapshot.state)}>
-                {selectedSnapshot.state?.toUpperCase()}
+              <Tag color={getStateColor(selectedSnapshot.state || '')}>
+                {selectedSnapshot.state?.toUpperCase() || 'UNKNOWN'}
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="Size">{formatSize(selectedSnapshot.size)}</Descriptions.Item>
@@ -267,7 +267,7 @@ const VMSnapshots: React.FC = () => {
               {new Date(selectedSnapshot.created_at).toLocaleString()}
             </Descriptions.Item>
             <Descriptions.Item label="Updated">
-              {new Date(selectedSnapshot.updated_at).toLocaleString()}
+              {selectedSnapshot.updated_at ? new Date(selectedSnapshot.updated_at).toLocaleString() : '-'}
             </Descriptions.Item>
           </Descriptions>
         )}

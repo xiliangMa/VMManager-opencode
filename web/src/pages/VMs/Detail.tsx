@@ -88,14 +88,14 @@ const VMDetail: React.FC = () => {
           <Descriptions.Item label={t('vm.status')}>
             <Tag color={statusColors[vm.status]}>{vm.status}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="CPU">{vm.cpu_allocated} vCPU</Descriptions.Item>
-          <Descriptions.Item label={t('vm.memory')}>{vm.memory_allocated} MB</Descriptions.Item>
-          <Descriptions.Item label={t('vm.disk')}>{vm.disk_allocated} GB</Descriptions.Item>
-          <Descriptions.Item label={t('vm.ipAddress')}>{vm.ip_address || '-'}</Descriptions.Item>
-          <Descriptions.Item label="MAC Address">{vm.mac_address || '-'}</Descriptions.Item>
-          <Descriptions.Item label="VNC Port">{vm.vnc_port || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Created At">{dayjs(vm.created_at).format('YYYY-MM-DD HH:mm:ss')}</Descriptions.Item>
-          <Descriptions.Item label="Updated At">{dayjs(vm.updated_at).format('YYYY-MM-DD HH:mm:ss')}</Descriptions.Item>
+          <Descriptions.Item label="CPU">{vm.cpuAllocated} vCPU</Descriptions.Item>
+          <Descriptions.Item label={t('vm.memory')}>{vm.memoryAllocated} MB</Descriptions.Item>
+          <Descriptions.Item label={t('vm.disk')}>{vm.diskAllocated} GB</Descriptions.Item>
+          <Descriptions.Item label={t('vm.ipAddress')}>{vm.ipAddress || '-'}</Descriptions.Item>
+          <Descriptions.Item label="MAC Address">{vm.macAddress || '-'}</Descriptions.Item>
+          <Descriptions.Item label="VNC Port">{vm.vncPort || '-'}</Descriptions.Item>
+          <Descriptions.Item label="Created At">{dayjs(vm.createdAt).format('YYYY-MM-DD HH:mm:ss')}</Descriptions.Item>
+          <Descriptions.Item label="Updated At">{dayjs(vm.updatedAt).format('YYYY-MM-DD HH:mm:ss')}</Descriptions.Item>
         </Descriptions>
       )
     },
@@ -145,17 +145,17 @@ const VMDetail: React.FC = () => {
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title={t('vm.cpu')} value={vm.cpu_allocated} suffix="vCPU" />
+            <Statistic title={t('vm.cpu')} value={vm.cpuAllocated} suffix="vCPU" />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title={t('vm.memory')} value={vm.memory_allocated} suffix="MB" />
+            <Statistic title={t('vm.memory')} value={vm.memoryAllocated} suffix="MB" />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title={t('vm.disk')} value={vm.disk_allocated} suffix="GB" />
+            <Statistic title={t('vm.disk')} value={vm.diskAllocated} suffix="GB" />
           </Card>
         </Col>
       </Row>

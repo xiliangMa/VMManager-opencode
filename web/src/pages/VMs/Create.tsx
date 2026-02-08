@@ -26,9 +26,9 @@ const VMCreate: React.FC = () => {
     if (template) {
       setSelectedTemplate(template)
       form.setFieldsValue({
-        cpu: template.cpu_min,
-        memory: template.memory_min,
-        disk: template.disk_min
+        cpu: template.cpuMin,
+        memory: template.memoryMin,
+        disk: template.diskMin
       })
     }
   }
@@ -65,12 +65,12 @@ const VMCreate: React.FC = () => {
       <Space>
         <span>{t.name}</span>
         <span style={{ color: '#999', fontSize: 12 }}>
-          {t.os_type} | {t.architecture.toUpperCase()} | {t.format.toUpperCase()}
+          {t.osType} | {t.architecture.toUpperCase()} | {t.format.toUpperCase()}
         </span>
       </Space>
     ),
     value: t.id,
-    disabled: !t.is_active
+    disabled: !t.isActive
   }))
 
   return (
@@ -141,12 +141,12 @@ const VMCreate: React.FC = () => {
                 message={`Selected Template: ${selectedTemplate.name}`}
                 description={
                   <Space direction="vertical" size={4}>
-                    <span><strong>OS:</strong> {selectedTemplate.os_type} {selectedTemplate.os_version}</span>
+                    <span><strong>OS:</strong> {selectedTemplate.osType} {selectedTemplate.osVersion}</span>
                     <span><strong>Architecture:</strong> {selectedTemplate.architecture.toUpperCase()}</span>
                     <span><strong>Format:</strong> {selectedTemplate.format.toUpperCase()}</span>
-                    <span><strong>CPU Range:</strong> {selectedTemplate.cpu_min} - {selectedTemplate.cpu_max} cores</span>
-                    <span><strong>Memory Range:</strong> {selectedTemplate.memory_min} - {selectedTemplate.memory_max} MB</span>
-                    <span><strong>Disk Range:</strong> {selectedTemplate.disk_min} - {selectedTemplate.disk_max} GB</span>
+                    <span><strong>CPU Range:</strong> {selectedTemplate.cpuMin} - {selectedTemplate.cpuMax} cores</span>
+                    <span><strong>Memory Range:</strong> {selectedTemplate.memoryMin} - {selectedTemplate.memoryMax} MB</span>
+                    <span><strong>Disk Range:</strong> {selectedTemplate.diskMin} - {selectedTemplate.diskMax} GB</span>
                   </Space>
                 }
                 type="info"
@@ -164,12 +164,12 @@ const VMCreate: React.FC = () => {
               label={t('vm.cpu')}
               rules={[
                 { required: true, message: 'Please enter CPU count' },
-                { type: 'integer', min: selectedTemplate?.cpu_min || 1, max: selectedTemplate?.cpu_max || 64, message: `CPU must be between ${selectedTemplate?.cpu_min || 1} and ${selectedTemplate?.cpu_max || 64}` }
+                { type: 'integer', min: selectedTemplate?.cpuMin || 1, max: selectedTemplate?.cpuMax || 64, message: `CPU must be between ${selectedTemplate?.cpuMin || 1} and ${selectedTemplate?.cpuMax || 64}` }
               ]}
             >
               <InputNumber
-                min={selectedTemplate?.cpu_min || 1}
-                max={selectedTemplate?.cpu_max || 64}
+                min={selectedTemplate?.cpuMin || 1}
+                max={selectedTemplate?.cpuMax || 64}
                 style={{ width: '100%' }}
                 addonAfter="cores"
               />
@@ -180,12 +180,12 @@ const VMCreate: React.FC = () => {
               label={t('vm.memory')}
               rules={[
                 { required: true, message: 'Please enter memory size' },
-                { type: 'integer', min: selectedTemplate?.memory_min || 512, max: selectedTemplate?.memory_max || 131072, message: `Memory must be between ${selectedTemplate?.memory_min || 512} and ${selectedTemplate?.memory_max || 131072} MB` }
+                { type: 'integer', min: selectedTemplate?.memoryMin || 512, max: selectedTemplate?.memoryMax || 131072, message: `Memory must be between ${selectedTemplate?.memoryMin || 512} and ${selectedTemplate?.memoryMax || 131072} MB` }
               ]}
             >
               <InputNumber
-                min={selectedTemplate?.memory_min || 512}
-                max={selectedTemplate?.memory_max || 131072}
+                min={selectedTemplate?.memoryMin || 512}
+                max={selectedTemplate?.memoryMax || 131072}
                 style={{ width: '100%' }}
                 addonAfter="MB"
               />
@@ -196,12 +196,12 @@ const VMCreate: React.FC = () => {
               label={t('vm.disk')}
               rules={[
                 { required: true, message: 'Please enter disk size' },
-                { type: 'integer', min: selectedTemplate?.disk_min || 10, max: selectedTemplate?.disk_max || 1000, message: `Disk must be between ${selectedTemplate?.disk_min || 10} and ${selectedTemplate?.disk_max || 1000} GB` }
+                { type: 'integer', min: selectedTemplate?.diskMin || 10, max: selectedTemplate?.diskMax || 1000, message: `Disk must be between ${selectedTemplate?.diskMin || 10} and ${selectedTemplate?.diskMax || 1000} GB` }
               ]}
             >
               <InputNumber
-                min={selectedTemplate?.disk_min || 10}
-                max={selectedTemplate?.disk_max || 1000}
+                min={selectedTemplate?.diskMin || 10}
+                max={selectedTemplate?.diskMax || 1000}
                 style={{ width: '100%' }}
                 addonAfter="GB"
               />

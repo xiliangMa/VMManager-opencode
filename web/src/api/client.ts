@@ -26,18 +26,22 @@ export interface VM {
   name: string
   description?: string
   status: string
-  cpu_allocated: number
-  memory_allocated: number
-  disk_allocated: number
-  ip_address?: string
-  mac_address?: string
+  templateId?: string
+  cpuAllocated: number
+  memoryAllocated: number
+  diskAllocated: number
+  ipAddress?: string
+  macAddress?: string
+  vncPort?: number
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface VMDetail extends VM {
+  template_name?: string
+  owner_id?: string
   vnc_port?: number
-  template_id?: string
-  owner_id: string
-  boot_order?: string
-  autostart?: boolean
-  created_at: string
-  updated_at: string
+  mac_address?: string
 }
 
 export interface CreateVMRequest {
@@ -51,27 +55,61 @@ export interface CreateVMRequest {
   autostart?: boolean
 }
 
+export interface DataPoint {
+  timestamp: string
+  value: number
+}
+
+export interface VMResourceStats {
+  cpuUsage: number
+  memoryUsage: number
+  diskUsage: number
+  networkIn: number
+  networkOut: number
+  cpuHistory: DataPoint[]
+  memoryHistory: DataPoint[]
+  diskHistory: DataPoint[]
+}
+
+export interface SystemResourceStats {
+  totalCpu: number
+  usedCpu: number
+  cpuPercent: number
+  totalMemory: number
+  usedMemory: number
+  memoryPercent: number
+  totalDisk: number
+  usedDisk: number
+  diskPercent: number
+  vmCount: number
+  runningVmCount: number
+  activeUsers: number
+}
+
 export interface Template {
   id: string
   name: string
   description?: string
-  os_type: string
-  os_version?: string
+  osType: string
+  osVersion?: string
   architecture: string
   format: string
-  cpu_min: number
-  cpu_max: number
-  memory_min: number
-  memory_max: number
-  disk_min: number
-  disk_max: number
-  template_path: string
-  icon_url?: string
-  disk_size: number
-  is_public: boolean
-  is_active: boolean
+  cpuMin: number
+  cpuMax: number
+  memoryMin: number
+  memoryMax: number
+  diskMin: number
+  diskMax: number
+  templatePath: string
+  iconUrl?: string
+  screenshotUrls?: string[]
+  diskSize: number
+  isPublic: boolean
+  isActive: boolean
   downloads: number
-  created_at: string
+  createdAt: string
+  updatedAt?: string
+  createdBy?: string
 }
 
 export interface User {
@@ -85,6 +123,16 @@ export interface User {
   quota_disk: number
   quota_vm_count: number
   created_at: string
+}
+
+export interface VMSnapshot {
+  id: string
+  name: string
+  description?: string
+  state?: string
+  size: number
+  created_at: string
+  updated_at?: string
 }
 
 export const vmsApi = {
@@ -121,11 +169,22 @@ export const vmsApi = {
   resume: (id: string) =>
     client.post(`/vms/${id}/resume`).then(res => res.data),
 
-  getConsole: (id: string) =>
-    client.get(`/vms/${id}/console`).then(res => res.data),
-
   getStats: (id: string) =>
     client.get(`/vms/${id}/stats`).then(res => res.data)
+}
+
+export const snapshotsApi = {
+  list: (vmId: string) =>
+    client.get(`/vms/${vmId}/snapshots`).then(res => res.data),
+
+  create: (vmId: string, data: { name: string; description?: string }) =>
+    client.post(`/vms/${vmId}/snapshots`, data).then(res => res.data),
+
+  restore: (vmId: string, name: string) =>
+    client.post(`/vms/${vmId}/snapshots/${name}/restore`, {}).then(res => res.data),
+
+  delete: (vmId: string, name: string) =>
+    client.delete(`/vms/${vmId}/snapshots/${name}`).then(res => res.data)
 }
 
 export const templatesApi = {
@@ -214,6 +273,7 @@ export interface AuthProfile {
   language?: string
   timezone?: string
   password?: string
+  avatar?: string
 }
 
 export const authApi = {
@@ -231,39 +291,8 @@ export const systemApi = {
   getStats: () =>
     client.get('/admin/system/stats').then(res => res.data),
 
-  getAuditLogs: () =>
-    client.get('/admin/audit-logs').then(res => res.data)
-}
-
-export interface DataPoint {
-  timestamp: string
-  value: number
-}
-
-export interface VMResourceStats {
-  cpuUsage: number
-  memoryUsage: number
-  diskUsage: number
-  networkIn: number
-  networkOut: number
-  cpuHistory: DataPoint[]
-  memoryHistory: DataPoint[]
-  diskHistory: DataPoint[]
-}
-
-export interface SystemResourceStats {
-  totalCpu: number
-  usedCpu: number
-  cpuPercent: number
-  totalMemory: number
-  usedMemory: number
-  memoryPercent: number
-  totalDisk: number
-  usedDisk: number
-  diskPercent: number
-  vmCount: number
-  runningVmCount: number
-  activeUsers: number
+  getAuditLogs: (params?: { page?: number; page_size?: number; user_id?: string; action?: string }) =>
+    client.get('/admin/audit-logs', { params }).then(res => res.data)
 }
 
 export const statsApi = {
@@ -317,32 +346,4 @@ export const alertRulesApi = {
 
   getStats: () =>
     client.get('/admin/alert-rules/stats/summary').then(res => res.data)
-}
-
-export interface VMSnapshot {
-  id: string
-  name: string
-  description?: string
-  vm_id: string
-  state: 'running' | 'shutdown' | 'disk-only'
-  size: number
-  created_at: string
-  updated_at: string
-}
-
-export const snapshotsApi = {
-  list: (vmId: string) =>
-    client.get(`/vms/${vmId}/snapshots`).then(res => res.data),
-
-  get: (vmId: string, name: string) =>
-    client.get(`/vms/${vmId}/snapshots/${name}`).then(res => res.data),
-
-  create: (vmId: string, data: { name: string; description?: string }) =>
-    client.post(`/vms/${vmId}/snapshots`, data).then(res => res.data),
-
-  restore: (vmId: string, name: string) =>
-    client.post(`/vms/${vmId}/snapshots/${name}/restore`, { name }).then(res => res.data),
-
-  delete: (vmId: string, name: string) =>
-    client.delete(`/vms/${vmId}/snapshots/${name}`).then(res => res.data)
 }
