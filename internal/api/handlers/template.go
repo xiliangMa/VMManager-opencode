@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"vmmanager/internal/api/errors"
@@ -303,9 +304,23 @@ func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
 		return
 	}
 
-	var req UploadPartRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+	chunkIndexStr := c.Query("chunk_index")
+	totalChunksStr := c.Query("total_chunks")
+
+	if chunkIndexStr == "" || totalChunksStr == "" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "chunk_index and total_chunks are required", ""))
+		return
+	}
+
+	chunkIndex, err := strconv.Atoi(chunkIndexStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid chunk_index", err.Error()))
+		return
+	}
+
+	totalChunks, err := strconv.Atoi(totalChunksStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid total_chunks", err.Error()))
 		return
 	}
 
@@ -333,7 +348,7 @@ func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
 		return
 	}
 
-	chunkPath := filepath.Join(upload.UploadPath, fmt.Sprintf("chunk_%06d", req.ChunkIndex))
+	chunkPath := filepath.Join(upload.UploadPath, fmt.Sprintf("chunk_%06d", chunkIndex))
 	dst, err := os.Create(chunkPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, "failed to create chunk file", err.Error()))
@@ -347,12 +362,12 @@ func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
 		return
 	}
 
-	progress := int((int64(req.ChunkIndex+1) * 100) / int64(req.TotalChunks))
+	progress := int((int64(chunkIndex+1) * 100) / int64(totalChunks))
 	h.uploadRepo.UpdateProgress(ctx, uploadID, progress)
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
 		"upload_id":   uploadID,
-		"chunk_index": req.ChunkIndex,
+		"chunk_index": chunkIndex,
 		"chunk_size":  written,
 		"progress":    progress,
 	}))
