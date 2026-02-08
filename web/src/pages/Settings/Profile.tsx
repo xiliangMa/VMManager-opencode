@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Card, Form, Input, Button, message, Tabs, Switch, Select, Divider, Upload, Avatar } from 'antd'
+import React, { useState, useEffect, useRef } from 'react'
+import { Card, Form, Input, Button, message, Tabs, Select, Avatar } from 'antd'
 import { UserOutlined, LockOutlined, GlobalOutlined, UploadOutlined, SaveOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
@@ -12,7 +12,7 @@ const Profile: React.FC = () => {
   const [passwordForm] = Form.useForm()
   const [preferencesForm] = Form.useForm()
   const [loading, setLoading] = useState(false)
-  const [avatarKey, setAvatarKey] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -45,7 +45,7 @@ const Profile: React.FC = () => {
       await authApi.updateProfile(values)
       message.success('Profile updated successfully')
       const updatedProfile = await authApi.getProfile()
-      useAuthStore.getState().updateUser(updatedProfile.data)
+      updateUser(updatedProfile.data)
     } catch (error) {
       message.error('Failed to update profile')
     } finally {
@@ -73,7 +73,7 @@ const Profile: React.FC = () => {
       message.success('Preferences updated successfully')
       i18n.changeLanguage(values.language)
       const updatedProfile = await authApi.getProfile()
-      useAuthStore.getState().updateUser(updatedProfile.data)
+      updateUser(updatedProfile.data)
     } catch (error) {
       message.error('Failed to update preferences')
     } finally {
@@ -81,15 +81,21 @@ const Profile: React.FC = () => {
     }
   }
 
-  const handleAvatarUpload = async (file: File) => {
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
     console.log('Avatar upload started:', file.name)
     const formData = new FormData()
     formData.append('avatar', file)
     try {
-      const token = localStorage.getItem('auth-storage') 
-        ? JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token 
+      const token = localStorage.getItem('auth-storage')
+        ? JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token
         : ''
-      console.log('Token:', token ? 'present' : 'missing')
       
       const response = await fetch('/api/v1/auth/profile/avatar', {
         method: 'POST',
@@ -98,13 +104,13 @@ const Profile: React.FC = () => {
         },
         body: formData
       })
+      
       console.log('Response status:', response.status)
       
       if (response.ok) {
         message.success('Avatar uploaded successfully')
         const updatedProfile = await authApi.getProfile()
         updateUser(updatedProfile.data)
-        setAvatarKey(prev => prev + 1)
       } else {
         message.error('Failed to upload avatar')
       }
@@ -138,22 +144,19 @@ const Profile: React.FC = () => {
       children: (
         <Card>
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
-            <Upload
-              showUploadList={false}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
               accept="image/*"
-              maxCount={1}
-              beforeUpload={(file) => {
-                handleAvatarUpload(file)
-                return false
-              }}
-            >
-              <div style={{ cursor: 'pointer' }} key={avatarKey}>
-                <Avatar size={100} src={user?.avatar} icon={<UserOutlined />} />
-                <div style={{ marginTop: 8 }}>
-                  <Button icon={<UploadOutlined />}>Change Avatar</Button>
-                </div>
+              onChange={handleAvatarChange}
+            />
+            <div style={{ cursor: 'pointer' }} onClick={handleAvatarClick}>
+              <Avatar size={100} src={user?.avatar} icon={<UserOutlined />} />
+              <div style={{ marginTop: 8 }}>
+                <Button icon={<UploadOutlined />}>Change Avatar</Button>
               </div>
-            </Upload>
+            </div>
           </div>
 
           <Form
@@ -172,12 +175,9 @@ const Profile: React.FC = () => {
             <Form.Item
               name="email"
               label="Email"
-              rules={[
-                { required: true, message: 'Please enter email' },
-                { type: 'email', message: 'Please enter a valid email' }
-              ]}
+              rules={[{ required: true, type: 'email', message: 'Please enter valid email' }]}
             >
-              <Input prefix="@" />
+              <Input />
             </Form.Item>
 
             <Form.Item>
@@ -194,11 +194,11 @@ const Profile: React.FC = () => {
       label: (
         <span>
           <LockOutlined />
-          Security
+          Password
         </span>
       ),
       children: (
-        <Card title="Change Password">
+        <Card>
           <Form
             form={passwordForm}
             layout="vertical"
@@ -209,23 +209,20 @@ const Profile: React.FC = () => {
               label="Current Password"
               rules={[{ required: true, message: 'Please enter current password' }]}
             >
-              <Input.Password prefix={<LockOutlined />} />
+              <Input.Password />
             </Form.Item>
 
             <Form.Item
               name="newPassword"
               label="New Password"
-              rules={[
-                { required: true, message: 'Please enter new password' },
-                { min: 6, message: 'Password must be at least 6 characters' }
-              ]}
+              rules={[{ required: true, message: 'Please enter new password' }]}
             >
-              <Input.Password prefix={<LockOutlined />} />
+              <Input.Password />
             </Form.Item>
 
             <Form.Item
               name="confirmPassword"
-              label="Confirm New Password"
+              label="Confirm Password"
               dependencies={['newPassword']}
               rules={[
                 { required: true, message: 'Please confirm password' },
@@ -239,11 +236,11 @@ const Profile: React.FC = () => {
                 })
               ]}
             >
-              <Input.Password prefix={<LockOutlined />} />
+              <Input.Password />
             </Form.Item>
 
             <Form.Item>
-              <Button type="primary" htmlType="submit" loading={loading}>
+              <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
                 Change Password
               </Button>
             </Form.Item>
@@ -260,7 +257,7 @@ const Profile: React.FC = () => {
         </span>
       ),
       children: (
-        <Card title="Display Preferences">
+        <Card>
           <Form
             form={preferencesForm}
             layout="vertical"
@@ -282,22 +279,6 @@ const Profile: React.FC = () => {
               <Select options={timezoneOptions} />
             </Form.Item>
 
-            <Divider />
-
-            <h4>Notifications</h4>
-
-            <Form.Item name="emailNotifications" label="Email Notifications" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-
-            <Form.Item name="vmAlerts" label="VM Status Alerts" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-
-            <Form.Item name="securityAlerts" label="Security Alerts" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
                 Save Preferences
@@ -310,11 +291,9 @@ const Profile: React.FC = () => {
   ]
 
   return (
-    <div>
-      <Card title="Settings">
-        <Tabs items={tabItems} />
-      </Card>
-    </div>
+    <Card title="Profile Settings">
+      <Tabs defaultActiveKey="profile" items={tabItems} />
+    </Card>
   )
 }
 
