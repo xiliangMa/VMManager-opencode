@@ -94,7 +94,45 @@
     "networkConfig": "Network Configuration",
     "selectTemplate": "Select Template",
     "configureResources": "Configure Resources",
-    "confirmCreate": "Confirm Creation"
+    "confirmCreate": "Confirm Creation",
+    "monitor": {
+      "loading": "Loading VM statistics...",
+      "cpuUsage": "CPU Usage",
+      "memoryUsage": "Memory Usage",
+      "diskUsage": "Disk Usage",
+      "networkIO": "Network I/O",
+      "range": {
+        "15min": "Last 15 min",
+        "1hour": "Last 1 hour",
+        "6hours": "Last 6 hours",
+        "24hours": "Last 24 hours"
+      },
+      "chart": {
+        "last6h": "Last 6 hours",
+        "last24h": "Last 24 hours",
+        "last7d": "Last 7 days"
+      },
+      "cpuMemoryChart": "CPU / Memory Usage Trend",
+      "cpuHistory": "CPU History",
+      "memoryHistory": "Memory History",
+      "diskHistory": "Disk History",
+      "networkHistory": "Network History",
+      "chartType": {
+        "area": "Area Chart",
+        "line": "Line Chart"
+      },
+      "resourceAllocation": "Resource Allocation",
+      "cpuCores": "CPU Cores",
+      "cores": "cores",
+      "memoryAllocated": "Allocated Memory",
+      "diskAllocated": "Allocated Disk",
+      "quickStats": "Quick Stats",
+      "avgCPU": "Avg CPU",
+      "avgMem": "Avg Memory",
+      "lastUpdate": "Last Update",
+      "dataPoints": "data points",
+      "used": "Used"
+    }
   },
   "template": {
     "name": "Template Name",

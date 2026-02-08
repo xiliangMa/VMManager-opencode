@@ -71,3 +71,15 @@ func (r *AlertRuleRepository) CountBySeverity(ctx context.Context, severity stri
 		Count(&count).Error
 	return count, err
 }
+
+func (r *AlertRuleRepository) FindByVMAndMetric(ctx context.Context, vmID, metric string) ([]models.AlertRule, error) {
+	var rules []models.AlertRule
+
+	err := r.db.WithContext(ctx).
+		Where("enabled = ?", true).
+		Where("is_global = ? OR (vm_ids::text LIKE ?)", true, "%"+vmID+"%").
+		Where("metric = ?", metric).
+		Find(&rules).Error
+
+	return rules, err
+}

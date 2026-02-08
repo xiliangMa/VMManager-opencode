@@ -94,7 +94,45 @@
     "networkConfig": "网络配置",
     "selectTemplate": "选择模板",
     "configureResources": "配置资源",
-    "confirmCreate": "确认创建"
+    "confirmCreate": "确认创建",
+    "monitor": {
+      "loading": "正在加载虚拟机监控数据...",
+      "cpuUsage": "CPU 使用率",
+      "memoryUsage": "内存使用率",
+      "diskUsage": "磁盘使用率",
+      "networkIO": "网络 I/O",
+      "range": {
+        "15min": "最近15分钟",
+        "1hour": "最近1小时",
+        "6hours": "最近6小时",
+        "24hours": "最近24小时"
+      },
+      "chart": {
+        "last6h": "最近6小时",
+        "last24h": "最近24小时",
+        "last7d": "最近7天"
+      },
+      "cpuMemoryChart": "CPU / 内存使用趋势",
+      "cpuHistory": "CPU 历史",
+      "memoryHistory": "内存历史",
+      "diskHistory": "磁盘历史",
+      "networkHistory": "网络历史",
+      "chartType": {
+        "area": "面积图",
+        "line": "折线图"
+      },
+      "resourceAllocation": "资源分配",
+      "cpuCores": "CPU 核心数",
+      "cores": "核心",
+      "memoryAllocated": "已分配内存",
+      "diskAllocated": "已分配磁盘",
+      "quickStats": "快速统计",
+      "avgCPU": "平均 CPU",
+      "avgMem": "平均内存",
+      "lastUpdate": "最后更新",
+      "dataPoints": "数据点",
+      "used": "已用"
+    }
   },
   "template": {
     "name": "模板名称",

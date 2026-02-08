@@ -8,16 +8,18 @@ import (
 )
 
 type Config struct {
-	App       AppConfig       `mapstructure:"app"`
-	Database  DatabaseConfig  `mapstructure:"database"`
-	Redis     RedisConfig     `mapstructure:"redis"`
-	Libvirt   LibvirtConfig   `mapstructure:"libvirt"`
-	JWT       JWTConfig       `mapstructure:"jwt"`
-	VNC       VNCConfig       `mapstructure:"vnc"`
-	SPICE     SPICEConfig     `mapstructure:"spice"`
-	Logging   LoggingConfig   `mapstructure:"logging"`
-	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
-	Quota     QuotaConfig     `mapstructure:"quota"`
+	App          AppConfig          `mapstructure:"app"`
+	Database     DatabaseConfig     `mapstructure:"database"`
+	Redis        RedisConfig        `mapstructure:"redis"`
+	Libvirt      LibvirtConfig      `mapstructure:"libvirt"`
+	JWT          JWTConfig          `mapstructure:"jwt"`
+	VNC          VNCConfig          `mapstructure:"vnc"`
+	SPICE        SPICEConfig        `mapstructure:"spice"`
+	Logging      LoggingConfig      `mapstructure:"logging"`
+	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
+	Quota        QuotaConfig        `mapstructure:"quota"`
+	Email        EmailConfig        `mapstructure:"email"`
+	Notification NotificationConfig `mapstructure:"notification"`
 }
 
 type AppConfig struct {
@@ -25,6 +27,7 @@ type AppConfig struct {
 	Host         string `mapstructure:"host"`
 	HTTPPort     int    `mapstructure:"http_port"`
 	WSPort       int    `mapstructure:"ws_port"`
+	URL          string `mapstructure:"url"`
 	Debug        bool   `mapstructure:"debug"`
 	UploadPath   string `mapstructure:"upload_path"`
 	TemplatePath string `mapstructure:"template_path"`
@@ -94,6 +97,24 @@ type QuotaConfig struct {
 	DefaultMemory  int `mapstructure:"default_memory"`
 	DefaultDisk    int `mapstructure:"default_disk"`
 	DefaultVMCount int `mapstructure:"default_vm_count"`
+}
+
+type EmailConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	From     string `mapstructure:"from"`
+	FromName string `mapstructure:"from_name"`
+	UseTLS   bool   `mapstructure:"use_tls"`
+	UseSSL   bool   `mapstructure:"use_ssl"`
+}
+
+type NotificationConfig struct {
+	DingtalkAccessToken string `mapstructure:"dingtalk_access_token"`
+	DingtalkSecret      string `mapstructure:"dingtalk_secret"`
+	WebhookURL          string `mapstructure:"webhook_url"`
+	WebhookSecret       string `mapstructure:"webhook_secret"`
 }
 
 func Load() (*Config, error) {

@@ -12,6 +12,7 @@ type Repositories struct {
 	AuditLog       *AuditLogRepository
 	TemplateUpload *TemplateUploadRepository
 	AlertRule      *AlertRuleRepository
+	AlertHistory   *AlertHistoryRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -23,6 +24,7 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		AuditLog:       NewAuditLogRepository(db),
 		TemplateUpload: NewTemplateUploadRepository(db),
 		AlertRule:      NewAlertRuleRepository(db),
+		AlertHistory:   NewAlertHistoryRepository(db),
 	}
 }
 
