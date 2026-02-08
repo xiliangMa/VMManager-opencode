@@ -12,6 +12,7 @@ const Profile: React.FC = () => {
   const [passwordForm] = Form.useForm()
   const [preferencesForm] = Form.useForm()
   const [loading, setLoading] = useState(false)
+  const [avatarKey, setAvatarKey] = useState(0)
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -102,7 +103,8 @@ const Profile: React.FC = () => {
       if (response.ok) {
         message.success('Avatar uploaded successfully')
         const updatedProfile = await authApi.getProfile()
-        useAuthStore.getState().updateUser(updatedProfile.data)
+        updateUser(updatedProfile.data)
+        setAvatarKey(prev => prev + 1)
       } else {
         message.error('Failed to upload avatar')
       }
@@ -145,7 +147,7 @@ const Profile: React.FC = () => {
                 return false
               }}
             >
-              <div style={{ cursor: 'pointer' }}>
+              <div style={{ cursor: 'pointer' }} key={avatarKey}>
                 <Avatar size={100} src={user?.avatar} icon={<UserOutlined />} />
                 <div style={{ marginTop: 8 }}>
                   <Button icon={<UploadOutlined />}>Change Avatar</Button>
