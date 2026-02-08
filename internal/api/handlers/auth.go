@@ -257,6 +257,54 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	}))
 }
 
+func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	ctx := c.Request.Context()
+
+	user, err := h.userRepo.FindByID(ctx, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", userID.(string)))
+		return
+	}
+
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "avatar file required", err.Error()))
+		return
+	}
+
+	allowedTypes := map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/gif":  true,
+	}
+	if !allowedTypes[file.Header.Get("Content-Type")] {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid file type", "only jpeg, png, gif allowed"))
+		return
+	}
+
+	if file.Size > 2*1024*1024 {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "file too large", "max 2MB"))
+		return
+	}
+
+	avatarURL := "/uploads/avatars/" + user.ID.String() + "_" + file.Filename
+	if err := c.SaveUploadedFile(file, "."+avatarURL); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to save avatar", err.Error()))
+		return
+	}
+
+	user.AvatarURL = avatarURL
+	if err := h.userRepo.Update(ctx, user); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update avatar", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"avatar": avatarURL,
+	}))
+}
+
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`

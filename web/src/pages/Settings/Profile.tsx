@@ -88,7 +88,14 @@ const Profile: React.FC = () => {
       children: (
         <Card>
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
-            <Upload showUploadList={false}>
+            <Upload
+              showUploadList={false}
+              action="/api/v1/auth/profile/avatar"
+              name="avatar"
+              headers={{ Authorization: `Bearer ${localStorage.getItem('token') || ''}` }}
+              beforeUpload={() => false}
+              onChange={() => {}}
+            >
               <div style={{ cursor: 'pointer' }}>
                 <Avatar size={100} icon={<UserOutlined />} />
                 <div style={{ marginTop: 8 }}>

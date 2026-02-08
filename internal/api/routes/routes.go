@@ -33,6 +33,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			auth.POST("/logout", jwtMiddleware, authHandler.Logout)
 			auth.GET("/profile", jwtMiddleware, authHandler.GetProfile)
 			auth.PUT("/profile", jwtMiddleware, authHandler.UpdateProfile)
+			auth.POST("/profile/avatar", jwtMiddleware, authHandler.UpdateAvatar)
 			auth.POST("/refresh", authHandler.RefreshToken)
 		}
 

@@ -17,3 +17,6 @@ node_modules/
 # Build
 web/dist/
 web/build/
+
+# Uploads
+uploads/
