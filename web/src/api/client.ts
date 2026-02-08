@@ -22,8 +22,21 @@ export interface VM {
   vnc_port?: number
   template_id?: string
   owner_id: string
+  boot_order?: string
+  autostart?: boolean
   created_at: string
   updated_at: string
+}
+
+export interface CreateVMRequest {
+  name: string
+  description?: string
+  template_id: string
+  cpu: number
+  memory: number
+  disk: number
+  boot_order?: string
+  autostart?: boolean
 }
 
 export interface Template {
@@ -69,7 +82,7 @@ export const vmsApi = {
   get: (id: string) =>
     client.get(`/vms/${id}`).then(res => res.data),
 
-  create: (data: Partial<VM>) =>
+  create: (data: CreateVMRequest) =>
     client.post('/vms', data).then(res => res.data),
 
   update: (id: string, data: Partial<VM>) =>
