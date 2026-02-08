@@ -7,24 +7,28 @@ import (
 	"context"
 	"log"
 	"time"
-
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
+
+	"gorm.io/gorm"
+	"vmmanager/internal/libvirt"
 )
 
 type Scheduler struct {
-	db        interface{}
+	db        *gorm.DB
 	vmRepo    *repository.VMRepository
 	statsRepo *repository.VMStatsRepository
-	libvirt   interface{}
+	libvirt   *libvirt.Client
 	stopChan  chan struct{}
 }
 
-func NewScheduler(db interface{}, libvirtClient interface{}) *Scheduler {
+func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client) *Scheduler {
 	return &Scheduler{
-		db:       db,
-		libvirt:  libvirtClient,
-		stopChan: make(chan struct{}),
+		db:        db,
+		vmRepo:    repository.NewVMRepository(db),
+		statsRepo: repository.NewVMStatsRepository(db),
+		libvirt:   libvirtClient,
+		stopChan:  make(chan struct{}),
 	}
 }
 
@@ -52,10 +56,19 @@ func (s *Scheduler) Stop() {
 }
 
 func (s *Scheduler) collectStats() {
+	if s.vmRepo == nil || s.statsRepo == nil {
+		log.Println("Warning: repositories not initialized, skipping stats collection")
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	vms, _, _ := s.vmRepo.List(ctx, 0, 0)
+	vms, _, err := s.vmRepo.List(ctx, 0, 0)
+	if err != nil {
+		log.Printf("Error collecting VM stats: %v", err)
+		return
+	}
 
 	for _, vm := range vms {
 		if s.libvirt == nil || vm.Status != "running" {
@@ -70,6 +83,8 @@ func (s *Scheduler) collectStats() {
 			CollectedAt: time.Now(),
 		}
 
-		s.statsRepo.Create(ctx, &stats)
+		if err := s.statsRepo.Create(ctx, &stats); err != nil {
+			log.Printf("Error creating VM stats: %v", err)
+		}
 	}
 }

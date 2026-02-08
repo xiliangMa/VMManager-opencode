@@ -14,7 +14,7 @@ const VMConsole: React.FC = () => {
   const { token } = useAuthStore()
   
   const containerRef = useRef<HTMLDivElement>(null)
-  const rfbref = useRef<RFB | null>(null)
+  const rfbref = useRef<any>(null)
   const [vmStatus, setVmStatus] = useState<string>('unknown')
   const [connected, setConnected] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
@@ -42,7 +42,7 @@ const VMConsole: React.FC = () => {
     const wsUrl = `ws://${window.location.host}/ws/vnc/${id}`
     const tokenValue = token || ''
 
-    const rfb = new RFB(containerRef.current, wsUrl, {
+    const rfb = new (RFB as any)(containerRef.current, wsUrl, {
       credentials: { password: tokenValue },
       retry: true,
       reconnectDelay: 500,
@@ -84,7 +84,7 @@ const VMConsole: React.FC = () => {
         if (vmStatus === 'running') {
           setVmStatus('connecting')
           const wsUrl = `ws://${window.location.host}/ws/vnc/${id}`
-          const rfb = new RFB(containerRef.current!, wsUrl, {
+          const rfb = new (RFB as any)(containerRef.current!, wsUrl, {
             credentials: { password: token || '' },
             retry: true,
             reconnectDelay: 500,
