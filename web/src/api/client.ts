@@ -249,3 +249,31 @@ export const alertRulesApi = {
   getStats: () =>
     client.get('/admin/alert-rules/stats/summary').then(res => res.data)
 }
+
+export interface VMSnapshot {
+  id: string
+  name: string
+  description?: string
+  vm_id: string
+  state: 'running' | 'shutdown' | 'disk-only'
+  size: number
+  created_at: string
+  updated_at: string
+}
+
+export const snapshotsApi = {
+  list: (vmId: string) =>
+    client.get(`/vms/${vmId}/snapshots`).then(res => res.data),
+
+  get: (vmId: string, name: string) =>
+    client.get(`/vms/${vmId}/snapshots/${name}`).then(res => res.data),
+
+  create: (vmId: string, data: { name: string; description?: string }) =>
+    client.post(`/vms/${vmId}/snapshots`, data).then(res => res.data),
+
+  restore: (vmId: string, name: string) =>
+    client.post(`/vms/${vmId}/snapshots/${name}/restore`, { name }).then(res => res.data),
+
+  delete: (vmId: string, name: string) =>
+    client.delete(`/vms/${vmId}/snapshots/${name}`).then(res => res.data)
+}

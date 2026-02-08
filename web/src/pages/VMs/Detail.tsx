@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined } from '@ant-design/icons'
 import { vmsApi, VM } from '../../api/client'
 import dayjs from 'dayjs'
 
@@ -101,8 +101,22 @@ const VMDetail: React.FC = () => {
     },
     {
       key: 'snapshots',
-      label: 'Snapshots',
-      children: <div>{t('common.noData')}</div>
+      label: (
+        <span>
+          <CloudUploadOutlined />
+          Snapshots
+        </span>
+      ),
+      children: (
+        <Card size="small" style={{ marginTop: 8 }}>
+          <Space direction="vertical" align="center" style={{ width: '100%' }}>
+            <p>Manage VM snapshots</p>
+            <Button type="primary" onClick={() => navigate(`/vms/${id}/snapshots`)}>
+              Manage Snapshots
+            </Button>
+          </Space>
+        </Card>
+      )
     },
     {
       key: 'logs',
