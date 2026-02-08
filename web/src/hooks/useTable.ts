@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 interface UseTableOptions<T> {
   api: (params?: any) => Promise<{ data: T[]; meta: any }>
@@ -33,6 +33,7 @@ export function useTable<T>(options: UseTableOptions<T>): UseTableResult<T> {
   })
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Record<string, any>>({})
+  const mountedRef = useRef(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -75,6 +76,13 @@ export function useTable<T>(options: UseTableOptions<T>): UseTableResult<T> {
       setLoading(false)
     }
   }, [api, pagination.current, pagination.pageSize, search, filters])
+
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      fetchData()
+    }
+  }, [fetchData])
 
   const handlePaginationChange = (page: number, pageSize: number) => {
     setPagination(prev => ({
