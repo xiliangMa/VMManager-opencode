@@ -33,12 +33,12 @@ const MainLayout: React.FC = () => {
     {
       key: '/',
       icon: <DashboardOutlined />,
-      label: t('Dashboard')
+      label: t('common.dashboard')
     },
     {
       key: '/dashboard',
       icon: <MonitorOutlined />,
-      label: 'System Monitor'
+      label: t('common.systemMonitor')
     },
     {
       key: '/vms',
@@ -48,7 +48,7 @@ const MainLayout: React.FC = () => {
     {
       key: '/templates',
       icon: <FileOutlined />,
-      label: t('template.upload')
+      label: t('template.templateList')
     },
     ...(user?.role === 'admin' ? [
       {
@@ -59,12 +59,12 @@ const MainLayout: React.FC = () => {
       {
         key: '/admin/audit-logs',
         icon: <BellOutlined />,
-        label: 'Audit Logs'
+        label: t('common.auditLogs')
       },
       {
         key: '/admin/alerts',
         icon: <BellOutlined />,
-        label: 'Alert Rules'
+        label: t('common.alertRules')
       }
     ] : [])
   ]
@@ -73,7 +73,7 @@ const MainLayout: React.FC = () => {
     {
       key: 'profile',
       icon: <SettingOutlined />,
-      label: t('auth.profile')
+      label: t('common.profile')
     },
     {
       key: 'language',

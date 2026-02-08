@@ -32,7 +32,11 @@
     "updatedAt": "Updated At",
     "description": "Description",
     "settings": "Settings",
-    "profile": "Profile"
+    "profile": "Profile",
+    "dashboard": "Dashboard",
+    "systemMonitor": "System Monitor",
+    "auditLogs": "Audit Logs",
+    "alertRules": "Alert Rules"
   },
   "auth": {
     "login": "Login",
@@ -95,13 +99,13 @@
   "template": {
     "name": "Template Name",
     "upload": "Upload Template",
+    "templateList": "Templates",
     "download": "Download",
     "public": "Public Template",
     "private": "Private Template",
     "osType": "Operating System",
     "architecture": "Architecture",
     "format": "Format",
-    "templateList": "Template List",
     "createTemplate": "Create Template",
     "editTemplate": "Edit Template",
     "deleteTemplate": "Delete Template",

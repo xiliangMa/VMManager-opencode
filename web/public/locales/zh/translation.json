@@ -32,7 +32,11 @@
     "updatedAt": "更新时间",
     "description": "描述",
     "settings": "设置",
-    "profile": "个人资料"
+    "profile": "个人资料",
+    "dashboard": "仪表盘",
+    "systemMonitor": "系统监控",
+    "auditLogs": "审计日志",
+    "alertRules": "告警规则"
   },
   "auth": {
     "login": "登录",
