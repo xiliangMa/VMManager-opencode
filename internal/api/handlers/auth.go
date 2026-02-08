@@ -220,6 +220,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	var req struct {
 		Email    string `json:"email"`
 		Avatar   string `json:"avatar"`
+		Password string `json:"password"`
 		Language string `json:"language"`
 		Timezone string `json:"timezone"`
 	}
@@ -234,6 +235,10 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	}
 	if req.Avatar != "" {
 		user.AvatarURL = req.Avatar
+	}
+	if req.Password != "" {
+		passwordHash, _ := hashPassword(req.Password)
+		user.PasswordHash = passwordHash
 	}
 	if req.Language != "" {
 		user.Language = req.Language

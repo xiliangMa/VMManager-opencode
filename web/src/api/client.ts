@@ -250,8 +250,9 @@ export interface AlertRule {
   notifyUsers?: string[]
   vmIds?: string[]
   isGlobal: boolean
-  created_at: string
-  updated_at: string
+  created_by?: string
+  created_at?: string
+  updated_at?: string
 }
 
 export const alertRulesApi = {

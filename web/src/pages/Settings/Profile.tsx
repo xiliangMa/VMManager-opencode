@@ -64,6 +64,27 @@ const Profile: React.FC = () => {
     }
   }
 
+  const handleAvatarUpload = async (file: File) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    try {
+      const response = await fetch('/api/v1/auth/profile/avatar', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token : ''}`
+        },
+        body: formData
+      })
+      if (response.ok) {
+        message.success('Avatar uploaded successfully')
+      } else {
+        message.error('Failed to upload avatar')
+      }
+    } catch (error) {
+      message.error('Failed to upload avatar')
+    }
+  }
+
   const languageOptions = [
     { label: '中文 (简体)', value: 'zh-CN' },
     { label: 'English', value: 'en-US' }
@@ -90,11 +111,11 @@ const Profile: React.FC = () => {
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
             <Upload
               showUploadList={false}
-              action="/api/v1/auth/profile/avatar"
-              name="avatar"
-              headers={{ Authorization: `Bearer ${localStorage.getItem('token') || ''}` }}
-              beforeUpload={() => false}
-              onChange={() => {}}
+              beforeUpload={(file) => {
+                handleAvatarUpload(file)
+                return false
+              }}
+              accept="image/*"
             >
               <div style={{ cursor: 'pointer' }}>
                 <Avatar size={100} icon={<UserOutlined />} />
