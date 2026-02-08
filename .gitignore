@@ -1,0 +1,19 @@
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# Binaries
+server
+*.exe
+*.out
+
+# Dependencies
+node_modules/
+
+# Build
+web/dist/
+web/build/
