@@ -80,6 +80,16 @@ func arrayToPGArray(arr []string) string {
 	return result
 }
 
+func jsonToPGArray(jsonStr string) string {
+	if jsonStr == "" || jsonStr == "[]" {
+		return "{}"
+	}
+	if jsonStr[0] == '[' && jsonStr[len(jsonStr)-1] == ']' {
+		return "{" + jsonStr[1:len(jsonStr)-1] + "}"
+	}
+	return jsonStr
+}
+
 func (h *AlertRuleHandler) ListAlertRules(c *gin.Context) {
 	page := 1
 	pageSize := 20
@@ -182,9 +192,9 @@ func (h *AlertRuleHandler) CreateAlertRule(c *gin.Context) {
 		Threshold:      req.Threshold,
 		Duration:       req.Duration,
 		Severity:       req.Severity,
-		NotifyChannels: arrayToJSON(req.NotifyChannels),
-		NotifyUsers:    arrayToJSON(req.NotifyUsers),
-		VMIDs:          arrayToJSON(req.VMIDs),
+		NotifyChannels: arrayToPGArray(req.NotifyChannels),
+		NotifyUsers:    arrayToPGArray(req.NotifyUsers),
+		VMIDs:          arrayToPGArray(req.VMIDs),
 		IsGlobal:       req.IsGlobal,
 		Enabled:        true,
 	}
@@ -269,9 +279,9 @@ func (h *AlertRuleHandler) UpdateAlertRule(c *gin.Context) {
 	if req.Enabled != nil {
 		rule.Enabled = *req.Enabled
 	}
-	rule.NotifyChannels = arrayToJSON(req.NotifyChannels)
-	rule.NotifyUsers = arrayToJSON(req.NotifyUsers)
-	rule.VMIDs = arrayToJSON(req.VMIDs)
+	rule.NotifyChannels = arrayToPGArray(req.NotifyChannels)
+	rule.NotifyUsers = arrayToPGArray(req.NotifyUsers)
+	rule.VMIDs = arrayToPGArray(req.VMIDs)
 	rule.IsGlobal = req.IsGlobal
 
 	if err := h.repo.Update(c.Request.Context(), rule); err != nil {

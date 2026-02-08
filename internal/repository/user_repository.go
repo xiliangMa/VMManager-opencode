@@ -78,7 +78,7 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).
 		Model(&models.User{}).
 		Where("id = ?", id).
-		Update("last_login_at", gorm.Expr("datetime('now')")).Error
+		Update("last_login_at", gorm.Expr("NOW()")).Error
 }
 
 func (r *UserRepository) UpdateQuota(ctx context.Context, id string, cpu, memory, disk, vmCount int) error {

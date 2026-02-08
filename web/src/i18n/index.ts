@@ -9,11 +9,13 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      'zh-CN': { translation: zhTranslations },
-      'en-US': { translation: enTranslations }
+        'zh': { translation: zhTranslations },
+        'zh-CN': { translation: zhTranslations },
+        'en': { translation: enTranslations },
+        'en-US': { translation: enTranslations }
     },
     fallbackLng: 'zh-CN',
-    supportedLngs: ['zh-CN', 'en-US'],
+    supportedLngs: ['zh', 'zh-CN', 'en', 'en-US'],
     debug: import.meta.env.DEV,
     interpolation: {
       escapeValue: false
