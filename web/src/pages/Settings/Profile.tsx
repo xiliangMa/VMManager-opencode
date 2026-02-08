@@ -31,6 +31,8 @@ const Profile: React.FC = () => {
     try {
       await authApi.updateProfile(values)
       message.success('Profile updated successfully')
+      const updatedProfile = await authApi.getProfile()
+      useAuthStore.getState().updateUser(updatedProfile.data)
     } catch (error) {
       message.error('Failed to update profile')
     } finally {
@@ -57,6 +59,8 @@ const Profile: React.FC = () => {
       await authApi.updateProfile(values)
       message.success('Preferences updated successfully')
       i18n.changeLanguage(values.language)
+      const updatedProfile = await authApi.getProfile()
+      useAuthStore.getState().updateUser(updatedProfile.data)
     } catch (error) {
       message.error('Failed to update preferences')
     } finally {
@@ -77,6 +81,8 @@ const Profile: React.FC = () => {
       })
       if (response.ok) {
         message.success('Avatar uploaded successfully')
+        const updatedProfile = await authApi.getProfile()
+        useAuthStore.getState().updateUser(updatedProfile.data)
       } else {
         message.error('Failed to upload avatar')
       }

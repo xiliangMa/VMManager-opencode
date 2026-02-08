@@ -37,7 +37,6 @@ func (r *AuditLogRepository) List(ctx context.Context, offset, limit int) ([]mod
 	r.db.WithContext(ctx).Model(&models.AuditLog{}).Count(&total)
 
 	err := r.db.WithContext(ctx).
-		Preload("User").
 		Offset(offset).
 		Limit(limit).
 		Order("created_at DESC").

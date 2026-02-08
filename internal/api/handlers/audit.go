@@ -208,22 +208,39 @@ func (h *AuditHandler) ExportAuditLogs(c *gin.Context) {
 
 	logs, _, err := h.auditRepo.List(ctx, 0, 10000)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch audit logs"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    5001,
+			"message": "failed to fetch audit logs",
+			"details": err.Error(),
+		})
 		return
 	}
 
-	c.Header("Content-Type", "text/csv")
+	if len(logs) == 0 {
+		c.String(http.StatusOK, "No audit logs found\n")
+		return
+	}
+
+	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", "attachment; filename=audit_logs.csv")
 
 	c.String(http.StatusOK, "ID,UserID,Action,ResourceType,ResourceID,IPAddress,Status,CreatedAt\n")
 	for _, log := range logs {
+		username := ""
+		if log.UserID != nil {
+			username = log.UserID.String()
+		}
+		ipAddress := ""
+		if log.IPAddress != nil {
+			ipAddress = log.IPAddress.String()
+		}
 		c.String(http.StatusOK, "%s,%s,%s,%s,%s,%s,%s,%s\n",
 			log.ID.String(),
-			log.UserID.String(),
+			username,
 			log.Action,
 			log.ResourceType,
 			log.ResourceID.String(),
-			log.IPAddress.String(),
+			ipAddress,
 			log.Status,
 			log.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		)
