@@ -142,7 +142,32 @@ export const templatesApi = {
     client.put(`/templates/${id}`, data).then(res => res.data),
 
   delete: (id: string) =>
-    client.delete(`/templates/${id}`).then(res => res.data)
+    client.delete(`/templates/${id}`).then(res => res.data),
+
+  initUpload: (data: {
+    name: string
+    description?: string
+    file_name: string
+    file_size: number
+    format: string
+    architecture?: string
+    chunk_size: number
+  }) =>
+    client.post('/templates/upload/init', data).then(res => res.data),
+
+  uploadPart: (uploadId: string, chunkIndex: number, totalChunks: number, formData: FormData) =>
+    client.post(`/templates/upload/part?upload_id=${uploadId}&chunk_index=${chunkIndex}&total_chunks=${totalChunks}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data),
+
+  completeUpload: (uploadId: string, data: { total_chunks: number; checksum?: string }) =>
+    client.post(`/templates/upload/complete/${uploadId}`, data).then(res => res.data),
+
+  getUploadStatus: (uploadId: string) =>
+    client.get(`/templates/upload/${uploadId}/status`).then(res => res.data),
+
+  abortUpload: (uploadId: string) =>
+    client.delete(`/templates/upload/${uploadId}`).then(res => res.data)
 }
 
 export const usersApi = {
