@@ -61,6 +61,15 @@ services:
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - JWT_EXPIRY=24h
       - JWT_REFRESH_EXPIRY=168h
+      - EMAIL_HOST=smtp.example.com
+      - EMAIL_PORT=587
+      - EMAIL_USERNAME=noreply@example.com
+      - EMAIL_PASSWORD=email-password
+      - EMAIL_FROM=noreply@example.com
+      - DINGTALK_ACCESS_TOKEN=
+      - DINGTALK_SECRET=
+      - WEBHOOK_URL=
+      - WEBHOOK_SECRET=
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -84,12 +93,33 @@ services:
       timeout: 10s
       retries: 3
 
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        - VITE_API_URL=/api
+        - VITE_WS_URL=/ws
+    container_name: vmmanager-web
+    ports:
+      - "80:80"
+    volumes:
+      - web_dist:/usr/share/nginx/html
+    networks:
+      - vmmanager-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   nginx:
     image: nginx:alpine
     container_name: vmmanager-nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - "8088:80"
+      - "8443:443"
     volumes:
       - web_dist:/usr/share/nginx/html
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -99,6 +129,7 @@ services:
       - vmmanager-net
     depends_on:
       - api
+      - web
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]

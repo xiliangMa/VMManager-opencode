@@ -1,0 +1,93 @@
+# ============================================
+# VMManager Configuration File
+# ============================================
+
+# Application Configuration
+app:
+  name: "VMManager"
+  host: "0.0.0.0"
+  http_port: 8080
+  ws_port: 8081
+  url: "http://localhost:8088"
+  debug: false
+  upload_path: "./uploads"
+  template_path: "./templates"
+  log_path: "./logs"
+
+# Database Configuration
+database:
+  driver: "sqlite"  # sqlite or postgres
+  host: "localhost"
+  port: 5432
+  username: "vmmanager"
+  password: "vmmanager123"
+  name: "vmmanager"
+  ssl_mode: "disable"
+  path: "./data/vmmanager.db"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+
+# Redis Configuration
+redis:
+  host: "localhost"
+  port: 6379
+  password: "vmmanager123"
+  db: 0
+  pool_size: 10
+
+# Libvirt Configuration
+libvirt:
+  uri: "qemu:///system"
+  connection_timeout: 10s
+  read_timeout: 30s
+  write_timeout: 30s
+
+# JWT Configuration
+jwt:
+  secret: "your-super-secret-jwt-key-change-in-production"
+  expiration: 24h
+  refresh_expiration: 168h
+
+# VNC Configuration
+vnc:
+  port_range_start: 5900
+  port_range_end: 6000
+  password_length: 12
+  session_timeout: 30m
+
+# Logging Configuration
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json"  # json or text
+  output: "stdout"  # stdout, file, both
+
+# Rate Limiting
+rate_limit:
+  requests_per_second: 10
+  burst: 20
+
+# Quota Configuration
+quota:
+  default_cpu: 4
+  default_memory: 8192
+  default_disk: 100
+  default_vm_count: 5
+
+# Email Configuration (for alert notifications)
+email:
+  host: "smtp.example.com"
+  port: 587
+  username: "noreply@example.com"
+  password: "email-password"
+  from: "VMManager <noreply@example.com>"
+  from_name: "VMManager"
+  use_tls: true
+  use_ssl: false
+
+# Notification Configuration
+notification:
+  dingtalk_access_token: ""
+  dingtalk_secret: ""
+  webhook_url: ""
+  webhook_secret: ""
