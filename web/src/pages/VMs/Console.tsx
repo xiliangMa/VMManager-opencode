@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Button, Space, Card, Tag, Typography, message, Tooltip, Input } from 'antd'
 import { ArrowLeftOutlined, DisconnectOutlined, ReloadOutlined, CompressOutlined, ExpandOutlined } from '@ant-design/icons'
-import RFB from '@novnc/novnc'
 import { vmsApi } from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -13,8 +12,7 @@ const VMConsole: React.FC = () => {
   const { t } = useTranslation()
   const { token } = useAuthStore()
   
-  const containerRef = useRef<HTMLDivElement>(null)
-  const rfbref = useRef<any>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const [vmStatus, setVmStatus] = useState<string>('unknown')
   const [connected, setConnected] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
@@ -36,71 +34,27 @@ const VMConsole: React.FC = () => {
     return () => clearInterval(interval)
   }, [fetchVmStatus])
 
-  useEffect(() => {
-    if (!containerRef.current || vmStatus !== 'running') return
-
-    const wsUrl = `ws://${window.location.host}/ws/vnc/${id}`
-    const tokenValue = token || ''
-
-    const rfb = new (RFB as any)(containerRef.current, wsUrl, {
-      credentials: { password: tokenValue },
-      retry: true,
-      reconnectDelay: 500,
-      reconnectTimeout: 10000
-    })
-
-    rfbref.current = rfb
-
-    rfb.addEventListener('connect', () => {
-      setConnected(true)
-      message.success(t('console.connected'))
-      rfb.focus()
-    })
-
-    rfb.addEventListener('disconnect', () => {
-      setConnected(false)
-      message.warning(t('console.disconnected'))
-    })
-
-    rfb.addEventListener('desktopname', (e: any) => {
-      console.log('Desktop name:', e.detail.name)
-    })
-
-    rfb.addEventListener('securityfailure', (e: any) => {
-      console.error('Security failure:', e.detail.reason)
-      message.error('VNC connection security failure')
-    })
-
-    return () => {
-      rfb.disconnect()
-      rfbref.current = null
-    }
-  }, [id, vmStatus, token, t])
+  const getWebSocketUrl = () => {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${wsProtocol}//${window.location.host}/ws/vnc/${id}`
+  }
 
   const handleRefresh = () => {
-    if (rfbref.current) {
-      rfbref.current.disconnect()
+    if (iframeRef.current) {
+      const iframe = iframeRef.current
+      const currentSrc = iframe.src
+      iframe.src = ''
       setTimeout(() => {
-        if (vmStatus === 'running') {
-          setVmStatus('connecting')
-          const wsUrl = `ws://${window.location.host}/ws/vnc/${id}`
-          const rfb = new (RFB as any)(containerRef.current!, wsUrl, {
-            credentials: { password: token || '' },
-            retry: true,
-            reconnectDelay: 500,
-            reconnectTimeout: 10000
-          })
-          rfbref.current = rfb
-        }
-      }, 500)
+        iframe.src = currentSrc
+      }, 100)
     }
   }
 
   const handleFullscreen = () => {
-    if (!containerRef.current) return
+    if (!iframeRef.current) return
 
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen()
+      iframeRef.current.requestFullscreen()
       setFullscreen(true)
     } else {
       document.exitFullscreen()
@@ -109,24 +63,15 @@ const VMConsole: React.FC = () => {
   }
 
   const handleDisconnect = () => {
-    if (rfbref.current) {
-      rfbref.current.disconnect()
-    }
     navigate(`/vms/${id}`)
   }
 
   const handleCtrlAltDel = () => {
-    if (rfbref.current) {
-      rfbref.current.sendCtrlAltDel()
-    }
+    message.info('Use Ctrl+Alt+Del button in VNC console')
   }
 
   const handleClipboardPaste = () => {
-    if (rfbref.current && clipboardText) {
-      rfbref.current.clipboardPaste(clipboardText)
-      setClipboardText('')
-      message.success('Clipboard text sent')
-    }
+    message.info('Use clipboard paste in VNC console')
   }
 
   const statusColors: Record<string, string> = {
@@ -135,7 +80,7 @@ const VMConsole: React.FC = () => {
     creating: 'processing'
   }
 
-  const isOperational = vmStatus === 'running' && connected
+  const vncUrl = `/novnc/vnc_lite.html?host=${window.location.hostname}&port=${window.location.port || '8080'}&path=ws/vnc/${id}&password=${token || ''}`
 
   return (
     <div>
@@ -148,9 +93,7 @@ const VMConsole: React.FC = () => {
             <span>VM Console - {id}</span>
             {vmStatus && (
               <Tag color={statusColors[vmStatus] || 'default'}>
-                {vmStatus === 'running' 
-                  ? (connected ? t('console.connected') : t('console.connecting'))
-                  : t('console.disconnected')}
+                {vmStatus === 'running' ? t('console.connected') : t('console.disconnected')}
               </Tag>
             )}
           </Space>
@@ -176,32 +119,30 @@ const VMConsole: React.FC = () => {
         }
       >
         <Space direction="vertical" style={{ width: '100%' }} size="small">
-          {isOperational && (
-            <Space>
-              <Input
-                placeholder="Paste text to send to VM..."
-                value={clipboardText}
-                onChange={(e) => setClipboardText(e.target.value)}
-                style={{ width: 300 }}
-                onPressEnter={handleClipboardPaste}
+          {vmStatus === 'running' && (
+            <div
+              style={{
+                width: '100%',
+                height: '600px',
+                border: '1px solid #d9d9d9',
+                borderRadius: '4px',
+                overflow: 'hidden'
+              }}
+            >
+              <iframe
+                ref={iframeRef}
+                src={vncUrl}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none'
+                }}
+                title="VNC Console"
               />
-              <Button onClick={handleClipboardPaste}>Send to VM</Button>
-            </Space>
+            </div>
           )}
 
-          <div
-            ref={containerRef}
-            style={{
-              width: '100%',
-              height: '600px',
-              backgroundColor: '#000',
-              border: '1px solid #d9d9d9',
-              borderRadius: '4px',
-              overflow: 'hidden'
-            }}
-          />
-
-          {!isOperational && (
+          {vmStatus !== 'running' && (
             <div style={{ 
               textAlign: 'center', 
               padding: '40px',
@@ -212,20 +153,13 @@ const VMConsole: React.FC = () => {
                 {vmStatus === 'running' ? t('console.connecting') : t('console.disconnected')}
               </Typography.Title>
               <Typography.Text type="secondary">
-                {vmStatus === 'running' 
-                  ? 'Click refresh to try connecting again'
-                  : 'VM must be running to access the console'}
+                VM must be running to access the console
               </Typography.Text>
               <br /><br />
               <Space>
                 <Button type="primary" onClick={() => navigate(`/vms/${id}`)}>
                   {t('common.back')}
                 </Button>
-                {vmStatus === 'running' && (
-                  <Button onClick={handleRefresh}>
-                    {t('common.refresh')}
-                  </Button>
-                )}
               </Space>
             </div>
           )}

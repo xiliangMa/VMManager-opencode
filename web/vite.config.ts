@@ -33,6 +33,6 @@ export default defineConfig({
     target: 'esnext',
   },
   optimizeDeps: {
-    include: ['@novnc/novnc'],
+    exclude: ['@novnc/novnc'],
   },
 })
