@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"vmmanager/internal/api/errors"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
 
@@ -61,21 +62,16 @@ func (h *VMHandler) ListVMs(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch VMs"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch VMs", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    vms,
-		"meta": gin.H{
-			"page":        page,
-			"per_page":    pageSize,
-			"total":       total,
-			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
-		},
-	})
+	c.JSON(http.StatusOK, errors.SuccessWithMeta(vms, gin.H{
+		"page":        page,
+		"per_page":    pageSize,
+		"total":       total,
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+	}))
 }
 
 func (h *VMHandler) GetVM(c *gin.Context) {
@@ -88,20 +84,16 @@ func (h *VMHandler) GetVM(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    vm,
-	})
+	c.JSON(http.StatusOK, errors.Success(vm))
 }
 
 func (h *VMHandler) CreateVM(c *gin.Context) {
@@ -121,7 +113,7 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
 		return
 	}
 
@@ -129,23 +121,23 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, userUUID.String())
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", userUUID.String()))
 		return
 	}
 
 	vmCount, _ := h.vmRepo.CountByOwner(ctx, userUUID.String())
 	if user.QuotaVMCount > 0 && int(vmCount) >= user.QuotaVMCount {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4006, "message": "VM quota exceeded"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, "VM quota exceeded", fmt.Sprintf("current: %d, limit: %d", vmCount, user.QuotaVMCount)))
 		return
 	}
 
 	if req.CPUAllocated > user.QuotaCPU {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4006, "message": "CPU quota exceeded"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, "CPU quota exceeded", fmt.Sprintf("requested: %d, limit: %d", req.CPUAllocated, user.QuotaCPU)))
 		return
 	}
 
 	if req.MemoryAllocated > user.QuotaMemory {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4006, "message": "memory quota exceeded"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, "memory quota exceeded", fmt.Sprintf("requested: %d, limit: %d", req.MemoryAllocated, user.QuotaMemory)))
 		return
 	}
 
@@ -174,15 +166,11 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	}
 
 	if err := h.vmRepo.Create(ctx, &vm); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create VM"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to create VM", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    vm,
-	})
+	c.JSON(http.StatusCreated, errors.Success(vm))
 }
 
 func (h *VMHandler) UpdateVM(c *gin.Context) {
@@ -195,12 +183,12 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
@@ -213,7 +201,7 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
 		return
 	}
 
@@ -232,15 +220,11 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 	}
 
 	if err := h.vmRepo.Update(ctx, vm); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update VM"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update VM", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    vm,
-	})
+	c.JSON(http.StatusOK, errors.Success(vm))
 }
 
 func (h *VMHandler) DeleteVM(c *gin.Context) {
@@ -253,24 +237,21 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
 	if err := h.vmRepo.Delete(ctx, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to delete VM"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to delete VM", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-	})
+	c.JSON(http.StatusOK, errors.Success(nil))
 }
 
 func (h *VMHandler) StartVM(c *gin.Context) {
@@ -306,28 +287,24 @@ func (h *VMHandler) updateVMStatus(id string, c *gin.Context, status string) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, status); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update VM status"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update VM status", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"id":     vm.ID,
-			"status": status,
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":     vm.ID,
+		"status": status,
+	}))
 }
 
 func (h *VMHandler) GetConsole(c *gin.Context) {
@@ -340,12 +317,12 @@ func (h *VMHandler) GetConsole(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
@@ -354,18 +331,14 @@ func (h *VMHandler) GetConsole(c *gin.Context) {
 		h.vmRepo.Update(ctx, vm)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"type":          "vnc",
-			"host":          c.Request.Host,
-			"port":          vm.VNCPort,
-			"password":      vm.VNCPassword,
-			"websocket_url": fmt.Sprintf("ws://%s/ws/vnc/%s", c.Request.Host, vm.ID),
-			"expires_at":    time.Now().Add(30 * time.Minute).Format(time.RFC3339),
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"type":          "vnc",
+		"host":          c.Request.Host,
+		"port":          vm.VNCPort,
+		"password":      vm.VNCPassword,
+		"websocket_url": fmt.Sprintf("ws://%s/ws/vnc/%s", c.Request.Host, vm.ID),
+		"expires_at":    time.Now().Add(30 * time.Minute).Format(time.RFC3339),
+	}))
 }
 
 func (h *VMHandler) GetVMStats(c *gin.Context) {
@@ -374,19 +347,15 @@ func (h *VMHandler) GetVMStats(c *gin.Context) {
 
 	vmUUID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": "invalid VM ID"})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid VM ID", err.Error()))
 		return
 	}
 
 	stats, err := h.statsRepo.FindByVMID(ctx, vmUUID.String(), 100)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch VM stats"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch VM stats", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    stats,
-	})
+	c.JSON(http.StatusOK, errors.Success(stats))
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"vmmanager/config"
+	"vmmanager/internal/api/errors"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
 
@@ -74,7 +75,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "validation error", err.Error()))
 		return
 	}
 
@@ -82,13 +83,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	existingUser, _ := h.userRepo.FindByUsername(ctx, req.Username)
 	if existingUser != nil {
-		c.JSON(http.StatusConflict, gin.H{"code": 4009, "message": "username already exists"})
+		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, "username already exists", req.Username))
 		return
 	}
 
 	existingEmail, _ := h.userRepo.FindByEmail(ctx, req.Email)
 	if existingEmail != nil {
-		c.JSON(http.StatusConflict, gin.H{"code": 4009, "message": "email already exists"})
+		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, "email already exists", req.Email))
 		return
 	}
 
@@ -105,28 +106,24 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Create(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create user"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to create user", err.Error()))
 		return
 	}
 
 	token, _ := generateToken(user.ID.String(), user.Role, h.jwtCfg)
 	refreshToken, _ := generateRefreshToken(user.ID.String(), h.jwtCfg)
 
-	c.JSON(http.StatusCreated, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"user": gin.H{
-				"id":       user.ID,
-				"username": user.Username,
-				"email":    user.Email,
-				"role":     user.Role,
-			},
-			"token":         token,
-			"refresh_token": refreshToken,
-			"expires_in":    int(h.jwtCfg.Expiration.Seconds()),
+	c.JSON(http.StatusCreated, errors.Success(gin.H{
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"role":     user.Role,
 		},
-	})
+		"token":         token,
+		"refresh_token": refreshToken,
+		"expires_in":    int(h.jwtCfg.Expiration.Seconds()),
+	}))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -136,7 +133,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "validation error", err.Error()))
 		return
 	}
 
@@ -144,17 +141,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	user, err := h.userRepo.FindByUsername(ctx, req.Username)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": 4002, "message": "invalid credentials"})
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, "invalid credentials", "user not found"))
 		return
 	}
 
 	if !user.IsActive {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": 4003, "message": "account is disabled"})
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeForbidden, "account is disabled", "user is not active"))
 		return
 	}
 
 	if !verifyPassword(user.PasswordHash, req.Password) {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": 4002, "message": "invalid credentials"})
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, "invalid credentials", "wrong password"))
 		return
 	}
 
@@ -163,29 +160,22 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	token, _ := generateToken(user.ID.String(), user.Role, h.jwtCfg)
 	refreshToken, _ := generateRefreshToken(user.ID.String(), h.jwtCfg)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"user": gin.H{
-				"id":       user.ID,
-				"username": user.Username,
-				"email":    user.Email,
-				"role":     user.Role,
-				"avatar":   user.AvatarURL,
-			},
-			"token":         token,
-			"refresh_token": refreshToken,
-			"expires_in":    int(h.jwtCfg.Expiration.Seconds()),
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"role":     user.Role,
+			"avatar":   user.AvatarURL,
 		},
-	})
+		"token":         token,
+		"refresh_token": refreshToken,
+		"expires_in":    int(h.jwtCfg.Expiration.Seconds()),
+	}))
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-	})
+	c.JSON(http.StatusOK, errors.Success(nil))
 }
 
 func (h *AuthHandler) GetProfile(c *gin.Context) {
@@ -194,31 +184,27 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, userID.(string))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", userID.(string)))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
-			"role":     user.Role,
-			"avatar":   user.AvatarURL,
-			"language": user.Language,
-			"timezone": user.Timezone,
-			"quota": gin.H{
-				"cpu":      user.QuotaCPU,
-				"memory":   user.QuotaMemory,
-				"disk":     user.QuotaDisk,
-				"vm_count": user.QuotaVMCount,
-			},
-			"last_login_at": user.LastLoginAt,
-			"created_at":    user.CreatedAt,
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"email":    user.Email,
+		"role":     user.Role,
+		"avatar":   user.AvatarURL,
+		"language": user.Language,
+		"timezone": user.Timezone,
+		"quota": gin.H{
+			"cpu":      user.QuotaCPU,
+			"memory":   user.QuotaMemory,
+			"disk":     user.QuotaDisk,
+			"vm_count": user.QuotaVMCount,
 		},
-	})
+		"last_login_at": user.LastLoginAt,
+		"created_at":    user.CreatedAt,
+	}))
 }
 
 func (h *AuthHandler) UpdateProfile(c *gin.Context) {
@@ -227,7 +213,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, userID.(string))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", userID.(string)))
 		return
 	}
 
@@ -239,7 +225,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "validation error", err.Error()))
 		return
 	}
 
@@ -257,22 +243,18 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Update(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update profile"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update profile", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
-			"avatar":   user.AvatarURL,
-			"language": user.Language,
-			"timezone": user.Timezone,
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"email":    user.Email,
+		"avatar":   user.AvatarURL,
+		"language": user.Language,
+		"timezone": user.Timezone,
+	}))
 }
 
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
@@ -281,7 +263,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "validation error", err.Error()))
 		return
 	}
 
@@ -290,7 +272,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	})
 
 	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": 4002, "message": "invalid refresh token"})
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, "invalid refresh token", err.Error()))
 		return
 	}
 
@@ -300,20 +282,16 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	ctx := c.Request.Context()
 	user, err := h.userRepo.FindByID(ctx, userID)
 	if err != nil || !user.IsActive {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": 4003, "message": "user not found or disabled"})
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found or disabled", userID))
 		return
 	}
 
 	newToken, _ := generateToken(user.ID.String(), user.Role, h.jwtCfg)
 	newRefreshToken, _ := generateRefreshToken(user.ID.String(), h.jwtCfg)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"token":         newToken,
-			"refresh_token": newRefreshToken,
-			"expires_in":    int(h.jwtCfg.Expiration.Seconds()),
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"token":         newToken,
+		"refresh_token": newRefreshToken,
+		"expires_in":    int(h.jwtCfg.Expiration.Seconds()),
+	}))
 }

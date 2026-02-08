@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"vmmanager/config"
+	"vmmanager/internal/api/errors"
 	"vmmanager/internal/api/routes"
 	"vmmanager/internal/database"
 	"vmmanager/internal/libvirt"
@@ -77,6 +78,8 @@ func main() {
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())
 	router.Use(middleware.MetricsMiddleware())
+	router.Use(errors.Recovery())
+	router.Use(errors.ErrorHandler())
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{

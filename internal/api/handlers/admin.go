@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"vmmanager/internal/api/errors"
 	"vmmanager/internal/libvirt"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
@@ -43,7 +44,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 
 	users, total, err := h.userRepo.List(ctx, (page-1)*pageSize, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch users"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch users", err.Error()))
 		return
 	}
 
@@ -59,17 +60,12 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    userResponses,
-		"meta": gin.H{
-			"page":        page,
-			"per_page":    pageSize,
-			"total":       total,
-			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
-		},
-	})
+	c.JSON(http.StatusOK, errors.SuccessWithMeta(userResponses, gin.H{
+		"page":        page,
+		"per_page":    pageSize,
+		"total":       total,
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+	}))
 }
 
 func (h *AdminHandler) CreateUser(c *gin.Context) {
@@ -81,7 +77,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
 		return
 	}
 
@@ -89,7 +85,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 
 	existingUser, _ := h.userRepo.FindByUsername(ctx, req.Username)
 	if existingUser != nil {
-		c.JSON(http.StatusConflict, gin.H{"code": 4009, "message": "username already exists"})
+		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, "username already exists", req.Username))
 		return
 	}
 
@@ -108,20 +104,16 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Create(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to create user"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to create user", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
-			"role":     user.Role,
-		},
-	})
+	c.JSON(http.StatusCreated, errors.Success(gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"email":    user.Email,
+		"role":     user.Role,
+	}))
 }
 
 func (h *AdminHandler) GetUser(c *gin.Context) {
@@ -130,28 +122,24 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", id))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"id":        user.ID,
-			"username":  user.Username,
-			"email":     user.Email,
-			"role":      user.Role,
-			"is_active": user.IsActive,
-			"quota": gin.H{
-				"cpu":      user.QuotaCPU,
-				"memory":   user.QuotaMemory,
-				"disk":     user.QuotaDisk,
-				"vm_count": user.QuotaVMCount,
-			},
-			"created_at": user.CreatedAt,
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":        user.ID,
+		"username":  user.Username,
+		"email":     user.Email,
+		"role":      user.Role,
+		"is_active": user.IsActive,
+		"quota": gin.H{
+			"cpu":      user.QuotaCPU,
+			"memory":   user.QuotaMemory,
+			"disk":     user.QuotaDisk,
+			"vm_count": user.QuotaVMCount,
 		},
-	})
+		"created_at": user.CreatedAt,
+	}))
 }
 
 func (h *AdminHandler) UpdateUser(c *gin.Context) {
@@ -160,7 +148,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", id))
 		return
 	}
 
@@ -171,7 +159,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
 		return
 	}
 
@@ -186,20 +174,16 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Update(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update user"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update user", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
-			"role":     user.Role,
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"email":    user.Email,
+		"role":     user.Role,
+	}))
 }
 
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
@@ -208,19 +192,16 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 
 	_, err := h.userRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", id))
 		return
 	}
 
 	if err := h.userRepo.Delete(ctx, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to delete user"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to delete user", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-	})
+	c.JSON(http.StatusOK, errors.Success(nil))
 }
 
 func (h *AdminHandler) UpdateUserQuota(c *gin.Context) {
@@ -235,27 +216,23 @@ func (h *AdminHandler) UpdateUserQuota(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
 		return
 	}
 
 	if err := h.userRepo.UpdateQuota(ctx, id, req.CPU, req.Memory, req.Disk, req.VMCount); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update quota"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update quota", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"quota": gin.H{
-				"cpu":      req.CPU,
-				"memory":   req.Memory,
-				"disk":     req.Disk,
-				"vm_count": req.VMCount,
-			},
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"quota": gin.H{
+			"cpu":      req.CPU,
+			"memory":   req.Memory,
+			"disk":     req.Disk,
+			"vm_count": req.VMCount,
 		},
-	})
+	}))
 }
 
 func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
@@ -264,7 +241,7 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "user not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", id))
 		return
 	}
 
@@ -273,24 +250,20 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
 		return
 	}
 
 	user.Role = req.Role
 	if err := h.userRepo.Update(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to update role"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update role", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"id":   user.ID,
-			"role": user.Role,
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":   user.ID,
+		"role": user.Role,
+	}))
 }
 
 func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
@@ -301,21 +274,16 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 
 	logs, total, err := h.auditRepo.List(ctx, (page-1)*pageSize, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch audit logs"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch audit logs", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    logs,
-		"meta": gin.H{
-			"page":        page,
-			"per_page":    pageSize,
-			"total":       total,
-			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
-		},
-	})
+	c.JSON(http.StatusOK, errors.SuccessWithMeta(logs, gin.H{
+		"page":        page,
+		"per_page":    pageSize,
+		"total":       total,
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+	}))
 }
 
 func (h *AdminHandler) GetSystemInfo(libvirtClient *libvirt.Client) gin.HandlerFunc {
@@ -330,11 +298,7 @@ func (h *AdminHandler) GetSystemInfo(libvirtClient *libvirt.Client) gin.HandlerF
 			info["host"] = hostInfo
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"code":    0,
-			"message": "success",
-			"data":    info,
-		})
+		c.JSON(http.StatusOK, errors.Success(info))
 	}
 }
 
@@ -361,10 +325,6 @@ func (h *AdminHandler) GetSystemStats(libvirtClient *libvirt.Client) gin.Handler
 		templates, _, _ := h.templateRepo.List(ctx, 0, 0)
 		stats.TotalTemplates = int64(len(templates))
 
-		c.JSON(http.StatusOK, gin.H{
-			"code":    0,
-			"message": "success",
-			"data":    stats,
-		})
+		c.JSON(http.StatusOK, errors.Success(stats))
 	}
 }

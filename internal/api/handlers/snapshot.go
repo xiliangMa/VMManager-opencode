@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"vmmanager/internal/api/errors"
 	"vmmanager/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -36,30 +37,26 @@ func (h *SnapshotHandler) CreateSnapshot(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
 	var req CreateSnapshotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"vm_id": vm.ID,
-			"name":  req.Name,
-			"state": vm.Status,
-		},
-	})
+	c.JSON(http.StatusCreated, errors.Success(gin.H{
+		"vm_id": vm.ID,
+		"name":  req.Name,
+		"state": vm.Status,
+	}))
 }
 
 func (h *SnapshotHandler) ListSnapshots(c *gin.Context) {
@@ -72,20 +69,16 @@ func (h *SnapshotHandler) ListSnapshots(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    []gin.H{},
-	})
+	c.JSON(http.StatusOK, errors.Success([]gin.H{}))
 }
 
 func (h *SnapshotHandler) GetSnapshot(c *gin.Context) {
@@ -99,23 +92,19 @@ func (h *SnapshotHandler) GetSnapshot(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"name":  snapshotName,
-			"state": vm.Status,
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"name":  snapshotName,
+		"state": vm.Status,
+	}))
 }
 
 func (h *SnapshotHandler) RestoreSnapshot(c *gin.Context) {
@@ -128,34 +117,30 @@ func (h *SnapshotHandler) RestoreSnapshot(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
 	var req RestoreSnapshotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 4001, "message": err.Error()})
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
 		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, vmID, "running"); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to restore snapshot"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to restore snapshot", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"vm_id":    vm.ID,
-			"snapshot": req.Name,
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"vm_id":    vm.ID,
+		"snapshot": req.Name,
+	}))
 }
 
 func (h *SnapshotHandler) DeleteSnapshot(c *gin.Context) {
@@ -169,21 +154,17 @@ func (h *SnapshotHandler) DeleteSnapshot(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"code": 4004, "message": "VM not found"})
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, gin.H{"code": 4003, "message": "permission denied"})
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"vm_id":    vm.ID,
-			"snapshot": snapshotName,
-		},
-	})
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"vm_id":    vm.ID,
+		"snapshot": snapshotName,
+	}))
 }
