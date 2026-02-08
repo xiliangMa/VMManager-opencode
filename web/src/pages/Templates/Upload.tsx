@@ -266,7 +266,6 @@ const TemplateUpload: React.FC = () => {
               type="file"
               ref={fileInputRef}
               style={{ display: 'none' }}
-              accept=".qcow2,.vmdk,.raw,.ova,.img,.iso"
               onChange={handleFileSelect}
             />
             <Button
@@ -277,7 +276,7 @@ const TemplateUpload: React.FC = () => {
             >
               {selectedFile 
                 ? `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`
-                : 'Click to select template file (qcow2, vmdk, raw, ova)'
+                : 'Click to select template file (qcow2, vmdk, raw, ova, iso, etc.)'
               }
             </Button>
           </Form.Item>
