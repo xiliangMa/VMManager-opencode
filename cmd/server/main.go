@@ -95,6 +95,7 @@ func main() {
 	})
 
 	router.Static("/swagger/", "./docs/swagger")
+	router.Static("/uploads", "./uploads")
 
 	router.GET("/ws/vnc/:vm_id", func(c *gin.Context) {
 		vmID := c.Param("vm_id")

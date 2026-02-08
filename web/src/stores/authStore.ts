@@ -113,6 +113,7 @@ axios.interceptors.response.use(
           const { token } = response.data.data
           useAuthStore.getState().token = token
 
+          axios.defaults.headers.Authorization = `Bearer ${token}`
           originalRequest.headers.Authorization = `Bearer ${token}`
           return axios(originalRequest)
         }
