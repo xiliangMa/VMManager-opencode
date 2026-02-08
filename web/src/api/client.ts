@@ -160,7 +160,23 @@ export const templatesApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     }).then(res => res.data),
 
-  completeUpload: (uploadId: string, data: { total_chunks: number; checksum?: string }) =>
+  completeUpload: (uploadId: string, data: { 
+    total_chunks: number; 
+    checksum?: string;
+    name: string;
+    description?: string;
+    os_type: string;
+    os_version?: string;
+    architecture?: string;
+    format?: string;
+    cpu_min?: number;
+    cpu_max?: number;
+    memory_min?: number;
+    memory_max?: number;
+    disk_min?: number;
+    disk_max?: number;
+    is_public?: boolean;
+  }) =>
     client.post(`/templates/upload/complete/${uploadId}`, data).then(res => res.data),
 
   getUploadStatus: (uploadId: string) =>

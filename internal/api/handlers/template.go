@@ -221,13 +221,13 @@ type InitUploadRequest struct {
 	Format       string `json:"format" binding:"required"`
 	Architecture string `json:"architecture"`
 	ChunkSize    int64  `json:"chunk_size" binding:"required,min=1,max=104857600"`
-}
-
-type InitUploadResponse struct {
-	UploadID    string `json:"upload_id"`
-	UploadPath  string `json:"upload_path"`
-	ChunkSize   int64  `json:"chunk_size"`
-	TotalChunks int    `json:"total_chunks"`
+	CPUMin       int    `json:"cpu_min"`
+	CPUMax       int    `json:"cpu_max"`
+	MemoryMin    int    `json:"memory_min"`
+	MemoryMax    int    `json:"memory_max"`
+	DiskMin      int    `json:"disk_min"`
+	DiskMax      int    `json:"disk_max"`
+	IsPublic     bool   `json:"is_public"`
 }
 
 type UploadPartRequest struct {
@@ -236,8 +236,28 @@ type UploadPartRequest struct {
 }
 
 type CompleteUploadRequest struct {
-	TotalChunks int    `json:"total_chunks" binding:"required,min=1"`
-	Checksum    string `json:"checksum"`
+	TotalChunks  int    `json:"total_chunks" binding:"required,min=1"`
+	Checksum     string `json:"checksum"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	OSType       string `json:"os_type"`
+	OSVersion    string `json:"os_version"`
+	Architecture string `json:"architecture"`
+	Format       string `json:"format"`
+	CPUMin       int    `json:"cpu_min"`
+	CPUMax       int    `json:"cpu_max"`
+	MemoryMin    int    `json:"memory_min"`
+	MemoryMax    int    `json:"memory_max"`
+	DiskMin      int    `json:"disk_min"`
+	DiskMax      int    `json:"disk_max"`
+	IsPublic     bool   `json:"is_public"`
+}
+
+type InitUploadResponse struct {
+	UploadID    string `json:"upload_id"`
+	UploadPath  string `json:"upload_path"`
+	ChunkSize   int64  `json:"chunk_size"`
+	TotalChunks int    `json:"total_chunks"`
 }
 
 func (h *TemplateHandler) InitTemplateUpload(c *gin.Context) {
@@ -415,25 +435,31 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 		return
 	}
 
+	diskMax := req.DiskMax
+	if diskMax == 0 {
+		diskMax = int(fileInfo.Size() / 1024 / 1024 / 1024)
+		if diskMax < 20 {
+			diskMax = 20
+		}
+	}
+
 	template := &models.VMTemplate{
-		Name:         upload.Name,
-		Description:  upload.Description,
-		OSType:       "linux",
-		OSVersion:    "",
-		Architecture: upload.Architecture,
-		Format:       upload.Format,
-		CPUMin:       1,
-		CPUMax:       4,
-		MemoryMin:    1024,
-		MemoryMax:    8192,
-		DiskMin:      20,
-		DiskMax:      500,
+		Name:         req.Name,
+		Description:  req.Description,
+		OSType:       req.OSType,
+		OSVersion:    req.OSVersion,
+		Architecture: req.Architecture,
+		Format:       req.Format,
+		CPUMin:       req.CPUMin,
+		CPUMax:       req.CPUMax,
+		MemoryMin:    req.MemoryMin,
+		MemoryMax:    req.MemoryMax,
+		DiskMin:      req.DiskMin,
+		DiskMax:      diskMax,
 		TemplatePath: finalPath,
-		IconURL:      "",
 		DiskSize:     upload.FileSize,
-		IsPublic:     true,
+		IsPublic:     req.IsPublic,
 		IsActive:     true,
-		Downloads:    0,
 		CreatedBy:    upload.UploadedBy,
 	}
 

@@ -48,48 +48,35 @@ const TemplateUpload: React.FC = () => {
     }
   }
 
-  const handleStep1Submit = async (values: any) => {
+  const handleStartUpload = async () => {
+    const values = form.getFieldsValue()
+    
+    if (!values.name) {
+      message.error('Please enter template name')
+      return
+    }
+    
     if (!selectedFile) {
-      message.error('Please select a template file first')
+      message.error('Please select a template file')
       return
     }
 
     setLoading(true)
     try {
-      const templateData = {
-        name: values.name,
-        description: values.description,
-        os_type: values.os_type,
-        os_version: values.os_version,
-        architecture: values.architecture,
-        format: values.format,
-        cpu_min: values.cpu_min,
-        cpu_max: values.cpu_max,
-        memory_min: values.memory_min,
-        memory_max: values.memory_max,
-        disk_min: values.disk_min,
-        disk_max: values.disk_max,
-        disk_size: values.disk_max,
-        is_public: values.is_public
-      }
-
-      // Step 1: Create template basic info
-      await templatesApi.create(templateData)
-      
-      // Step 2: Initialize file upload
+      // 直接初始化上传，模板信息在完成时一起保存
       const initResponse = await templatesApi.initUpload({
         name: values.name,
-        description: values.description,
+        description: values.description || '',
         file_name: selectedFile.name,
         file_size: selectedFile.size,
-        format: values.format,
-        architecture: values.architecture,
+        format: values.format || 'qcow2',
+        architecture: values.architecture || 'x86_64',
         chunk_size: CHUNK_SIZE
       })
 
       setUploadId(initResponse.data.upload_id)
       setCurrentStep(1)
-      message.success('Template info saved, ready to upload file')
+      message.success('Upload initialized, ready to upload file')
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Failed to initialize upload')
     } finally {
@@ -99,6 +86,8 @@ const TemplateUpload: React.FC = () => {
 
   const handleFileUpload = async () => {
     if (!selectedFile || !uploadId) return
+
+    const values = form.getFieldsValue()
 
     setUploading(true)
     setUploadProgress(0)
@@ -120,9 +109,22 @@ const TemplateUpload: React.FC = () => {
         setUploadProgress(progress)
       }
 
-      // Complete upload
+      // Complete upload with full template info
       await templatesApi.completeUpload(uploadId, {
-        total_chunks: totalChunks
+        total_chunks: totalChunks,
+        name: values.name,
+        description: values.description || '',
+        os_type: values.os_type || 'Linux',
+        os_version: values.os_version || '',
+        architecture: values.architecture || 'x86_64',
+        format: values.format || 'qcow2',
+        cpu_min: values.cpu_min || 1,
+        cpu_max: values.cpu_max || 4,
+        memory_min: values.memory_min || 1024,
+        memory_max: values.memory_max || 8192,
+        disk_min: values.disk_min || 20,
+        disk_max: values.disk_max || 500,
+        is_public: values.is_public !== false
       })
 
       setCurrentStep(2)
@@ -159,7 +161,6 @@ const TemplateUpload: React.FC = () => {
         <Form
           form={form}
           layout="vertical"
-          onFinish={handleStep1Submit}
           initialValues={{
             architecture: 'x86_64',
             format: 'qcow2',
@@ -276,14 +277,20 @@ const TemplateUpload: React.FC = () => {
             >
               {selectedFile 
                 ? `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`
-                : 'Click to select template file (qcow2, vmdk, raw, ova, iso, etc.)'
+                : 'Click to select template file'
               }
             </Button>
           </Form.Item>
 
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit" loading={loading} icon={<CheckOutlined />}>
+              <Button 
+                type="primary" 
+                onClick={handleStartUpload} 
+                loading={loading} 
+                icon={<UploadOutlined />}
+                disabled={!selectedFile}
+              >
                 Next: Upload File
               </Button>
               <Button onClick={() => navigate('/templates')}>
