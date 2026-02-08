@@ -11,9 +11,9 @@ app:
 
 # Database Configuration (SQLite by default, set host for PostgreSQL)
 database:
-  driver: "sqlite"
-  path: "./vmmanager.db"
-  host: ""
+  driver: "postgres"
+  path: ""
+  host: "localhost"
   port: 5432
   username: "vmmanager"
   password: "vmmanager123"

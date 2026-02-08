@@ -149,13 +149,13 @@ type AlertRule struct {
 	Description    string     `gorm:"type:text" json:"description"`
 	Metric         string     `gorm:"size:50;not null" json:"metric"`
 	Condition      string     `gorm:"size:10;not null" json:"condition"`
-	Threshold      float64    `gorm:"not null" json:"threshold"`
+	Threshold      float64    `gorm:"type:decimal(10,2)" json:"threshold"`
 	Duration       int        `gorm:"default:5" json:"duration"`
 	Severity       string     `gorm:"size:20;not null" json:"severity"`
 	Enabled        bool       `gorm:"default:true" json:"enabled"`
-	NotifyChannels []string   `gorm:"type:text[]" json:"notifyChannels"`
-	NotifyUsers    []string   `gorm:"type:text[]" json:"notifyUsers"`
-	VMIDs          []string   `gorm:"type:text[]" json:"vmIds"`
+	NotifyChannels string     `gorm:"type:text" json:"-"`
+	NotifyUsers    string     `gorm:"type:text" json:"-"`
+	VMIDs          string     `gorm:"type:text" json:"-"`
 	IsGlobal       bool       `gorm:"default:false" json:"isGlobal"`
 	CreatedBy      *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
 	CreatedAt      time.Time  `json:"createdAt"`

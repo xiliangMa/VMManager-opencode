@@ -95,16 +95,165 @@ func newPostgreSQL(cfg config.DatabaseConfig) (*gorm.DB, error) {
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&models.User{},
-		&models.VMTemplate{},
-		&models.VirtualMachine{},
-		&models.VMStats{},
-		&models.AuditLog{},
-		&models.TemplateUpload{},
-		&models.AlertRule{},
-		&models.AlertHistory{},
-	)
+	// Create tables using raw SQL to avoid Gorm AutoMigrate issues
+	sql := `
+	CREATE TABLE IF NOT EXISTS users (
+		id UUID PRIMARY KEY,
+		username VARCHAR(50) NOT NULL UNIQUE,
+		email VARCHAR(100) NOT NULL UNIQUE,
+		password_hash VARCHAR(255) NOT NULL,
+		role VARCHAR(20) DEFAULT 'user',
+		is_active BOOLEAN DEFAULT true,
+		avatar_url VARCHAR(500),
+		language VARCHAR(10) DEFAULT 'zh-CN',
+		timezone VARCHAR(50) DEFAULT 'Asia/Shanghai',
+		quota_cpu BIGINT DEFAULT 4,
+		quota_memory BIGINT DEFAULT 8192,
+		quota_disk BIGINT DEFAULT 100,
+		quota_vm_count BIGINT DEFAULT 5,
+		last_login_at TIMESTAMPTZ,
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ
+	);
+	
+	CREATE TABLE IF NOT EXISTS vm_templates (
+		id UUID PRIMARY KEY,
+		name VARCHAR(100) NOT NULL,
+		description TEXT,
+		os_type VARCHAR(50) NOT NULL,
+		os_version VARCHAR(50),
+		architecture VARCHAR(20) DEFAULT 'arm64',
+		format VARCHAR(20) DEFAULT 'qcow2',
+		cpu_min BIGINT DEFAULT 1,
+		cpu_max BIGINT DEFAULT 4,
+		memory_min BIGINT DEFAULT 1024,
+		memory_max BIGINT DEFAULT 8192,
+		disk_min BIGINT DEFAULT 20,
+		disk_max BIGINT DEFAULT 500,
+		template_path VARCHAR(500) NOT NULL,
+		icon_url VARCHAR(500),
+		screenshot_urls TEXT[],
+		disk_size BIGINT NOT NULL,
+		is_public BOOLEAN DEFAULT true,
+		is_active BOOLEAN DEFAULT true,
+		downloads BIGINT DEFAULT 0,
+		created_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ
+	);
+	
+	CREATE TABLE IF NOT EXISTS virtual_machines (
+		id UUID PRIMARY KEY,
+		name VARCHAR(100) NOT NULL,
+		description TEXT,
+		template_id UUID REFERENCES vm_templates(id),
+		owner_id UUID NOT NULL REFERENCES users(id),
+		status VARCHAR(20) DEFAULT 'pending',
+		vnc_port BIGINT,
+		vnc_password VARCHAR(20),
+		spice_port BIGINT,
+		mac_address VARCHAR(17) UNIQUE,
+		ip_address INET,
+		gateway INET,
+		dns_servers INET[],
+		cpu_allocated BIGINT NOT NULL,
+		memory_allocated BIGINT NOT NULL,
+		disk_allocated BIGINT NOT NULL,
+		disk_path VARCHAR(500),
+		libvirt_domain_id BIGINT,
+		libvirt_domain_uuid VARCHAR(50),
+		boot_order VARCHAR(50) DEFAULT 'hd,cdrom,network',
+		v_cpu_hotplug BOOLEAN DEFAULT false,
+		memory_hotplug BOOLEAN DEFAULT false,
+		autostart BOOLEAN DEFAULT false,
+		notes TEXT,
+		tags TEXT[],
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ,
+		deleted_at TIMESTAMPTZ
+	);
+	
+	CREATE TABLE IF NOT EXISTS vm_stats (
+		id UUID PRIMARY KEY,
+		vm_id UUID NOT NULL,
+		cpu_usage DECIMAL(5,2) DEFAULT 0,
+		memory_usage BIGINT DEFAULT 0,
+		memory_total BIGINT DEFAULT 0,
+		disk_read BIGINT DEFAULT 0,
+		disk_write BIGINT DEFAULT 0,
+		network_rx BIGINT DEFAULT 0,
+		network_tx BIGINT DEFAULT 0,
+		collected_at TIMESTAMPTZ NOT NULL
+	);
+	
+	CREATE TABLE IF NOT EXISTS audit_logs (
+		id UUID PRIMARY KEY,
+		user_id UUID REFERENCES users(id),
+		action VARCHAR(50) NOT NULL,
+		resource_type VARCHAR(50) NOT NULL,
+		resource_id UUID,
+		details JSONB,
+		ip_address INET,
+		user_agent TEXT,
+		status VARCHAR(20) DEFAULT 'success',
+		error_message TEXT,
+		created_at TIMESTAMPTZ NOT NULL
+	);
+	
+	CREATE TABLE IF NOT EXISTS template_uploads (
+		id UUID PRIMARY KEY,
+		name VARCHAR(100) NOT NULL,
+		description TEXT,
+		file_name VARCHAR(255) NOT NULL,
+		file_size BIGINT NOT NULL,
+		format VARCHAR(20),
+		architecture VARCHAR(20),
+		upload_path VARCHAR(500),
+		temp_path VARCHAR(500),
+		status VARCHAR(20) DEFAULT 'uploading',
+		progress BIGINT DEFAULT 0,
+		error_message TEXT,
+		uploaded_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		completed_at TIMESTAMPTZ
+	);
+	
+	CREATE TABLE IF NOT EXISTS alert_rules (
+		id UUID PRIMARY KEY,
+		name VARCHAR(100) NOT NULL,
+		description TEXT,
+		metric VARCHAR(50) NOT NULL,
+		condition VARCHAR(10) NOT NULL,
+		threshold DECIMAL(10,2) NOT NULL,
+		duration BIGINT DEFAULT 5,
+		severity VARCHAR(20) NOT NULL,
+		enabled BOOLEAN DEFAULT true,
+		notify_channels TEXT[],
+		notify_users TEXT[],
+		vm_ids TEXT[],
+		is_global BOOLEAN DEFAULT false,
+		created_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ
+	);
+	
+	CREATE TABLE IF NOT EXISTS alert_histories (
+		id UUID PRIMARY KEY,
+		alert_rule_id UUID NOT NULL,
+		vm_id UUID,
+		severity VARCHAR(20) NOT NULL,
+		metric VARCHAR(50) NOT NULL,
+		current_value DECIMAL(10,2),
+		threshold DECIMAL(10,2),
+		condition VARCHAR(10),
+		message TEXT,
+		status VARCHAR(20) DEFAULT 'triggered',
+		resolved_at TIMESTAMPTZ,
+		notified_at TIMESTAMPTZ,
+		created_at TIMESTAMPTZ NOT NULL
+	);
+	`
+	return db.Exec(sql).Error
 }
 
 func Seed(db *gorm.DB) error {

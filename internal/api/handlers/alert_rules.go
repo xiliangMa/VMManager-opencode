@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -54,6 +55,29 @@ func stoi(s string) (int, error) {
 		return 0, err
 	}
 	return n, nil
+}
+
+func arrayToJSON(arr []string) string {
+	if arr == nil {
+		return "[]"
+	}
+	data, _ := json.Marshal(arr)
+	return string(data)
+}
+
+func arrayToPGArray(arr []string) string {
+	if arr == nil || len(arr) == 0 {
+		return "{}"
+	}
+	result := "{"
+	for i, s := range arr {
+		if i > 0 {
+			result += ","
+		}
+		result += "\"" + s + "\""
+	}
+	result += "}"
+	return result
 }
 
 func (h *AlertRuleHandler) ListAlertRules(c *gin.Context) {
@@ -158,9 +182,9 @@ func (h *AlertRuleHandler) CreateAlertRule(c *gin.Context) {
 		Threshold:      req.Threshold,
 		Duration:       req.Duration,
 		Severity:       req.Severity,
-		NotifyChannels: req.NotifyChannels,
-		NotifyUsers:    req.NotifyUsers,
-		VMIDs:          req.VMIDs,
+		NotifyChannels: arrayToJSON(req.NotifyChannels),
+		NotifyUsers:    arrayToJSON(req.NotifyUsers),
+		VMIDs:          arrayToJSON(req.VMIDs),
 		IsGlobal:       req.IsGlobal,
 		Enabled:        true,
 	}
@@ -169,6 +193,7 @@ func (h *AlertRuleHandler) CreateAlertRule(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    50001,
 			"message": "Failed to create alert rule",
+			"details": err.Error(),
 			"data":    nil,
 		})
 		return
@@ -244,9 +269,9 @@ func (h *AlertRuleHandler) UpdateAlertRule(c *gin.Context) {
 	if req.Enabled != nil {
 		rule.Enabled = *req.Enabled
 	}
-	rule.NotifyChannels = req.NotifyChannels
-	rule.NotifyUsers = req.NotifyUsers
-	rule.VMIDs = req.VMIDs
+	rule.NotifyChannels = arrayToJSON(req.NotifyChannels)
+	rule.NotifyUsers = arrayToJSON(req.NotifyUsers)
+	rule.VMIDs = arrayToJSON(req.VMIDs)
 	rule.IsGlobal = req.IsGlobal
 
 	if err := h.repo.Update(c.Request.Context(), rule); err != nil {
