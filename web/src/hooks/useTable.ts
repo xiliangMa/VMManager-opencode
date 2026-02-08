@@ -52,14 +52,25 @@ export function useTable<T>(options: UseTableOptions<T>): UseTableResult<T> {
         }
       })
 
+      console.log('Fetching data with params:', params)
       const response = await api(params)
-      setData(response.data)
-      setPagination(prev => ({
-        ...prev,
-        total: response.meta?.total || 0
-      }))
+      console.log('API response:', response)
+
+      if (response.data && Array.isArray(response.data)) {
+        setData(response.data)
+        setPagination(prev => ({
+          ...prev,
+          total: response.meta?.total || response.data.length
+        }))
+      } else {
+        console.warn('Invalid response data format:', response)
+        setData([])
+        setPagination(prev => ({ ...prev, total: 0 }))
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error)
+      setData([])
+      setPagination(prev => ({ ...prev, total: 0 }))
     } finally {
       setLoading(false)
     }

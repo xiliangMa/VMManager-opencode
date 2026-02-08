@@ -9,6 +9,7 @@ interface User {
   role: string
   language: string
   timezone: string
+  avatar?: string
   quota_cpu?: number
   quota_memory?: number
   quota_disk?: number
@@ -65,9 +66,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       updateUser: (userData: Partial<User>) => {
-        set((state) => ({
-          user: state.user ? { ...state.user, ...userData } : null
-        }))
+        set((state) => {
+          if (state.user) {
+            const updatedUser = { ...state.user, ...userData }
+            return { ...state, user: updatedUser }
+          }
+          return state
+        })
       }
     }),
     {

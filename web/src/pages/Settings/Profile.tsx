@@ -124,7 +124,7 @@ const Profile: React.FC = () => {
               accept="image/*"
             >
               <div style={{ cursor: 'pointer' }}>
-                <Avatar size={100} icon={<UserOutlined />} />
+                <Avatar size={100} src={user?.avatar} icon={<UserOutlined />} />
                 <div style={{ marginTop: 8 }}>
                   <Button icon={<UploadOutlined />}>Change Avatar</Button>
                 </div>
