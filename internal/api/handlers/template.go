@@ -109,9 +109,9 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 		MemoryMax    int    `json:"memory_max"`
 		DiskMin      int    `json:"disk_min"`
 		DiskMax      int    `json:"disk_max"`
-		TemplatePath string `json:"template_path" binding:"required"`
+		TemplatePath string `json:"template_path"`
 		IconURL      string `json:"icon_url"`
-		DiskSize     int64  `json:"disk_size" binding:"required"`
+		DiskSize     int64  `json:"disk_size"`
 		IsPublic     bool   `json:"is_public"`
 	}
 
@@ -121,6 +121,11 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
+
+	diskSize := req.DiskSize
+	if diskSize == 0 && req.DiskMax > 0 {
+		diskSize = int64(req.DiskMax)
+	}
 
 	template := &models.VMTemplate{
 		Name:         req.Name,
@@ -137,7 +142,7 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 		DiskMax:      req.DiskMax,
 		TemplatePath: req.TemplatePath,
 		IconURL:      req.IconURL,
-		DiskSize:     req.DiskSize,
+		DiskSize:     diskSize,
 		IsPublic:     req.IsPublic,
 		CreatedBy:    &userUUID,
 	}

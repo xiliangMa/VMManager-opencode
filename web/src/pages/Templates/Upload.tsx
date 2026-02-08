@@ -27,6 +27,7 @@ const TemplateUpload: React.FC = () => {
         memory_max: values.memory_max,
         disk_min: values.disk_min,
         disk_max: values.disk_max,
+        disk_size: values.disk_max,
         is_public: values.is_public
       }
 
