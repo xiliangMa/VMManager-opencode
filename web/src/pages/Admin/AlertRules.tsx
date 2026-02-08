@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Card, Table, Button, Tag, Space, Modal, Form, Input, InputNumber, Select, Switch, message, Popconfirm } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, BellOutlined, ReloadOutlined } from '@ant-design/icons'
 import { alertRulesApi, AlertRule } from '../../api/client'
-import { useAuthStore } from '../../stores/authStore'
 
 const AlertRules: React.FC = () => {
   const [rules, setRules] = useState<AlertRule[]>([])
@@ -11,8 +10,6 @@ const AlertRules: React.FC = () => {
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
   const [form] = Form.useForm()
-
-  const { token } = useAuthStore()
 
   const fetchRules = useCallback(async (page = 1, pageSize = 10) => {
     setLoading(true)

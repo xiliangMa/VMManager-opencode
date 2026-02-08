@@ -1,20 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Form, Input, Select, InputNumber, Button, Card, Steps, message, Alert, Space, Progress, Divider, Collapse, Tooltip } from 'antd'
-import { ArrowLeftOutlined, InfoCircleOutlined, CloudServerOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
+import { Form, Input, Select, InputNumber, Button, Card, Steps, message, Alert, Space, Collapse, Divider } from 'antd'
+import { ArrowLeftOutlined, CloudServerOutlined } from '@ant-design/icons'
 import { vmsApi, templatesApi, Template } from '../../api/client'
-import { useAuthStore } from '../../stores/authStore'
 
 const { Panel } = Collapse
-
-interface VMQuota {
-  quota_cpu: number
-  quota_memory: number
-  quota_disk: number
-  quota_vm_count: number
-  vm_count?: number
-}
 
 const VMCreate: React.FC = () => {
   const { t } = useTranslation()
@@ -23,11 +14,9 @@ const VMCreate: React.FC = () => {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
-  const [userQuota, setUserQuota] = useState<VMQuota | null>(null)
-  const [vmCount, setVmCount] = useState(0)
 
   useEffect(() => {
-    templatesApi.list({ is_public: true }).then((res: any) => {
+    templatesApi.list().then((res: any) => {
       setTemplates(res.data || [])
     })
   }, [])
@@ -42,28 +31,6 @@ const VMCreate: React.FC = () => {
         disk: template.disk_min
       })
     }
-  }
-
-  const handleValuesChange = (_changedValues: any, allValues: any) => {
-    if (userQuota) {
-      const cpu = allValues.cpu || 0
-      const memory = allValues.memory || 0
-      const disk = allValues.disk || 0
-
-      setUserQuota({
-        ...userQuota,
-        quota_cpu: userQuota.quota_cpu - cpu,
-        quota_memory: userQuota.quota_memory - memory,
-        quota_disk: userQuota.quota_disk - disk
-      })
-    }
-  }
-
-  const getQuotaColor = (used: number, total: number) => {
-    const percentage = (used / total) * 100
-    if (percentage > 90) return '#ff4d4f'
-    if (percentage > 70) return '#faad14'
-    return '#52c41a'
   }
 
   const handleSubmit = async (values: any) => {
@@ -93,27 +60,6 @@ const VMCreate: React.FC = () => {
     }
   }
 
-    setLoading(true)
-    try {
-      await vmsApi.create({
-        name: values.name,
-        description: values.description,
-        template_id: values.template_id,
-        cpu_allocated: values.cpu,
-        memory_allocated: values.memory,
-        disk_allocated: values.disk,
-        autostart: values.autostart || false,
-        boot_order: values.boot_order || 'hd,cdrom,network'
-      })
-      message.success(t('vm.vmList') + ' ' + t('common.success'))
-      navigate('/vms')
-    } catch (error: any) {
-      message.error(error.response?.data?.message || t('common.error'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const templateOptions = templates.map((t) => ({
     label: (
       <Space>
@@ -126,10 +72,6 @@ const VMCreate: React.FC = () => {
     value: t.id,
     disabled: !t.is_active
   }))
-
-  const cpuUsed = userQuota ? (userQuota.quota_cpu - (userQuota.quota_cpu_remaining || 0)) : 0
-  const memoryUsed = userQuota ? (userQuota.quota_memory - (userQuota.quota_memory_remaining || 0)) : 0
-  const diskUsed = userQuota ? (userQuota.quota_disk - (userQuota.quota_disk_remaining || 0)) : 0
 
   return (
     <Card
@@ -150,7 +92,6 @@ const VMCreate: React.FC = () => {
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
-        onValuesChange={handleValuesChange}
         initialValues={{
           boot_order: 'hd,cdrom,network',
           autostart: false

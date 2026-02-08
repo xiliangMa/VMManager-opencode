@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { Card, Table, Button, Tag, Space, Modal, Form, Input, message, Popconfirm, Empty, Tooltip, Descriptions } from 'antd'
-import { PlusOutlined, DeleteOutlined, RestoreOutlined, CloudUploadOutlined, RollbackOutlined, EyeOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, RestOutlined, CloudUploadOutlined } from '@ant-design/icons'
 import { snapshotsApi, VMSnapshot } from '../../api/client'
 
 const VMSnapshots: React.FC = () => {
   const { id: vmId } = useParams()
   const navigate = useNavigate()
-  const { t } = useTranslation()
 
   const [snapshots, setSnapshots] = useState<VMSnapshot[]>([])
   const [loading, setLoading] = useState(false)
@@ -138,7 +136,7 @@ const VMSnapshots: React.FC = () => {
           <Tooltip title="Restore">
             <Button
               type="text"
-              icon={<RestoreOutlined />}
+              icon={<RestOutlined />}
               onClick={() => handleRestore(record)}
             />
           </Tooltip>
@@ -243,7 +241,7 @@ const VMSnapshots: React.FC = () => {
         open={isDetailOpen}
         onCancel={() => setIsDetailOpen(false)}
         footer={[
-          <Button key="restore" type="primary" icon={<RestoreOutlined />} onClick={() => {
+          <Button key="restore" type="primary" icon={<RestOutlined />} onClick={() => {
             if (selectedSnapshot) {
               handleRestore(selectedSnapshot)
               setIsDetailOpen(false)

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Card, Row, Col, Statistic, Progress, Spin, Select, DatePicker } from 'antd'
+import { Card, Row, Col, Statistic, Progress, Spin, Select } from 'antd'
 import {
   XAxis,
   YAxis,
@@ -9,16 +9,13 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  LineChart,
-  Line,
   Legend
 } from 'recharts'
-import { ThunderboltOutlined, CloudOutlined, HddOutlined, RiseOutlined, DownloadOutlined } from '@ant-design/icons'
+import { ThunderboltOutlined, CloudOutlined, HddOutlined, RiseOutlined } from '@ant-design/icons'
 import { VMResourceStats, statsApi } from '../../api/client'
 import { useTranslation } from 'react-i18next'
 
 const { Option } = Select
-const { RangePicker } = DatePicker
 
 const Monitor: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -60,29 +57,6 @@ const Monitor: React.FC = () => {
   const formatTimestampLong = (timestamp: string) => {
     const date = new Date(timestamp)
     return date.toLocaleString('zh-CN')
-  }
-
-  const handleExport = () => {
-    if (!stats) return
-    const csvContent = [
-      ['Timestamp', 'CPU (%)', 'Memory (%)', 'Disk (%)', 'Network In (MB/s)', 'Network Out (MB/s)'],
-      ...stats.cpuHistory.map((_, i) => [
-        stats.cpuHistory[i]?.timestamp || '',
-        stats.cpuHistory[i]?.value || 0,
-        stats.memoryHistory[i]?.value || 0,
-        stats.diskHistory[i]?.value || 0,
-        stats.networkIn,
-        stats.networkOut
-      ])
-    ].map(row => row.join(',')).join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `vm-${id}-stats-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   if (loading && !stats) {

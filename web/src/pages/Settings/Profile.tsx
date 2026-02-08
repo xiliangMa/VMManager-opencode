@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Form, Input, Button, Space, message, Tabs, Switch, Select, Divider, Avatar, Upload } from 'antd'
-import { UserOutlined, LockOutlined, BellOutlined, GlobalOutlined, UploadOutlined, SaveOutlined } from '@ant-design/icons'
+import { Card, Form, Input, Button, message, Tabs, Switch, Select, Divider, Upload, Avatar } from 'antd'
+import { UserOutlined, LockOutlined, GlobalOutlined, UploadOutlined, SaveOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 import { authApi } from '../../api/client'
 
 const Profile: React.FC = () => {
-  const { t, i18n } = useTranslation()
-  const { user, setUser, token } = useAuthStore()
+  const { i18n } = useTranslation()
+  const { user } = useAuthStore()
   const [profileForm] = Form.useForm()
   const [passwordForm] = Form.useForm()
   const [preferencesForm] = Form.useForm()

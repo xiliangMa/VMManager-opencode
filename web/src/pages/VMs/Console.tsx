@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Button, Space, Card, Tag, Typography, message, Tooltip, Input } from 'antd'
+import { Button, Space, Card, Tag, Typography, message, Tooltip } from 'antd'
 import { ArrowLeftOutlined, DisconnectOutlined, ReloadOutlined, CompressOutlined, ExpandOutlined } from '@ant-design/icons'
 import { vmsApi } from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
@@ -14,9 +14,7 @@ const VMConsole: React.FC = () => {
   
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [vmStatus, setVmStatus] = useState<string>('unknown')
-  const [connected, setConnected] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
-  const [clipboardText, setClipboardText] = useState('')
 
   const fetchVmStatus = useCallback(async () => {
     if (!id) return
@@ -33,11 +31,6 @@ const VMConsole: React.FC = () => {
     const interval = setInterval(fetchVmStatus, 10000)
     return () => clearInterval(interval)
   }, [fetchVmStatus])
-
-  const getWebSocketUrl = () => {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    return `${wsProtocol}//${window.location.host}/ws/vnc/${id}`
-  }
 
   const handleRefresh = () => {
     if (iframeRef.current) {
@@ -68,10 +61,6 @@ const VMConsole: React.FC = () => {
 
   const handleCtrlAltDel = () => {
     message.info('Use Ctrl+Alt+Del button in VNC console')
-  }
-
-  const handleClipboardPaste = () => {
-    message.info('Use clipboard paste in VNC console')
   }
 
   const statusColors: Record<string, string> = {

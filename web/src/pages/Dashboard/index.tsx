@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Row, Col, Card, Statistic, Button, Table, Tag, Progress, List, Avatar, Typography, Space } from 'antd'
+import { Row, Col, Card, Statistic, Button, Table, Tag, Progress, List, Typography, Space } from 'antd'
 import { useTranslation } from 'react-i18next'
 import {
   DesktopOutlined,
