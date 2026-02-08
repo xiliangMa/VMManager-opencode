@@ -75,15 +75,17 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 	var templates []models.VMTemplate
 	var total int64
 	var err error
+	var userID interface{}
 
 	if isPublicStr == "true" {
+		userID, _ = c.Get("user_id")
 		templates, total, err = h.templateRepo.ListPublic(ctx, (page-1)*pageSize, pageSize)
 	} else if isPublicStr == "false" {
-		userID, _ := c.Get("user_id")
+		userID, _ = c.Get("user_id")
 		templates, total, err = h.templateRepo.ListByUser(ctx, userID.(string), (page-1)*pageSize, pageSize)
 	} else {
-		userID, _ := c.Get("user_id")
-		templates, total, err = h.templateRepo.ListByUser(ctx, userID.(string), (page-1)*pageSize, pageSize)
+		userID, _ = c.Get("user_id")
+		templates, total, err = h.templateRepo.ListUserTemplates(ctx, userID.(string), (page-1)*pageSize, pageSize)
 	}
 
 	if err != nil {

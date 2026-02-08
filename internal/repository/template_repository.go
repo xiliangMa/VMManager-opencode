@@ -99,6 +99,23 @@ func (r *TemplateRepository) ListByUser(ctx context.Context, userID string, offs
 	return templates, total, err
 }
 
+func (r *TemplateRepository) ListUserTemplates(ctx context.Context, userID string, offset, limit int) ([]models.VMTemplate, int64, error) {
+	var templates []models.VMTemplate
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&models.VMTemplate{}).
+		Where("is_active = ? OR created_by = ?", true, userID)
+	query.Count(&total)
+
+	err := query.
+		Offset(offset).
+		Limit(limit).
+		Order("created_at DESC").
+		Find(&templates).Error
+
+	return templates, total, err
+}
+
 func (r *TemplateRepository) ListByOS(ctx context.Context, osType string, offset, limit int) ([]models.VMTemplate, int64, error) {
 	var templates []models.VMTemplate
 	var total int64
