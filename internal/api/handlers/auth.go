@@ -167,6 +167,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			"email":    user.Email,
 			"role":     user.Role,
 			"avatar":   user.AvatarURL,
+			"language": user.Language,
+			"timezone": user.Timezone,
 		},
 		"token":         token,
 		"refresh_token": refreshToken,

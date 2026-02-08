@@ -7,11 +7,23 @@ import { authApi } from '../../api/client'
 
 const Profile: React.FC = () => {
   const { i18n } = useTranslation()
-  const { user } = useAuthStore()
+  const { user, updateUser } = useAuthStore()
   const [profileForm] = Form.useForm()
   const [passwordForm] = Form.useForm()
   const [preferencesForm] = Form.useForm()
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await authApi.getProfile()
+        updateUser(response.data)
+      } catch (error) {
+        console.error('Failed to fetch profile:', error)
+      }
+    }
+    fetchProfile()
+  }, [updateUser])
 
   useEffect(() => {
     if (user) {
