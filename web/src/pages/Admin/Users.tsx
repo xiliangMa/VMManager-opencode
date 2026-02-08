@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { Table, Card, Button, Space, Tag, message, Popconfirm, Modal, Form, Input, InputNumber, Select } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons'
 import { usersApi, User } from '../../api/client'
+import { useAuthStore } from '../../stores/authStore'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
 
 const Users: React.FC = () => {
   const { t } = useTranslation()
+  const { user: currentUser } = useAuthStore()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [form] = Form.useForm()
@@ -123,18 +125,23 @@ const Users: React.FC = () => {
     {
       title: t('common.edit'),
       key: 'actions',
-      render: (_: any, record: User) => (
-        <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Popconfirm
-            title="Delete User"
-            description="Are you sure to delete this user?"
-            onConfirm={() => handleDelete(record.id)}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      )
+      render: (_: any, record: User) => {
+        const isCurrentUser = currentUser?.id === record.id
+        return (
+          <Space>
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} disabled={isCurrentUser} />
+            {!isCurrentUser && (
+              <Popconfirm
+                title="Delete User"
+                description="Are you sure to delete this user?"
+                onConfirm={() => handleDelete(record.id)}
+              >
+                <Button type="text" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            )}
+          </Space>
+        )
+      }
     }
   ]
 
