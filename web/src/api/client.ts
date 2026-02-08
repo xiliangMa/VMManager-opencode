@@ -156,6 +156,21 @@ export const usersApi = {
     client.put(`/admin/users/${id}/role`, role).then(res => res.data)
 }
 
+export interface AuthProfile {
+  email?: string
+  language?: string
+  timezone?: string
+  password?: string
+}
+
+export const authApi = {
+  getProfile: () =>
+    client.get('/auth/profile').then(res => res.data),
+
+  updateProfile: (data: AuthProfile) =>
+    client.put('/auth/profile', data).then(res => res.data)
+}
+
 export const systemApi = {
   getInfo: () =>
     client.get('/admin/system/info').then(res => res.data),

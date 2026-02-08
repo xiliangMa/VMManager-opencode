@@ -9,6 +9,10 @@ interface User {
   role: string
   language: string
   timezone: string
+  quota_cpu?: number
+  quota_memory?: number
+  quota_disk?: number
+  quota_vm_count?: number
 }
 
 interface AuthState {
