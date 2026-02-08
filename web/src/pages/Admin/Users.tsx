@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Table, Card, Button, Space, Tag, message, Popconfirm, Modal, Form, Input, InputNumber, Select } from 'antd'
+import { Table, Card, Button, Space, Tag, message, Popconfirm, Modal, Form, Input, InputNumber, Select, Tooltip } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons'
 import { usersApi, User } from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
@@ -127,10 +127,13 @@ const Users: React.FC = () => {
       key: 'actions',
       render: (_: any, record: User) => {
         const isCurrentUser = currentUser?.id === record.id
+        const isAdminUser = record.role === 'admin'
+        const canEdit = !isCurrentUser
+        const canDelete = !isCurrentUser && !isAdminUser
         return (
           <Space>
-            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} disabled={isCurrentUser} />
-            {!isCurrentUser && (
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} disabled={!canEdit} />
+            {canDelete ? (
               <Popconfirm
                 title="Delete User"
                 description="Are you sure to delete this user?"
@@ -138,6 +141,10 @@ const Users: React.FC = () => {
               >
                 <Button type="text" danger icon={<DeleteOutlined />} />
               </Popconfirm>
+            ) : (
+              <Tooltip title={isAdminUser ? 'Admin users cannot be deleted' : 'Cannot delete yourself'}>
+                <Button type="text" danger icon={<DeleteOutlined />} disabled />
+              </Tooltip>
             )}
           </Space>
         )
