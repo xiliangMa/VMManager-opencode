@@ -9,6 +9,18 @@ const client = axios.create({
   }
 })
 
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth-storage')
+    ? JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token
+    : null
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+export { client }
+
 export interface VM {
   id: string
   name: string
