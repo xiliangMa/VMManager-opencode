@@ -69,16 +69,24 @@ const Profile: React.FC = () => {
   }
 
   const handleAvatarUpload = async (file: File) => {
+    console.log('Avatar upload started:', file.name)
     const formData = new FormData()
     formData.append('avatar', file)
     try {
+      const token = localStorage.getItem('auth-storage') 
+        ? JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token 
+        : ''
+      console.log('Token:', token ? 'present' : 'missing')
+      
       const response = await fetch('/api/v1/auth/profile/avatar', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token : ''}`
+          Authorization: `Bearer ${token}`
         },
         body: formData
       })
+      console.log('Response status:', response.status)
+      
       if (response.ok) {
         message.success('Avatar uploaded successfully')
         const updatedProfile = await authApi.getProfile()
@@ -87,6 +95,7 @@ const Profile: React.FC = () => {
         message.error('Failed to upload avatar')
       }
     } catch (error) {
+      console.error('Upload error:', error)
       message.error('Failed to upload avatar')
     }
   }
@@ -117,11 +126,12 @@ const Profile: React.FC = () => {
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
             <Upload
               showUploadList={false}
+              accept="image/*"
+              maxCount={1}
               beforeUpload={(file) => {
                 handleAvatarUpload(file)
                 return false
               }}
-              accept="image/*"
             >
               <div style={{ cursor: 'pointer' }}>
                 <Avatar size={100} src={user?.avatar} icon={<UserOutlined />} />
