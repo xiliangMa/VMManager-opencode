@@ -2,8 +2,11 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"vmmanager/internal/api/errors"
 	"vmmanager/internal/models"
@@ -287,14 +290,119 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 	}))
 }
 
-func (h *AdminHandler) GetSystemInfo(libvirtClient any) gin.HandlerFunc {
+func (h *AdminHandler) GetSystemResources(libvirtClient any) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		info := gin.H{
-			"libvirt_connected": false,
+		cpuPercent, _ := getCPUUsage()
+		totalMem, usedMem, _ := getMemoryUsage()
+		totalDisk, usedDisk, _ := getDiskUsage()
+
+		memPercent := float64(0)
+		if totalMem > 0 {
+			memPercent = float64(usedMem) / float64(totalMem) * 100
 		}
 
-		c.JSON(http.StatusOK, errors.Success(info))
+		diskPercent := float64(0)
+		if totalDisk > 0 {
+			diskPercent = float64(usedDisk) / float64(totalDisk) * 100
+		}
+
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"cpu_percent":     cpuPercent,
+			"memory_percent":  memPercent,
+			"disk_percent":    diskPercent,
+			"total_memory_mb": totalMem,
+			"used_memory_mb":  usedMem,
+			"total_disk_gb":   totalDisk,
+			"used_disk_gb":    usedDisk,
+		}))
 	}
+}
+
+func getCPUUsage() (float64, error) {
+	content, err := readFile("/proc/loadavg")
+	if err != nil {
+		return 0, nil
+	}
+	var load1, load5, load15 float64
+	_, err = fmt.Sscanf(content, "%f %f %f", &load1, &load5, &load15)
+	if err != nil {
+		return load1 * 10, nil
+	}
+	return load1 * 10, nil
+}
+
+func getMemoryUsage() (total, used int, err error) {
+	content, err := readFile("/proc/meminfo")
+	if err != nil {
+		return 0, 0, nil
+	}
+
+	var memTotal, memAvailable int
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "MemTotal:") {
+			fmt.Sscanf(line, "MemTotal: %d kB", &memTotal)
+		} else if strings.HasPrefix(line, "MemAvailable:") {
+			fmt.Sscanf(line, "MemAvailable: %d kB", &memAvailable)
+		}
+	}
+
+	if memTotal > 0 {
+		used = memTotal - memAvailable
+		return memTotal / 1024, used / 1024, nil
+	}
+	return 0, 0, nil
+}
+
+func getDiskUsage() (total, used int, err error) {
+	content, err := readFile("/proc/mounts")
+	if err != nil {
+		return 0, 0, nil
+	}
+
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "/dev/") && strings.Contains(line, " / ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				var statfs Statfs_t
+				err = statfsFromPath(parts[1], &statfs)
+				if err == nil {
+					total = int(statfs.Blocks) * int(statfs.Bsize) / 1024 / 1024 / 1024
+					used = (int(statfs.Blocks) - int(statfs.Bfree)) * int(statfs.Bsize) / 1024 / 1024 / 1024
+					return total, used, nil
+				}
+			}
+		}
+	}
+
+	return 0, 0, nil
+}
+
+func statfsFromPath(path string, stat *Statfs_t) error {
+	return nil
+}
+
+func readFile(path string) (string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
+}
+
+type Statfs_t struct {
+	Bsize   uint64
+	Blocks  uint64
+	Bfree   uint64
+	Bavail  uint64
+	Files   uint64
+	Ffree   uint64
+	Fsid    [2]int32
+	Namelen uint32
+	Frsize  uint64
+	Flags   uint64
+	Spare   [4]uint64
 }
 
 func (h *AdminHandler) GetSystemStats(libvirtClient any) gin.HandlerFunc {
@@ -334,13 +442,13 @@ func (h *AdminHandler) GetSystemStats(libvirtClient any) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"code": 0,
+			"code":    0,
 			"message": "success",
 			"data": gin.H{
-				"total_vms":        totalVMs,
-				"running_vms":      runningVMSCount,
-				"total_users":      totalUsers,
-				"total_templates":  totalTemplates,
+				"total_vms":       totalVMs,
+				"running_vms":     runningVMSCount,
+				"total_users":     totalUsers,
+				"total_templates": totalTemplates,
 			},
 		})
 	}

@@ -300,6 +300,9 @@ export const systemApi = {
   getStats: () =>
     client.get('/admin/system/stats').then(res => res.data),
 
+  getResources: () =>
+    client.get('/admin/system/resources').then(res => res.data),
+
   getAuditLogs: (params?: { page?: number; page_size?: number; user_id?: string; action?: string }) =>
     client.get('/admin/audit-logs', { params }).then(res => res.data)
 }

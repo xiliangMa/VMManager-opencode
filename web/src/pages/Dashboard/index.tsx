@@ -30,12 +30,23 @@ interface SystemStats {
   publicTemplates?: number
 }
 
+interface SystemResources {
+  cpu_percent?: number
+  memory_percent?: number
+  disk_percent?: number
+  total_memory_mb?: number
+  used_memory_mb?: number
+  total_disk_gb?: number
+  used_disk_gb?: number
+}
+
 const Dashboard: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [systemStats, setSystemStats] = useState<SystemStats>({})
+  const [systemResources, setSystemResources] = useState<SystemResources>({})
   const [recentVMs, setRecentVMs] = useState<VM[]>([])
   const [userVMCount, setUserVMCount] = useState(0)
   const [runningVMs, setRunningVMs] = useState(0)
@@ -47,8 +58,9 @@ const Dashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
-      const [statsRes, vmsRes] = await Promise.all([
+      const [statsRes, resourcesRes, vmsRes] = await Promise.all([
         systemApi.getStats().catch(() => ({ code: 0, data: {} })),
+        systemApi.getResources().catch(() => ({ code: 0, data: {} })),
         vmsApi.list({ page_size: 5 }).catch(() => ({ code: 0, data: [], meta: { total: 0 } }))
       ])
 
@@ -60,6 +72,10 @@ const Dashboard: React.FC = () => {
           totalUsers: data.total_users,
           totalTemplates: data.total_templates,
         })
+      }
+
+      if (resourcesRes.code === 0) {
+        setSystemResources(resourcesRes.data || {})
       }
 
       if (vmsRes.code === 0) {
@@ -250,15 +266,15 @@ const Dashboard: React.FC = () => {
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               <div>
                 <Typography.Text>CPU Usage</Typography.Text>
-                <Progress percent={30} status="active" size="small" />
+                <Progress percent={Math.round(systemResources.cpu_percent || 0)} status="active" size="small" />
               </div>
               <div>
-                <Typography.Text>Memory Usage</Typography.Text>
-                <Progress percent={45} status="active" size="small" strokeColor="#52c41a" />
+                <Typography.Text>Memory Usage ({systemResources.used_memory_mb || 0}MB / {systemResources.total_memory_mb || 0}MB)</Typography.Text>
+                <Progress percent={Math.round(systemResources.memory_percent || 0)} status="active" size="small" strokeColor="#52c41a" />
               </div>
               <div>
-                <Typography.Text>Disk Usage</Typography.Text>
-                <Progress percent={60} status="active" size="small" strokeColor="#fa8c16" />
+                <Typography.Text>Disk Usage ({systemResources.used_disk_gb || 0}GB / {systemResources.total_disk_gb || 0}GB)</Typography.Text>
+                <Progress percent={Math.round(systemResources.disk_percent || 0)} status="active" size="small" strokeColor="#fa8c16" />
               </div>
             </Space>
           </Card>

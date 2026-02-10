@@ -123,7 +123,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			admin.GET("/audit-logs/user/:id", auditHandler.ListByUser)
 			admin.GET("/audit-logs/action/:action", auditHandler.ListByAction)
 			admin.GET("/audit-logs/export", auditHandler.ExportAuditLogs)
-			admin.GET("/system/info", adminHandler.GetSystemInfo(libvirtClient))
+			admin.GET("/system/resources", adminHandler.GetSystemResources(libvirtClient))
 			admin.GET("/system/stats", adminHandler.GetSystemStats(libvirtClient))
 		}
 	}
