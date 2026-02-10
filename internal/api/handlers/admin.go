@@ -306,24 +306,24 @@ func (h *AdminHandler) GetSystemStats(libvirtClient *libvirt.Client) gin.Handler
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		var stats struct {
-			TotalUsers     int64 `json:"total_users"`
-			TotalVMs       int64 `json:"total_vms"`
-			RunningVMs     int64 `json:"running_vms"`
-			TotalTemplates int64 `json:"total_templates"`
-		}
-
 		users, _, _ := h.userRepo.List(ctx, 0, 0)
-		stats.TotalUsers = int64(len(users))
+		totalUsers := int64(len(users))
 
 		vms, _, _ := h.vmRepo.List(ctx, 0, 0)
-		stats.TotalVMs = int64(len(vms))
+		totalVMs := int64(len(vms))
 
 		runningVMs, _ := h.vmRepo.ListByStatus(ctx, "running")
-		stats.RunningVMs = int64(len(runningVMs))
+		runningVMSCount := int64(len(runningVMs))
 
 		templates, _, _ := h.templateRepo.List(ctx, 0, 0)
-		stats.TotalTemplates = int64(len(templates))
+		totalTemplates := int64(len(templates))
+
+		stats := gin.H{
+			"total_vms":       totalVMs,
+			"running_vms":     runningVMSCount,
+			"total_users":     totalUsers,
+			"total_templates": totalTemplates,
+		}
 
 		c.JSON(http.StatusOK, errors.Success(stats))
 	}

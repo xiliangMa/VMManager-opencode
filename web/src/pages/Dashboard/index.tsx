@@ -21,13 +21,13 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 dayjs.extend(relativeTime)
 
 interface SystemStats {
-  total_vms?: number
-  running_vms?: number
-  stopped_vms?: number
-  total_users?: number
-  active_users?: number
-  total_templates?: number
-  public_templates?: number
+  vmCount?: number
+  runningVmCount?: number
+  stoppedVmCount?: number
+  totalUsers?: number
+  activeUsers?: number
+  totalTemplates?: number
+  publicTemplates?: number
 }
 
 const Dashboard: React.FC = () => {
@@ -82,7 +82,7 @@ const Dashboard: React.FC = () => {
   const stats = [
     {
       title: t('vm.vmList'),
-      value: systemStats.total_vms || userVMCount,
+      value: systemStats.vmCount || userVMCount,
       icon: <DesktopOutlined />,
       color: '#1890ff',
       path: '/vms',
@@ -90,7 +90,7 @@ const Dashboard: React.FC = () => {
     },
     {
       title: t('vm.running'),
-      value: systemStats.running_vms || runningVMs,
+      value: systemStats.runningVmCount || runningVMs,
       icon: <RocketOutlined />,
       color: '#52c41a',
       path: '/vms?status=running',
@@ -98,19 +98,19 @@ const Dashboard: React.FC = () => {
     },
     {
       title: t('admin.totalUsers'),
-      value: systemStats.total_users || 0,
+      value: systemStats.totalUsers || 0,
       icon: <TeamOutlined />,
       color: '#722ed1',
       path: '/admin/users',
-      suffix: `${systemStats.active_users || 0} active`
+      suffix: `${systemStats.activeUsers || 0} active`
     },
     {
       title: 'Templates',
-      value: systemStats.total_templates || 0,
+      value: systemStats.totalTemplates || 0,
       icon: <FileOutlined />,
       color: '#fa8c16',
       path: '/templates',
-      suffix: `${systemStats.public_templates || 0} public`
+      suffix: `${systemStats.publicTemplates || 0} public`
     }
   ]
 
@@ -137,24 +137,24 @@ const Dashboard: React.FC = () => {
     },
     {
       title: 'CPU',
-      dataIndex: 'cpu_allocated',
+      dataIndex: 'cpuAllocated',
       key: 'cpu',
-      render: (cpu: number) => `${cpu} vCPU`
+      render: (cpu: number) => cpu ? `${cpu} vCPU` : '-'
     },
     {
       title: 'Memory',
-      dataIndex: 'memory_allocated',
+      dataIndex: 'memoryAllocated',
       key: 'memory',
-      render: (memory: number) => `${memory} MB`
+      render: (memory: number) => memory ? `${memory} MB` : '-'
     },
     {
       title: 'Created',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
       render: (time: string) => (
         <Space>
           <ClockCircleOutlined />
-          {dayjs(time).fromNow()}
+          {time ? dayjs(time).fromNow() : '-'}
         </Space>
       )
     }

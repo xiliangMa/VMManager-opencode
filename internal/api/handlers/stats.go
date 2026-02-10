@@ -135,19 +135,14 @@ func (h *VMStatsHandler) collectVMStats(vmID string) VMResourceStats {
 }
 
 func (h *VMStatsHandler) GetSystemStats(c *gin.Context) {
-	stats := SystemResourceStats{
-		TotalCPU:       800,
-		UsedCPU:        320,
-		CPUPercent:     40.0,
-		TotalMemory:    16384,
-		UsedMemory:     6144,
-		MemoryPercent:  37.5,
-		TotalDisk:      512,
-		UsedDisk:       128,
-		DiskPercent:    25.0,
-		VMCount:        10,
-		RunningVMCount: 6,
-		ActiveUsers:    25,
+	stats := gin.H{
+		"total_vms":        10,
+		"running_vms":      6,
+		"stopped_vms":      4,
+		"total_users":      10,
+		"active_users":     5,
+		"total_templates":  2,
+		"public_templates": 0,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
