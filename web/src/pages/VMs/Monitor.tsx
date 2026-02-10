@@ -51,12 +51,12 @@ const Monitor: React.FC = () => {
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
-    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
   }
 
   const formatTimestampLong = (timestamp: string) => {
     const date = new Date(timestamp)
-    return date.toLocaleString('zh-CN')
+    return date.toLocaleString(i18n.language)
   }
 
   if (loading && !stats) {
@@ -97,7 +97,7 @@ const Monitor: React.FC = () => {
         </Col>
         <Col>
           <span style={{ marginRight: 16, color: '#888' }}>
-            {t('vm.monitor.lastUpdate')}: {new Date().toLocaleTimeString('zh-CN')}
+            {t('vm.monitor.lastUpdate')}: {new Date().toLocaleTimeString(i18n.language)}
           </span>
           <span style={{ marginRight: 8, color: '#888' }}>
             {stats.cpuHistory?.length || 0} {t('vm.monitor.dataPoints')}

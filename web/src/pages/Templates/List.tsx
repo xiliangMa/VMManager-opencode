@@ -53,7 +53,7 @@ const Templates: React.FC = () => {
       render: (format: string) => <Tag>{format}</Tag>
     },
     {
-      title: 'CPU',
+      title: t('table.vcpu'),
       key: 'cpu',
       render: (_: any, record: Template) => `${record.cpuMin} - ${record.cpuMax}`
     },
@@ -73,7 +73,7 @@ const Templates: React.FC = () => {
       )
     },
     {
-      title: 'Created At',
+      title: t('detail.createdAt'),
       dataIndex: 'createdAt',
       key: 'created_at',
       render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm')
@@ -86,7 +86,7 @@ const Templates: React.FC = () => {
           <Button type="text" icon={<EditOutlined />} onClick={() => navigate(`/templates/${record.id}/edit`)} />
           <Popconfirm
             title={t('common.delete')}
-            description="Are you sure to delete this template?"
+            description={t('popconfirm.deleteTemplate')}
             onConfirm={() => handleDelete(record.id)}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />

@@ -60,7 +60,7 @@ const VMConsole: React.FC = () => {
   }
 
   const handleCtrlAltDel = () => {
-    message.info('Use Ctrl+Alt+Del button in VNC console')
+    message.info(t('message.useCtrlAltDel'))
   }
 
   const statusColors: Record<string, string> = {
@@ -79,7 +79,7 @@ const VMConsole: React.FC = () => {
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/vms/${id}`)}>
               {t('common.back')}
             </Button>
-            <span>VM Console - {id}</span>
+            <span>{t('console.vncConsole')} - {id}</span>
             {vmStatus && (
               <Tag color={statusColors[vmStatus] || 'default'}>
                 {vmStatus === 'running' ? t('console.connected') : t('console.disconnected')}
@@ -126,7 +126,7 @@ const VMConsole: React.FC = () => {
                   height: '100%',
                   border: 'none'
                 }}
-                title="VNC Console"
+                title={t('console.vncConsole')}
               />
             </div>
           )}
@@ -142,7 +142,7 @@ const VMConsole: React.FC = () => {
                 {vmStatus === 'running' ? t('console.connecting') : t('console.disconnected')}
               </Typography.Title>
               <Typography.Text type="secondary">
-                VM must be running to access the console
+                {t('message.vmMustBeRunning')}
               </Typography.Text>
               <br /><br />
               <Space>

@@ -116,7 +116,7 @@ const MainLayout: React.FC = () => {
           fontSize: collapsed ? 16 : 20,
           fontWeight: 'bold'
         }}>
-          {collapsed ? 'VM' : 'VMManager'}
+          {collapsed ? t('app.vm') : t('app.vmManager')}
         </div>
         <Menu
           theme="dark"

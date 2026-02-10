@@ -6,7 +6,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { authApi } from '../../api/client'
 
 const Profile: React.FC = () => {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user, updateUser } = useAuthStore()
   const [profileForm] = Form.useForm()
   const [passwordForm] = Form.useForm()
@@ -20,7 +20,7 @@ const Profile: React.FC = () => {
         const response = await authApi.getProfile()
         updateUser(response.data)
       } catch (error) {
-        console.error('Failed to fetch profile:', error)
+        console.error(t('message.failedToLoad') + ' profile:', error)
       }
     }
     fetchProfile()
@@ -43,11 +43,11 @@ const Profile: React.FC = () => {
     setLoading(true)
     try {
       await authApi.updateProfile(values)
-      message.success('Profile updated successfully')
+      message.success(t('message.updatedSuccessfully') + ' profile')
       const updatedProfile = await authApi.getProfile()
       updateUser(updatedProfile.data)
     } catch (error) {
-      message.error('Failed to update profile')
+      message.error(t('message.failedToUpdate') + ' profile')
     } finally {
       setLoading(false)
     }
@@ -57,10 +57,10 @@ const Profile: React.FC = () => {
     setLoading(true)
     try {
       await authApi.updateProfile({ password: values.newPassword })
-      message.success('Password changed successfully')
+      message.success(t('message.updatedSuccessfully') + ' password')
       passwordForm.resetFields()
     } catch (error) {
-      message.error('Failed to change password')
+      message.error(t('message.failedToUpdate') + ' password')
     } finally {
       setLoading(false)
     }
@@ -70,12 +70,12 @@ const Profile: React.FC = () => {
     setLoading(true)
     try {
       await authApi.updateProfile(values)
-      message.success('Preferences updated successfully')
+      message.success(t('message.updatedSuccessfully') + ' preferences')
       i18n.changeLanguage(values.language)
       const updatedProfile = await authApi.getProfile()
       updateUser(updatedProfile.data)
     } catch (error) {
-      message.error('Failed to update preferences')
+      message.error(t('message.failedToUpdate') + ' preferences')
     } finally {
       setLoading(false)
     }
@@ -108,15 +108,15 @@ const Profile: React.FC = () => {
       console.log('Response status:', response.status)
       
       if (response.ok) {
-        message.success('Avatar uploaded successfully')
+        message.success(t('message.createdSuccessfully') + ' avatar')
         const updatedProfile = await authApi.getProfile()
         updateUser(updatedProfile.data)
       } else {
-        message.error('Failed to upload avatar')
+        message.error(t('message.failedToCreate') + ' avatar')
       }
     } catch (error) {
       console.error('Upload error:', error)
-      message.error('Failed to upload avatar')
+      message.error(t('message.failedToCreate') + ' avatar')
     }
   }
 
@@ -138,7 +138,7 @@ const Profile: React.FC = () => {
       label: (
         <span>
           <UserOutlined />
-          Profile
+          {t('form.profile')}
         </span>
       ),
       children: (
@@ -154,7 +154,7 @@ const Profile: React.FC = () => {
             <div style={{ cursor: 'pointer' }} onClick={handleAvatarClick}>
               <Avatar size={100} src={user?.avatar} icon={<UserOutlined />} />
               <div style={{ marginTop: 8 }}>
-                <Button icon={<UploadOutlined />}>Change Avatar</Button>
+                <Button icon={<UploadOutlined />}>{t('button.changeAvatar')}</Button>
               </div>
             </div>
           </div>
@@ -166,23 +166,23 @@ const Profile: React.FC = () => {
           >
             <Form.Item
               name="username"
-              label="Username"
-              rules={[{ required: true, message: 'Please enter username' }]}
+              label={t('auth.username')}
+              rules={[{ required: true, message: t('validation.pleaseEnterName') }]}
             >
               <Input disabled prefix={<UserOutlined />} />
             </Form.Item>
 
             <Form.Item
               name="email"
-              label="Email"
-              rules={[{ required: true, type: 'email', message: 'Please enter valid email' }]}
+              label={t('auth.email')}
+              rules={[{ required: true, type: 'email', message: t('validation.pleaseEnterValidEmail') }]}
             >
               <Input />
             </Form.Item>
 
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
-                Save Changes
+                {t('button.saveChanges')}
               </Button>
             </Form.Item>
           </Form>
@@ -194,7 +194,7 @@ const Profile: React.FC = () => {
       label: (
         <span>
           <LockOutlined />
-          Password
+          {t('form.password')}
         </span>
       ),
       children: (
@@ -206,32 +206,32 @@ const Profile: React.FC = () => {
           >
             <Form.Item
               name="currentPassword"
-              label="Current Password"
-              rules={[{ required: true, message: 'Please enter current password' }]}
+              label={t('form.currentPassword')}
+              rules={[{ required: true, message: t('validation.pleaseEnterCurrentPassword') }]}
             >
               <Input.Password />
             </Form.Item>
 
             <Form.Item
               name="newPassword"
-              label="New Password"
-              rules={[{ required: true, message: 'Please enter new password' }]}
+              label={t('form.newPassword')}
+              rules={[{ required: true, message: t('validation.pleaseEnterNewPassword') }]}
             >
               <Input.Password />
             </Form.Item>
 
             <Form.Item
               name="confirmPassword"
-              label="Confirm Password"
+              label={t('form.confirmPassword')}
               dependencies={['newPassword']}
               rules={[
-                { required: true, message: 'Please confirm password' },
+                { required: true, message: t('validation.pleaseConfirmPassword') },
                 ({ getFieldValue }) => ({
                   validator(_, value) {
                     if (!value || getFieldValue('newPassword') === value) {
                       return Promise.resolve()
                     }
-                    return Promise.reject(new Error('Passwords do not match'))
+                    return Promise.reject(new Error(t('validation.passwordsDoNotMatch')))
                   }
                 })
               ]}
@@ -241,7 +241,7 @@ const Profile: React.FC = () => {
 
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
-                Change Password
+                {t('button.changePassword')}
               </Button>
             </Form.Item>
           </Form>
@@ -253,7 +253,7 @@ const Profile: React.FC = () => {
       label: (
         <span>
           <GlobalOutlined />
-          Preferences
+          {t('form.preferences')}
         </span>
       ),
       children: (
@@ -265,23 +265,23 @@ const Profile: React.FC = () => {
           >
             <Form.Item
               name="language"
-              label="Language"
-              rules={[{ required: true, message: 'Please select language' }]}
+              label={t('form.language')}
+              rules={[{ required: true, message: t('validation.pleaseSelectLanguage') }]}
             >
               <Select options={languageOptions} />
             </Form.Item>
 
             <Form.Item
               name="timezone"
-              label="Timezone"
-              rules={[{ required: true, message: 'Please select timezone' }]}
+              label={t('form.timezone')}
+              rules={[{ required: true, message: t('validation.pleaseSelectTimezone') }]}
             >
               <Select options={timezoneOptions} />
             </Form.Item>
 
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
-                Save Preferences
+                {t('button.savePreferences')}
               </Button>
             </Form.Item>
           </Form>
@@ -291,7 +291,7 @@ const Profile: React.FC = () => {
   ]
 
   return (
-    <Card title="Profile Settings">
+    <Card title={t('common.profile')}>
       <Tabs defaultActiveKey="profile" items={tabItems} />
     </Card>
   )

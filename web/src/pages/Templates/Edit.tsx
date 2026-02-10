@@ -33,7 +33,7 @@ const TemplateEdit: React.FC = () => {
           isActive: template.isActive
         })
       }).catch(() => {
-        message.error('Failed to load template')
+        message.error(t('message.failedToLoad') + ' template')
       })
     }
   }, [id, form])
@@ -96,12 +96,12 @@ const TemplateEdit: React.FC = () => {
         <Form.Item
           name="name"
           label={t('template.name')}
-          rules={[{ required: true, message: 'Please enter template name' }]}
+          rules={[{ required: true, message: t('placeholder.enterName') }]}
         >
-          <Input placeholder="Enter template name" />
+          <Input placeholder={t('placeholder.enterName')} />
         </Form.Item>
 
-        <Form.Item name="description" label="Description">
+        <Form.Item name="description" label={t('form.description')}>
           <Input.TextArea rows={3} placeholder="Optional description" />
         </Form.Item>
 
@@ -130,10 +130,10 @@ const TemplateEdit: React.FC = () => {
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item name="isActive" label="Active">
+            <Form.Item name="isActive" label={t('form.active')}>
               <Select
                 options={[
-                  { label: 'Active', value: true },
+                  { label: t('form.active'), value: true },
                   { label: 'Inactive', value: false }
                 ]}
               />

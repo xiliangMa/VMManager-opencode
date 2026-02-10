@@ -25,7 +25,7 @@ const VMEdit: React.FC = () => {
           autostart: vm.autostart
         })
       }).catch(() => {
-        message.error('Failed to load VM')
+        message.error(t('message.failedToLoad') + ' VM')
       })
     }
   }, [id, form])
@@ -74,24 +74,24 @@ const VMEdit: React.FC = () => {
         <Form.Item
           name="name"
           label={t('vm.name')}
-          rules={[{ required: true, message: 'Please enter VM name' }]}
+          rules={[{ required: true, message: t('placeholder.enterName') }]}
         >
-          <Input placeholder="Enter VM name" />
+          <Input placeholder={t('placeholder.enterName')} />
         </Form.Item>
 
         <Row gutter={16}>
           <Col span={8}>
-            <Form.Item name="cpu_allocated" label="CPU">
+            <Form.Item name="cpu_allocated" label={t('table.vcpu')}>
               <InputNumber min={1} max={256} style={{ width: '100%' }} disabled />
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item name="memory_allocated" label="Memory (MB)">
+            <Form.Item name="memory_allocated" label={t('vm.memory')}>
               <InputNumber min={512} max={524288} style={{ width: '100%' }} disabled />
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item name="disk_allocated" label="Disk (GB)">
+            <Form.Item name="disk_allocated" label={t('vm.disk')}>
               <InputNumber min={10} max={10000} style={{ width: '100%' }} disabled />
             </Form.Item>
           </Col>

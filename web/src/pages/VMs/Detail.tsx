@@ -18,7 +18,7 @@ const VMDetail: React.FC = () => {
       const response = await vmsApi.get(id)
       setVm(response.data || response)
     } catch (error) {
-      message.error('Failed to fetch VM')
+      message.error(t('message.failedToLoad') + ' VM')
     }
   }
 
@@ -75,27 +75,27 @@ const VMDetail: React.FC = () => {
     error: 'error'
   }
 
-  if (!vm) return <div>Loading...</div>
+  if (!vm) return <div>{t('common.loading')}</div>
 
   const tabItems = [
     {
       key: 'info',
-      label: 'Information',
+      label: t('tab.information'),
       children: (
         <Descriptions bordered column={2}>
-          <Descriptions.Item label="ID">{vm.id}</Descriptions.Item>
+          <Descriptions.Item label={t('detail.id')}>{vm.id}</Descriptions.Item>
           <Descriptions.Item label={t('vm.name')}>{vm.name}</Descriptions.Item>
           <Descriptions.Item label={t('vm.status')}>
             <Tag color={statusColors[vm.status]}>{vm.status}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="CPU">{vm.cpuAllocated} vCPU</Descriptions.Item>
+          <Descriptions.Item label={t('table.vcpu')}>{vm.cpuAllocated} vCPU</Descriptions.Item>
           <Descriptions.Item label={t('vm.memory')}>{vm.memoryAllocated} MB</Descriptions.Item>
           <Descriptions.Item label={t('vm.disk')}>{vm.diskAllocated} GB</Descriptions.Item>
           <Descriptions.Item label={t('vm.ipAddress')}>{vm.ipAddress || '-'}</Descriptions.Item>
-          <Descriptions.Item label="MAC Address">{vm.macAddress || '-'}</Descriptions.Item>
-          <Descriptions.Item label="VNC Port">{vm.vncPort || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Created At">{dayjs(vm.createdAt).format('YYYY-MM-DD HH:mm:ss')}</Descriptions.Item>
-          <Descriptions.Item label="Updated At">{dayjs(vm.updatedAt).format('YYYY-MM-DD HH:mm:ss')}</Descriptions.Item>
+          <Descriptions.Item label={t('detail.macAddress')}>{vm.macAddress || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('detail.vncPort')}>{vm.vncPort || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('detail.createdAt')}>{dayjs(vm.createdAt).format('YYYY-MM-DD HH:mm:ss')}</Descriptions.Item>
+          <Descriptions.Item label={t('detail.updatedAt')}>{dayjs(vm.updatedAt).format('YYYY-MM-DD HH:mm:ss')}</Descriptions.Item>
         </Descriptions>
       )
     },
@@ -104,15 +104,15 @@ const VMDetail: React.FC = () => {
       label: (
         <span>
           <CloudUploadOutlined />
-          Snapshots
+          {t('vm.snapshots')}
         </span>
       ),
       children: (
         <Card size="small" style={{ marginTop: 8 }}>
           <Space direction="vertical" align="center" style={{ width: '100%' }}>
-            <p>Manage VM snapshots</p>
+            <p>{t('vm.snapshots')}</p>
             <Button type="primary" onClick={() => navigate(`/vms/${id}/snapshots`)}>
-              Manage Snapshots
+              {t('vm.snapshots')}
             </Button>
           </Space>
         </Card>
@@ -120,7 +120,7 @@ const VMDetail: React.FC = () => {
     },
     {
       key: 'logs',
-      label: 'Logs',
+      label: t('vm.logs'),
       children: <div>{t('common.noData')}</div>
     }
   ]
@@ -165,12 +165,12 @@ const VMDetail: React.FC = () => {
         extra={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <a href={`/vms/${id}/edit`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#1677ff', textDecoration: 'none' }}>
-              <EditOutlined /> Edit
+              <EditOutlined /> {t('common.edit')}
             </a>
             <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)}>
               {t('console.fullscreen')}
             </Button>
-            <Popconfirm title="Are you sure?" onConfirm={handleDelete}>
+            <Popconfirm title={t('popconfirm.areYouSure')} onConfirm={handleDelete}>
               <Button danger icon={<DeleteOutlined />}>
                 {t('common.delete')}
               </Button>
@@ -183,7 +183,7 @@ const VMDetail: React.FC = () => {
             <>
               <Button onClick={handleStop}>{t('vm.stop')}</Button>
               <Button onClick={handleRestart}>{t('vm.restart')}</Button>
-              <Button onClick={() => navigate(`/vms/${id}/console`)}>Console</Button>
+              <Button onClick={() => navigate(`/vms/${id}/console`)}>{t('vm.console')}</Button>
             </>
           ) : vm.status === 'stopped' ? (
             <Button type="primary" onClick={handleStart}>{t('vm.start')}</Button>

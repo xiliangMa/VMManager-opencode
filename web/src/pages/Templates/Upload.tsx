@@ -52,12 +52,12 @@ const TemplateUpload: React.FC = () => {
     const values = form.getFieldsValue()
     
     if (!values.name) {
-      message.error('Please enter template name')
+      message.error(t('validation.pleaseEnterName'))
       return
     }
     
     if (!selectedFile) {
-      message.error('Please select a template file')
+      message.error(t('validation.pleaseSelectTemplate'))
       return
     }
 
@@ -76,9 +76,9 @@ const TemplateUpload: React.FC = () => {
 
       setUploadId(initResponse.data.upload_id)
       setCurrentStep(1)
-      message.success('Upload initialized, ready to upload file')
+      message.success(t('message.uploadInitialized'))
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to initialize upload')
+      message.error(error.response?.data?.message || t('alert.failedToLoad'))
     } finally {
       setLoading(false)
     }
@@ -128,22 +128,22 @@ const TemplateUpload: React.FC = () => {
       })
 
       setCurrentStep(2)
-      message.success('Template uploaded successfully!')
+      message.success(t('alert.uploadComplete'))
       
       setTimeout(() => {
         navigate('/templates')
       }, 2000)
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to upload file')
+      message.error(error.response?.data?.message || t('message.failedToCreate'))
     } finally {
       setUploading(false)
     }
   }
 
   const steps = [
-    { title: 'Basic Info', description: 'Template details' },
-    { title: 'Upload File', description: 'Upload template' },
-    { title: 'Complete', description: 'Finished' }
+    { title: t('step.basicInfo'), description: t('step.templateDetails') },
+    { title: t('step.uploadFile'), description: t('step.uploadTemplate') },
+    { title: t('step.complete'), description: t('step.finished') }
   ]
 
   return (
@@ -176,25 +176,25 @@ const TemplateUpload: React.FC = () => {
           <Form.Item
             name="name"
             label={t('template.name')}
-            rules={[{ required: true, message: 'Please enter template name' }]}
+            rules={[{ required: true, message: t('validation.pleaseEnterName') }]}
           >
-            <Input placeholder="Enter template name" />
+            <Input placeholder={t('placeholder.enterName')} />
           </Form.Item>
 
-          <Form.Item name="description" label="Description">
-            <Input.TextArea rows={3} placeholder="Optional description" />
+          <Form.Item name="description" label={t('template.description')}>
+            <Input.TextArea rows={3} placeholder={t('placeholder.optionalDescription')} />
           </Form.Item>
 
           <Form.Item
             name="os_type"
             label={t('template.osType')}
-            rules={[{ required: true, message: 'Please select OS type' }]}
+            rules={[{ required: true, message: t('validation.pleaseSelectTemplate') }]}
           >
-            <Select placeholder="Select OS" options={osOptions} />
+            <Select placeholder={t('placeholder.selectOs')} options={osOptions} />
           </Form.Item>
 
-          <Form.Item name="os_version" label="OS Version">
-            <Input placeholder="e.g., 22.04 LTS" />
+          <Form.Item name="os_version" label={t('form.osVersion')}>
+            <Input placeholder={t('placeholder.enterVersion')} />
           </Form.Item>
 
           <Row gutter={16}>
@@ -212,12 +212,12 @@ const TemplateUpload: React.FC = () => {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="cpu_min" label="CPU Min">
+              <Form.Item name="cpu_min" label={t('template.minCPU')}>
                 <InputNumber min={1} max={256} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="cpu_max" label="CPU Max">
+              <Form.Item name="cpu_max" label={t('template.maxCPU')}>
                 <InputNumber min={1} max={256} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -225,12 +225,12 @@ const TemplateUpload: React.FC = () => {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="memory_min" label="Memory Min (MB)">
+              <Form.Item name="memory_min" label={t('template.minMemory')}>
                 <InputNumber min={512} max={524288} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="memory_max" label="Memory Max (MB)">
+              <Form.Item name="memory_max" label={t('template.maxMemory')}>
                 <InputNumber min={512} max={524288} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -238,12 +238,12 @@ const TemplateUpload: React.FC = () => {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="disk_min" label="Disk Min (GB)">
+              <Form.Item name="disk_min" label={t('template.minDisk')}>
                 <InputNumber min={10} max={10000} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="disk_max" label="Disk Max (GB)">
+              <Form.Item name="disk_max" label={t('template.maxDisk')}>
                 <InputNumber min={10} max={10000} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -262,7 +262,7 @@ const TemplateUpload: React.FC = () => {
             />
           </Form.Item>
 
-          <Form.Item label="Template File" required>
+          <Form.Item label={t('form.templateFile')} required>
             <input
               type="file"
               ref={fileInputRef}
@@ -277,7 +277,7 @@ const TemplateUpload: React.FC = () => {
             >
               {selectedFile 
                 ? `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`
-                : 'Click to select template file'
+                : t('message.selectTemplateFile')
               }
             </Button>
           </Form.Item>
@@ -291,7 +291,7 @@ const TemplateUpload: React.FC = () => {
                 icon={<UploadOutlined />}
                 disabled={!selectedFile}
               >
-                Next: Upload File
+                {t('button.next')}
               </Button>
               <Button onClick={() => navigate('/templates')}>
                 {t('common.cancel')}
@@ -303,13 +303,13 @@ const TemplateUpload: React.FC = () => {
 
       {currentStep === 1 && (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <h3>Uploading: {selectedFile?.name}</h3>
+          <h3>{t('message.uploading')}: {selectedFile?.name}</h3>
           <Progress percent={uploadProgress} style={{ margin: '20px auto', maxWidth: 400 }} />
           
           <p style={{ color: '#666' }}>
             {uploadProgress < 100 
-              ? `Uploading chunk ${Math.ceil(uploadProgress * (selectedFile?.size || 0) / 100 / CHUNK_SIZE)}...`
-              : 'Completing upload...'
+              ? `${t('message.uploadingChunk')} ${Math.ceil(uploadProgress * (selectedFile?.size || 0) / 100 / CHUNK_SIZE)}...`
+              : t('message.completingUpload')
             }
           </p>
 
@@ -320,7 +320,7 @@ const TemplateUpload: React.FC = () => {
             size="large"
             icon={<UploadOutlined />}
           >
-            {uploading ? 'Uploading...' : 'Start Upload'}
+            {uploading ? t('message.uploadingChunk') : t('message.startUpload')}
           </Button>
         </div>
       )}
@@ -328,9 +328,9 @@ const TemplateUpload: React.FC = () => {
       {currentStep === 2 && (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <CheckOutlined style={{ fontSize: 64, color: '#52c41a', marginBottom: 16 }} />
-          <h2>Template Upload Complete!</h2>
-          <p>Your template has been uploaded and is ready to use.</p>
-          <p>Redirecting to templates list...</p>
+          <h2>{t('message.uploadComplete')}</h2>
+          <p>{t('message.uploadRedirecting')}</p>
+          <p>{t('message.uploadRedirecting')}</p>
         </div>
       )}
     </Card>

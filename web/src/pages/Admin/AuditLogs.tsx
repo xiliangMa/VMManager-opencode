@@ -32,7 +32,7 @@ const AuditLogs: React.FC = () => {
     try {
       const response = await systemApi.getAuditLogs()
       const csvContent = [
-        'ID,User,Action,Resource,IP,Status,Created At',
+        t('table.name') + ',' + t('table.user') + ',' + t('table.action') + ',' + t('table.resource') + ',' + t('table.ipAddress') + ',' + t('table.status') + ',' + t('table.created'),
         ...response.data.map((log: AuditLog) =>
           `${log.id},${log.username},${log.action},${log.resource_type},${log.ip_address},${log.status},${log.created_at}`
         )
@@ -58,36 +58,36 @@ const AuditLogs: React.FC = () => {
 
   const columns = [
     {
-      title: 'ID',
+      title: t('table.name'),
       dataIndex: 'id',
       key: 'id',
       render: (id: string) => id.substring(0, 8)
     },
     {
-      title: 'User',
+      title: t('table.user'),
       dataIndex: 'username',
       key: 'username'
     },
     {
-      title: 'Action',
+      title: t('table.action'),
       dataIndex: 'action',
       key: 'action',
       render: (action: string) => <Tag>{action}</Tag>
     },
     {
-      title: 'Resource',
+      title: t('table.resource'),
       key: 'resource',
       render: (_: any, record: AuditLog) => (
         <span>{record.resource_type}: {record.resource_id.substring(0, 8)}</span>
       )
     },
     {
-      title: 'IP Address',
+      title: t('table.ipAddress'),
       dataIndex: 'ip_address',
       key: 'ip_address'
     },
     {
-      title: 'Status',
+      title: t('table.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
@@ -97,7 +97,7 @@ const AuditLogs: React.FC = () => {
       )
     },
     {
-      title: 'Created At',
+      title: t('table.created'),
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm:ss')
@@ -109,38 +109,38 @@ const AuditLogs: React.FC = () => {
       title={t('admin.auditLogs')}
       extra={
         <Button icon={<ExportOutlined />} onClick={handleExport}>
-          Export
+          {t('common.export')}
         </Button>
       }
     >
       <Space style={{ marginBottom: 16 }}>
         <Input
-          placeholder="Search"
+          placeholder={t('common.search')}
           prefix={<SearchOutlined />}
           style={{ width: 200 }}
         />
         <Select
-          placeholder="Action"
+          placeholder={t('table.action')}
           allowClear
           style={{ width: 150 }}
           value={actionFilter || undefined}
           onChange={(value) => setActionFilter(value || '')}
           options={[
-            { label: 'Login', value: 'login' },
-            { label: 'VM Create', value: 'vm.create' },
-            { label: 'VM Delete', value: 'vm.delete' },
-            { label: 'Template Upload', value: 'template.upload' }
+            { label: t('status.login'), value: 'login' },
+            { label: t('status.vmCreate'), value: 'vm.create' },
+            { label: t('status.vmDelete'), value: 'vm.delete' },
+            { label: t('status.templateUpload'), value: 'template.upload' }
           ]}
         />
         <Select
-          placeholder="Status"
+          placeholder={t('table.status')}
           allowClear
           style={{ width: 120 }}
           value={statusFilter || undefined}
           onChange={(value) => setStatusFilter(value || '')}
           options={[
-            { label: 'Success', value: 'success' },
-            { label: 'Failed', value: 'failed' }
+            { label: t('status.success'), value: 'success' },
+            { label: t('status.failed'), value: 'failed' }
           ]}
         />
       </Space>

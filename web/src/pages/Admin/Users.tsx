@@ -63,7 +63,7 @@ const Users: React.FC = () => {
 
   const columns = [
     {
-      title: 'Username',
+      title: t('auth.username'),
       dataIndex: 'username',
       key: 'username',
       render: (text: string) => (
@@ -79,23 +79,23 @@ const Users: React.FC = () => {
       key: 'email'
     },
     {
-      title: 'Role',
+      title: t('form.userRole'),
       dataIndex: 'role',
       key: 'role',
       render: (role: string) => (
         <Tag color={roleColors[role] || 'default'}>
-          {role}
+          {role === 'admin' ? t('admin.roleAdmin') : role === 'user' ? t('admin.roleUser') : t('admin.roleViewer')}
         </Tag>
       )
     },
     {
-      title: 'CPU Quota',
+      title: t('admin.cpuQuota'),
       dataIndex: 'quota_cpu',
       key: 'quota_cpu',
       render: (quota: number) => quota || '-'
     },
     {
-      title: 'Memory Quota (MB)',
+      title: t('admin.memoryQuota'),
       dataIndex: 'quota_memory',
       key: 'quota_memory',
       render: (quota: number) => quota || '-'
@@ -117,7 +117,7 @@ const Users: React.FC = () => {
       )
     },
     {
-      title: 'Created At',
+      title: t('table.created'),
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm')
@@ -135,14 +135,14 @@ const Users: React.FC = () => {
             <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} disabled={!canEdit} />
             {canDelete ? (
               <Popconfirm
-                title="Delete User"
-                description="Are you sure to delete this user?"
+                title={t('admin.deleteUser')}
+                description={t('popconfirm.deleteUser')}
                 onConfirm={() => handleDelete(record.id)}
               >
                 <Button type="text" danger icon={<DeleteOutlined />} />
               </Popconfirm>
             ) : (
-              <Tooltip title={isAdminUser ? 'Admin users cannot be deleted' : 'Cannot delete yourself'}>
+              <Tooltip title={isAdminUser ? t('tooltip.adminCannotDelete') : t('tooltip.cannotDeleteYourself')}>
                 <Button type="text" danger icon={<DeleteOutlined />} disabled />
               </Tooltip>
             )}
@@ -157,7 +157,7 @@ const Users: React.FC = () => {
       title={t('admin.userManagement')}
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Create User
+          {t('modal.createUser')}
         </Button>
       }
     >
@@ -170,7 +170,7 @@ const Users: React.FC = () => {
       />
 
       <Modal
-        title={editingUser ? 'Edit User' : 'Create User'}
+        title={editingUser ? t('modal.editUser') : t('modal.createUser')}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
@@ -182,16 +182,16 @@ const Users: React.FC = () => {
         >
           <Form.Item
             name="username"
-            label="Username"
-            rules={[{ required: true, message: 'Please enter username' }]}
+            label={t('auth.username')}
+            rules={[{ required: true, message: t('validation.pleaseEnterName') }]}
           >
             <Input />
           </Form.Item>
 
           <Form.Item
             name="email"
-            label="Email"
-            rules={[{ required: true, type: 'email', message: 'Please enter valid email' }]}
+            label={t('auth.email')}
+            rules={[{ required: true, type: 'email', message: t('validation.pleaseEnterValidEmail') }]}
           >
             <Input />
           </Form.Item>
@@ -199,8 +199,8 @@ const Users: React.FC = () => {
           {!editingUser && (
             <Form.Item
               name="password"
-              label="Password"
-              rules={[{ required: true, message: 'Please enter password' }]}
+              label={t('auth.password')}
+              rules={[{ required: true, message: t('validation.pleaseEnterPassword') }]}
             >
               <Input.Password />
             </Form.Item>
@@ -208,42 +208,42 @@ const Users: React.FC = () => {
 
           <Form.Item
             name="role"
-            label="Role"
-            rules={[{ required: true, message: 'Please select role' }]}
+            label={t('form.userRole')}
+            rules={[{ required: true, message: t('validation.pleaseSelectRole') }]}
           >
             <Select
               options={[
-                { label: 'Admin', value: 'admin' },
-                { label: 'User', value: 'user' },
-                { label: 'Viewer', value: 'viewer' }
+                { label: t('admin.roleAdmin'), value: 'admin' },
+                { label: t('admin.roleUser'), value: 'user' },
+                { label: t('admin.roleViewer'), value: 'viewer' }
               ]}
             />
           </Form.Item>
 
           <Form.Item
             name="quota_cpu"
-            label="CPU Quota"
+            label={t('admin.cpuQuota')}
           >
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="quota_memory"
-            label="Memory Quota (MB)"
+            label={t('admin.memoryQuota')}
           >
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="quota_disk"
-            label="Disk Quota (GB)"
+            label={t('admin.diskQuota')}
           >
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="quota_vm_count"
-            label="VM Count Quota"
+            label={t('admin.vmCountQuota')}
           >
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>

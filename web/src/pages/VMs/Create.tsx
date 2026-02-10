@@ -35,7 +35,7 @@ const VMCreate: React.FC = () => {
 
   const handleSubmit = async (values: any) => {
     if (!selectedTemplate) {
-      message.error('Please select a template')
+      message.error(t('validation.pleaseSelectTemplate'))
       return
     }
 
@@ -98,32 +98,32 @@ const VMCreate: React.FC = () => {
         }}
       >
         <Collapse defaultActiveKey={['basic']} bordered={false} style={{ marginBottom: 16 }}>
-          <Panel header={<strong>Basic Information</strong>} key="basic">
+          <Panel header={<strong>{t('form.basicInfo')}</strong>} key="basic">
             <Form.Item
               name="name"
               label={t('vm.name')}
               rules={[
-                { required: true, message: 'Please enter VM name' },
-                { min: 3, max: 50, message: 'Name must be 3-50 characters' },
-                { pattern: /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/, message: 'Name can only contain letters, numbers, hyphens and underscores' }
+                { required: true, message: t('validation.pleaseEnterName') },
+                { min: 3, max: 50, message: t('validation.nameLength') },
+                { pattern: /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/, message: t('validation.namePattern') }
               ]}
-              extra="Unique identifier for the VM"
+              extra={t('helper.uniqueIdentifier')}
             >
-              <Input placeholder="e.g., web-server-01" prefix={<CloudServerOutlined />} />
+              <Input placeholder={t('placeholder.enterVmName')} prefix={<CloudServerOutlined />} />
             </Form.Item>
 
             <Form.Item
               name="description"
-              label="Description"
-              extra="Optional description for this VM"
+              label={t('form.description')}
+              extra={t('helper.optionalDescription')}
             >
-              <Input.TextArea rows={2} placeholder="Brief description of this VM's purpose" />
+              <Input.TextArea rows={2} placeholder={t('placeholder.vmDescription')} />
             </Form.Item>
 
             <Form.Item
               name="template_id"
               label={t('vm.template')}
-              rules={[{ required: true, message: 'Please select a template' }]}
+              rules={[{ required: true, message: t('validation.pleaseSelectTemplate') }]}
             >
               <Select
                 placeholder="Select a template"
@@ -158,12 +158,12 @@ const VMCreate: React.FC = () => {
         </Collapse>
 
         <Collapse bordered={false} style={{ marginBottom: 16 }}>
-          <Panel header={<strong>Resource Configuration</strong>} key="resources">
+          <Panel header={<strong>{t('form.resourceConfig')}</strong>} key="resources">
             <Form.Item
               name="cpu"
               label={t('vm.cpu')}
               rules={[
-                { required: true, message: 'Please enter CPU count' },
+                { required: true, message: t('validation.pleaseEnterCpuCount') },
                 { type: 'integer', min: selectedTemplate?.cpuMin || 1, max: selectedTemplate?.cpuMax || 64, message: `CPU must be between ${selectedTemplate?.cpuMin || 1} and ${selectedTemplate?.cpuMax || 64}` }
               ]}
             >
@@ -171,7 +171,7 @@ const VMCreate: React.FC = () => {
                 min={selectedTemplate?.cpuMin || 1}
                 max={selectedTemplate?.cpuMax || 64}
                 style={{ width: '100%' }}
-                addonAfter="cores"
+                addonAfter={t('unit.cores')}
               />
             </Form.Item>
 
@@ -179,7 +179,7 @@ const VMCreate: React.FC = () => {
               name="memory"
               label={t('vm.memory')}
               rules={[
-                { required: true, message: 'Please enter memory size' },
+                { required: true, message: t('validation.pleaseEnterMemorySize') },
                 { type: 'integer', min: selectedTemplate?.memoryMin || 512, max: selectedTemplate?.memoryMax || 131072, message: `Memory must be between ${selectedTemplate?.memoryMin || 512} and ${selectedTemplate?.memoryMax || 131072} MB` }
               ]}
             >
@@ -187,7 +187,7 @@ const VMCreate: React.FC = () => {
                 min={selectedTemplate?.memoryMin || 512}
                 max={selectedTemplate?.memoryMax || 131072}
                 style={{ width: '100%' }}
-                addonAfter="MB"
+                addonAfter={t('unit.mb')}
               />
             </Form.Item>
 
@@ -195,7 +195,7 @@ const VMCreate: React.FC = () => {
               name="disk"
               label={t('vm.disk')}
               rules={[
-                { required: true, message: 'Please enter disk size' },
+                { required: true, message: t('validation.pleaseEnterDiskSize') },
                 { type: 'integer', min: selectedTemplate?.diskMin || 10, max: selectedTemplate?.diskMax || 1000, message: `Disk must be between ${selectedTemplate?.diskMin || 10} and ${selectedTemplate?.diskMax || 1000} GB` }
               ]}
             >
@@ -203,40 +203,40 @@ const VMCreate: React.FC = () => {
                 min={selectedTemplate?.diskMin || 10}
                 max={selectedTemplate?.diskMax || 1000}
                 style={{ width: '100%' }}
-                addonAfter="GB"
+                addonAfter={t('unit.gb')}
               />
             </Form.Item>
           </Panel>
         </Collapse>
 
         <Collapse bordered={false} style={{ marginBottom: 16 }}>
-          <Panel header={<strong>Advanced Options</strong>} key="advanced">
+          <Panel header={<strong>{t('form.advancedOptions')}</strong>} key="advanced">
             <Form.Item
               name="boot_order"
-              label="Boot Order"
-              extra="Order of boot devices"
+              label={t('form.bootOrder')}
+              extra={t('helper.bootOrderHelp')}
             >
               <Select
                 options={[
-                  { label: 'Hard Disk → CD-ROM → Network', value: 'hd,cdrom,network' },
-                  { label: 'CD-ROM → Hard Disk → Network', value: 'cdrom,hd,network' },
-                  { label: 'Network → Hard Disk → CD-ROM', value: 'network,hd,cdrom' },
-                  { label: 'Hard Disk Only', value: 'hd' },
-                  { label: 'Network Only (PXE)', value: 'network' }
+                  { label: t('option.hardDiskCdromNetwork'), value: 'hd,cdrom,network' },
+                  { label: t('option.cdromHardDiskNetwork'), value: 'cdrom,hd,network' },
+                  { label: t('option.networkHardDiskCdrom'), value: 'network,hd,cdrom' },
+                  { label: t('option.hardDiskOnly'), value: 'hd' },
+                  { label: t('option.networkOnly'), value: 'network' }
                 ]}
               />
             </Form.Item>
 
             <Form.Item
               name="autostart"
-              label="Auto Start"
+              label={t('form.autoStart')}
               valuePropName="checked"
-              extra="Automatically start this VM when the host system boots"
+              extra={t('helper.autoStartHelp')}
             >
               <Select
                 options={[
-                  { label: 'Disabled', value: false },
-                  { label: 'Enabled', value: true }
+                  { label: t('option.disabled'), value: false },
+                  { label: t('option.enabled'), value: true }
                 ]}
               />
             </Form.Item>

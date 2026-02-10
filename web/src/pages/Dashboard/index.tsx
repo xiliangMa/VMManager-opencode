@@ -108,7 +108,7 @@ const Dashboard: React.FC = () => {
       icon: <DesktopOutlined />,
       color: '#1890ff',
       path: '/vms',
-      suffix: userVMCount > 0 ? `Your VMs` : ''
+      suffix: userVMCount > 0 ? t('vm.vmList') : ''
     },
     {
       title: t('vm.running'),
@@ -116,7 +116,7 @@ const Dashboard: React.FC = () => {
       icon: <RocketOutlined />,
       color: '#52c41a',
       path: '/vms?status=running',
-      suffix: 'Running'
+      suffix: t('vm.running')
     },
     {
       title: t('admin.totalUsers'),
@@ -124,21 +124,21 @@ const Dashboard: React.FC = () => {
       icon: <TeamOutlined />,
       color: '#722ed1',
       path: '/admin/users',
-      suffix: `${systemStats.activeUsers || 0} active`
+      suffix: `${systemStats.activeUsers || 0} ${t('common.active')}`
     },
     {
-      title: 'Templates',
+      title: t('template.templateList'),
       value: systemStats.totalTemplates || 0,
       icon: <FileOutlined />,
       color: '#fa8c16',
       path: '/templates',
-      suffix: `${systemStats.publicTemplates || 0} public`
+      suffix: `${systemStats.publicTemplates || 0} ${t('template.public')}`
     }
   ]
 
   const vmColumns = [
     {
-      title: 'Name',
+      title: t('table.name'),
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record: VM) => (
@@ -148,7 +148,7 @@ const Dashboard: React.FC = () => {
       )
     },
     {
-      title: 'Status',
+      title: t('table.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
@@ -158,19 +158,19 @@ const Dashboard: React.FC = () => {
       )
     },
     {
-      title: 'CPU',
+      title: t('table.vcpu'),
       dataIndex: 'cpuAllocated',
       key: 'cpu',
       render: (cpu: number) => cpu ? `${cpu} vCPU` : '-'
     },
     {
-      title: 'Memory',
+      title: t('table.mb'),
       dataIndex: 'memoryAllocated',
       key: 'memory',
       render: (memory: number) => memory ? `${memory} MB` : '-'
     },
     {
-      title: 'Created',
+      title: t('table.created'),
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (time: string) => (
@@ -184,19 +184,19 @@ const Dashboard: React.FC = () => {
 
   const quickActions = [
     { label: t('vm.createVM'), icon: <PlusOutlined />, path: '/vms/create', type: 'primary' as const },
-    { label: 'View VMs', icon: <ArrowRightOutlined />, path: '/vms', type: 'default' as const },
-    { label: 'Templates', icon: <FileOutlined />, path: '/templates', type: 'default' as const },
-    { label: 'Alert Rules', icon: <WarningOutlined />, path: '/admin/alerts', type: 'default' as const }
+    { label: t('vm.vmList'), icon: <ArrowRightOutlined />, path: '/vms', type: 'default' as const },
+    { label: t('template.templateList'), icon: <FileOutlined />, path: '/templates', type: 'default' as const },
+    { label: t('alerts.alertRules'), icon: <WarningOutlined />, path: '/admin/alerts', type: 'default' as const }
   ]
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <Typography.Title level={2}>
-          Welcome back, {user?.username}
+          {t('dashboard.welcome')} {user?.username}
         </Typography.Title>
         <Typography.Text type="secondary">
-          Here's what's happening with your virtual machines
+          {t('dashboard.systemOverview')}
         </Typography.Text>
       </div>
 
@@ -221,10 +221,10 @@ const Dashboard: React.FC = () => {
             title={
               <Space>
                 <CloudServerOutlined />
-                Recent Virtual Machines
+                {t('vm.vmList')}
               </Space>
             }
-            extra={<Button type="link" onClick={() => navigate('/vms')}>View All</Button>}
+            extra={<Button type="link" onClick={() => navigate('/vms')}>{t('common.view')}</Button>}
             loading={loading}
           >
             <Table
@@ -238,7 +238,7 @@ const Dashboard: React.FC = () => {
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card title="Quick Actions" loading={loading}>
+          <Card title={t('common.actions')} loading={loading}>
             <List
               itemLayout="horizontal"
               dataSource={quickActions}
@@ -258,22 +258,22 @@ const Dashboard: React.FC = () => {
           </Card>
 
           <Card
-            title="System Resources"
+            title={t('system.dashboard')}
             style={{ marginTop: 16 }}
             loading={loading}
             size="small"
           >
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               <div>
-                <Typography.Text>CPU Usage</Typography.Text>
+                <Typography.Text>{t('system.cpuUsage')}</Typography.Text>
                 <Progress percent={Math.round(systemResources.cpu_percent || 0)} status="active" size="small" />
               </div>
               <div>
-                <Typography.Text>Memory Usage ({systemResources.used_memory_mb || 0}MB / {systemResources.total_memory_mb || 0}MB)</Typography.Text>
+                <Typography.Text>{t('system.memoryUsage')} ({systemResources.used_memory_mb || 0}MB / {systemResources.total_memory_mb || 0}MB)</Typography.Text>
                 <Progress percent={Math.round(systemResources.memory_percent || 0)} status="active" size="small" strokeColor="#52c41a" />
               </div>
               <div>
-                <Typography.Text>Disk Usage ({systemResources.used_disk_gb || 0}GB / {systemResources.total_disk_gb || 0}GB)</Typography.Text>
+                <Typography.Text>{t('system.diskUsage')} ({systemResources.used_disk_gb || 0}GB / {systemResources.total_disk_gb || 0}GB)</Typography.Text>
                 <Progress percent={Math.round(systemResources.disk_percent || 0)} status="active" size="small" strokeColor="#fa8c16" />
               </div>
             </Space>

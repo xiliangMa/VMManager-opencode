@@ -69,7 +69,7 @@ const VMs: React.FC = () => {
       render: (ip: string) => ip || '-'
     },
     {
-      title: 'Created At',
+      title: t('detail.createdAt'),
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (date: string) => date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '-'
@@ -87,7 +87,7 @@ const VMs: React.FC = () => {
           <Button type="text" icon={<EditOutlined />} />
           <Popconfirm
             title={t('common.delete')}
-            description="Are you sure to delete this VM?"
+            description={t('popconfirm.deleteVm')}
             onConfirm={() => handleDelete(record.id)}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />

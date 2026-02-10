@@ -18,10 +18,10 @@ const Login: React.FC = () => {
     setLoading(true)
     try {
       await login(values.username, values.password)
-      message.success(t('auth.loginSuccess') || 'Login successful')
+      message.success(t('auth.loginSuccess'))
       navigate(from, { replace: true })
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Login failed')
+      message.error(error.response?.data?.message || t('auth.loginFailed'))
     } finally {
       setLoading(false)
     }
@@ -36,7 +36,7 @@ const Login: React.FC = () => {
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     }}>
       <Card style={{ width: 400, boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: 24 }}>VMManager</h2>
+        <h2 style={{ textAlign: 'center', marginBottom: 24 }}>{t('app.vmManager')}</h2>
         
         <Form
           name="login"
@@ -45,7 +45,7 @@ const Login: React.FC = () => {
         >
           <Form.Item
             name="username"
-            rules={[{ required: true, message: t('auth.username') + ' is required' }]}
+            rules={[{ required: true, message: t('auth.username') + ' ' + t('errors.required') }]}
           >
             <Input 
               prefix={<UserOutlined />} 
@@ -55,7 +55,7 @@ const Login: React.FC = () => {
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: t('auth.password') + ' is required' }]}
+            rules={[{ required: true, message: t('auth.password') + ' ' + t('errors.required') }]}
           >
             <Input.Password 
               prefix={<LockOutlined />} 
