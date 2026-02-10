@@ -197,7 +197,12 @@ export const templatesApi = {
   create: (data: Partial<Template>) =>
     client.post('/templates', data).then(res => res.data),
 
-  update: (id: string, data: Partial<Template>) =>
+  update: (id: string, data: {
+    name?: string;
+    description?: string;
+    is_public?: boolean;
+    is_active?: boolean;
+  }) =>
     client.put(`/templates/${id}`, data).then(res => res.data),
 
   delete: (id: string) =>

@@ -46,8 +46,8 @@ const TemplateEdit: React.FC = () => {
       await templatesApi.update(id, {
         name: values.name,
         description: values.description,
-        isPublic: values.isPublic,
-        isActive: values.isActive
+        is_public: values.isPublic,
+        is_active: values.isActive
       })
       message.success(t('common.success'))
       navigate('/templates')
