@@ -46,33 +46,33 @@ const VMs: React.FC = () => {
     },
     {
       title: t('vm.cpu'),
-      dataIndex: 'cpu_allocated',
+      dataIndex: 'cpuAllocated',
       key: 'cpu',
-      render: (cpu: number) => `${cpu} vCPU`
+      render: (cpu: number) => cpu ? `${cpu} vCPU` : '-'
     },
     {
       title: t('vm.memory'),
-      dataIndex: 'memory_allocated',
+      dataIndex: 'memoryAllocated',
       key: 'memory',
-      render: (memory: number) => `${memory} MB`
+      render: (memory: number) => memory ? `${memory} MB` : '-'
     },
     {
       title: t('vm.disk'),
-      dataIndex: 'disk_allocated',
+      dataIndex: 'diskAllocated',
       key: 'disk',
-      render: (disk: number) => `${disk} GB`
+      render: (disk: number) => disk ? `${disk} GB` : '-'
     },
     {
       title: t('vm.ipAddress'),
-      dataIndex: 'ip_address',
-      key: 'ip_address',
+      dataIndex: 'ipAddress',
+      key: 'ipAddress',
       render: (ip: string) => ip || '-'
     },
     {
       title: 'Created At',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm')
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (date: string) => date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '-'
     },
     {
       title: t('common.edit'),

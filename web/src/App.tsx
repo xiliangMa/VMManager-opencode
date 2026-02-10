@@ -48,11 +48,11 @@ const App: React.FC = () => {
         <Route path="dashboard" element={<SystemDashboard />} />
         <Route path="vms" element={<VMs />} />
         <Route path="vms/create" element={<VMCreate />} />
-        <Route path="vms/:id" element={<VMDetail />} />
         <Route path="vms/:id/edit" element={<VMEdit />} />
         <Route path="vms/:id/console" element={<VMConsole />} />
         <Route path="vms/:id/monitor" element={<Monitor />} />
         <Route path="vms/:id/snapshots" element={<VMSnapshots />} />
+        <Route path="vms/:id" element={<VMDetail />} />
         <Route path="templates" element={<Templates />} />
         <Route path="templates/upload" element={<TemplateUpload />} />
         <Route path="templates/:id/edit" element={<TemplateEdit />} />

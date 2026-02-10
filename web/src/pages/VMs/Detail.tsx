@@ -163,10 +163,10 @@ const VMDetail: React.FC = () => {
       <Card
         title={vm.name}
         extra={
-          <Space>
-            <Button icon={<EditOutlined />} onClick={() => navigate(`/vms/${id}/edit`)}>
-              Edit
-            </Button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <a href={`/vms/${id}/edit`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#1677ff', textDecoration: 'none' }}>
+              <EditOutlined /> Edit
+            </a>
             <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)}>
               {t('console.fullscreen')}
             </Button>
@@ -175,7 +175,7 @@ const VMDetail: React.FC = () => {
                 {t('common.delete')}
               </Button>
             </Popconfirm>
-          </Space>
+          </div>
         }
       >
         <Space style={{ marginBottom: 16 }}>
