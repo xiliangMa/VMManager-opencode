@@ -23,11 +23,7 @@ import { SystemResourceStats, statsApi, systemApi } from '../../api/client'
 
 const { Title } = Typography
 
-const SystemDashboard: React.FC = () => {
-  const { t } = useTranslation()
-  const [stats, setStats] = useState<SystemResourceStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [history, setHistory] = useState<HistoryData>({ cpu: [], memory: [] })
+interface DataPoint {
   time: string
   value: number
 }
@@ -36,6 +32,12 @@ interface HistoryData {
   cpu: DataPoint[]
   memory: DataPoint[]
 }
+
+const SystemDashboard: React.FC = () => {
+  const { t } = useTranslation()
+  const [stats, setStats] = useState<SystemResourceStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [history, setHistory] = useState<HistoryData>({ cpu: [], memory: [] })
 
   const fetchStats = async () => {
     try {
