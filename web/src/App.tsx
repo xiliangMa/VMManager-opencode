@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import VMs from './pages/VMs/List'
 import VMCreate from './pages/VMs/Create'
 import VMDetail from './pages/VMs/Detail'
+import VMEdit from './pages/VMs/Edit'
 import VMConsole from './pages/VMs/Console'
 import Monitor from './pages/VMs/Monitor'
 import VMSnapshots from './pages/VMs/Snapshots'
@@ -48,6 +49,7 @@ const App: React.FC = () => {
         <Route path="vms" element={<VMs />} />
         <Route path="vms/create" element={<VMCreate />} />
         <Route path="vms/:id" element={<VMDetail />} />
+        <Route path="vms/:id/edit" element={<VMEdit />} />
         <Route path="vms/:id/console" element={<VMConsole />} />
         <Route path="vms/:id/monitor" element={<Monitor />} />
         <Route path="vms/:id/snapshots" element={<VMSnapshots />} />

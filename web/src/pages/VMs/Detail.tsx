@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined } from '@ant-design/icons'
 import { vmsApi, VM } from '../../api/client'
 import dayjs from 'dayjs'
 
@@ -164,6 +164,9 @@ const VMDetail: React.FC = () => {
         title={vm.name}
         extra={
           <Space>
+            <Button icon={<EditOutlined />} onClick={() => navigate(`/vms/${id}/edit`)}>
+              Edit
+            </Button>
             <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)}>
               {t('console.fullscreen')}
             </Button>

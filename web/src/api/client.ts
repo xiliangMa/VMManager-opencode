@@ -145,7 +145,11 @@ export const vmsApi = {
   create: (data: CreateVMRequest) =>
     client.post('/vms', data).then(res => res.data),
 
-  update: (id: string, data: Partial<VM>) =>
+  update: (id: string, data: {
+    name?: string;
+    boot_order?: string;
+    autostart?: boolean;
+  }) =>
     client.put(`/vms/${id}`, data).then(res => res.data),
 
   delete: (id: string) =>
