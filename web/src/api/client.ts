@@ -48,9 +48,9 @@ export interface CreateVMRequest {
   name: string
   description?: string
   template_id: string
-  cpu: number
-  memory: number
-  disk: number
+  cpu_allocated: number
+  memory_allocated: number
+  disk_allocated: number
   boot_order?: string
   autostart?: boolean
 }

@@ -45,9 +45,9 @@ const VMCreate: React.FC = () => {
         name: values.name,
         description: values.description,
         template_id: values.template_id,
-        cpu: values.cpu,
-        memory: values.memory,
-        disk: values.disk,
+        cpu_allocated: values.cpu,
+        memory_allocated: values.memory,
+        disk_allocated: values.disk,
         autostart: values.autostart || false,
         boot_order: values.boot_order || 'hd,cdrom,network'
       })
