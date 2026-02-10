@@ -125,12 +125,15 @@ func (m *NotificationManager) sendAlertNotification(
 		Time:         time.Now().Format("2006-01-02 15:04:05"),
 	}
 
-	for _, channel := range rule.NotifyChannels {
+	channels := strings.Split(rule.NotifyChannels, ",")
+	users := strings.Split(rule.NotifyUsers, ",")
+
+	for _, channel := range channels {
 		var notifErr error
 
-		switch strings.ToLower(channel) {
+		switch strings.ToLower(strings.TrimSpace(channel)) {
 		case "email":
-			notifErr = m.sendEmailNotification(data, rule.NotifyUsers)
+			notifErr = m.sendEmailNotification(data, users)
 		case "dingtalk":
 			notifErr = m.dingtalkNotifier.SendAlert(data, "")
 		case "webhook":

@@ -55,12 +55,14 @@ func (r *TemplateRepository) List(ctx context.Context, offset, limit int) ([]mod
 
 	r.db.WithContext(ctx).Model(&models.VMTemplate{}).Count(&total)
 
-	err := r.db.WithContext(ctx).
+	query := r.db.WithContext(ctx).
 		Where("is_active = ?", true).
 		Offset(offset).
-		Limit(limit).
-		Order("created_at DESC").
-		Find(&templates).Error
+		Order("created_at DESC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	err := query.Find(&templates).Error
 
 	return templates, total, err
 }

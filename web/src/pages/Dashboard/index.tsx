@@ -53,7 +53,13 @@ const Dashboard: React.FC = () => {
       ])
 
       if (statsRes.code === 0) {
-        setSystemStats(statsRes.data || {})
+        const data = statsRes.data || {}
+        setSystemStats({
+          vmCount: data.total_vms,
+          runningVmCount: data.running_vms,
+          totalUsers: data.total_users,
+          totalTemplates: data.total_templates,
+        })
       }
 
       if (vmsRes.code === 0) {

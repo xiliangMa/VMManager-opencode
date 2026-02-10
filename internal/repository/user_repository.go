@@ -65,11 +65,13 @@ func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]models.
 
 	r.db.WithContext(ctx).Model(&models.User{}).Count(&total)
 
-	err := r.db.WithContext(ctx).
+	query := r.db.WithContext(ctx).
 		Offset(offset).
-		Limit(limit).
-		Order("created_at DESC").
-		Find(&users).Error
+		Order("created_at DESC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	err := query.Find(&users).Error
 
 	return users, total, err
 }

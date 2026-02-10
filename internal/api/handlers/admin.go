@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"context"
+	"log"
 	"net/http"
 
 	"vmmanager/internal/api/errors"
-	"vmmanager/internal/libvirt"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
 
@@ -286,45 +287,61 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 	}))
 }
 
-func (h *AdminHandler) GetSystemInfo(libvirtClient *libvirt.Client) gin.HandlerFunc {
+func (h *AdminHandler) GetSystemInfo(libvirtClient any) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		info := gin.H{
 			"libvirt_connected": false,
-		}
-
-		if libvirtClient != nil && libvirtClient.IsConnected() {
-			hostInfo, _ := libvirtClient.GetHostInfo()
-			info["libvirt_connected"] = true
-			info["host"] = hostInfo
 		}
 
 		c.JSON(http.StatusOK, errors.Success(info))
 	}
 }
 
-func (h *AdminHandler) GetSystemStats(libvirtClient *libvirt.Client) gin.HandlerFunc {
+func (h *AdminHandler) GetSystemStats(libvirtClient any) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := c.Request.Context()
+		ctx := context.Background()
 
-		users, _, _ := h.userRepo.List(ctx, 0, 0)
+		users, _, err := h.userRepo.List(ctx, 0, 0)
 		totalUsers := int64(len(users))
-
-		vms, _, _ := h.vmRepo.List(ctx, 0, 0)
-		totalVMs := int64(len(vms))
-
-		runningVMs, _ := h.vmRepo.ListByStatus(ctx, "running")
-		runningVMSCount := int64(len(runningVMs))
-
-		templates, _, _ := h.templateRepo.List(ctx, 0, 0)
-		totalTemplates := int64(len(templates))
-
-		stats := gin.H{
-			"total_vms":       totalVMs,
-			"running_vms":     runningVMSCount,
-			"total_users":     totalUsers,
-			"total_templates": totalTemplates,
+		log.Printf("GetSystemStats: users=%d, err=%v", totalUsers, err)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
 
-		c.JSON(http.StatusOK, errors.Success(stats))
+		vms, _, err := h.vmRepo.List(ctx, 0, 0)
+		totalVMs := int64(len(vms))
+		log.Printf("GetSystemStats: vms=%d, err=%v", totalVMs, err)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		runningVMs, err := h.vmRepo.ListByStatus(ctx, "running")
+		runningVMSCount := int64(len(runningVMs))
+		log.Printf("GetSystemStats: runningVMs=%d, err=%v", runningVMSCount, err)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		templates, _, err := h.templateRepo.List(ctx, 0, 0)
+		totalTemplates := int64(len(templates))
+		log.Printf("GetSystemStats: templates=%d, err=%v", totalTemplates, err)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+			"message": "success",
+			"data": gin.H{
+				"total_vms":        totalVMs,
+				"running_vms":      runningVMSCount,
+				"total_users":      totalUsers,
+				"total_templates":  totalTemplates,
+			},
+		})
 	}
 }

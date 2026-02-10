@@ -86,13 +86,15 @@ func (r *VMRepository) List(ctx context.Context, offset, limit int) ([]models.Vi
 
 	r.db.WithContext(ctx).Model(&models.VirtualMachine{}).Count(&total)
 
-	err := r.db.WithContext(ctx).
+	query := r.db.WithContext(ctx).
 		Preload("Owner").
 		Preload("Template").
 		Offset(offset).
-		Limit(limit).
-		Order("created_at DESC").
-		Find(&vms).Error
+		Order("created_at DESC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	err := query.Find(&vms).Error
 
 	return vms, total, err
 }
