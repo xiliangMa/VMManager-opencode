@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Row, Col, Card, Statistic, Progress, Spin, Typography } from 'antd'
 import {
   DesktopOutlined,
@@ -22,7 +23,11 @@ import { SystemResourceStats, statsApi, systemApi } from '../../api/client'
 
 const { Title } = Typography
 
-interface DataPoint {
+const SystemDashboard: React.FC = () => {
+  const { t } = useTranslation()
+  const [stats, setStats] = useState<SystemResourceStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [history, setHistory] = useState<HistoryData>({ cpu: [], memory: [] })
   time: string
   value: number
 }
@@ -31,11 +36,6 @@ interface HistoryData {
   cpu: DataPoint[]
   memory: DataPoint[]
 }
-
-const SystemDashboard: React.FC = () => {
-  const [stats, setStats] = useState<SystemResourceStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [history, setHistory] = useState<HistoryData>({ cpu: [], memory: [] })
 
   const fetchStats = async () => {
     try {
@@ -105,8 +105,8 @@ const SystemDashboard: React.FC = () => {
   }, [])
 
   const pieData = stats ? [
-    { name: 'Used', value: stats.usedCpu },
-    { name: 'Available', value: stats.totalCpu - stats.usedCpu }
+    { name: t('system.used'), value: stats.usedCpu },
+    { name: t('system.available'), value: stats.totalCpu - stats.usedCpu }
   ] : []
 
   const COLORS = ['#1890ff', '#f0f0f0']
@@ -115,18 +115,18 @@ const SystemDashboard: React.FC = () => {
     return (
       <div style={{ textAlign: 'center', padding: 100 }}>
         <Spin size="large" />
-        <p style={{ marginTop: 16 }}>Loading system statistics...</p>
+        <p style={{ marginTop: 16 }}>{t('system.loadingStatistics')}</p>
       </div>
     )
   }
 
   if (!stats) {
-    return <div>Failed to load system statistics</div>
+    return <div>{t('system.failedToLoadStatistics')}</div>
   }
 
   const statCards = [
     {
-      title: 'Total VMs',
+      title: t('system.totalVms'),
       value: stats.vmCount,
       suffix: '',
       icon: <DesktopOutlined />,
@@ -134,7 +134,7 @@ const SystemDashboard: React.FC = () => {
       path: '/vms'
     },
     {
-      title: 'Running VMs',
+      title: t('system.runningVms'),
       value: stats.runningVmCount,
       suffix: `/${stats.vmCount}`,
       icon: <RiseOutlined />,
@@ -142,7 +142,7 @@ const SystemDashboard: React.FC = () => {
       path: '/vms'
     },
     {
-      title: 'Active Users',
+      title: t('system.activeUsers'),
       value: stats.activeUsers,
       suffix: '',
       icon: <TeamOutlined />,
@@ -150,7 +150,7 @@ const SystemDashboard: React.FC = () => {
       path: '/admin/users'
     },
     {
-      title: 'CPU Usage',
+      title: t('system.cpuUsage'),
       value: stats.cpuPercent,
       suffix: '%',
       icon: <ThunderboltOutlined />,
@@ -161,7 +161,7 @@ const SystemDashboard: React.FC = () => {
 
   return (
     <div>
-      <Title level={3}>System Dashboard</Title>
+      <Title level={3}>{t('system.dashboard')}</Title>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {statCards.map((item, index) => (
@@ -181,7 +181,7 @@ const SystemDashboard: React.FC = () => {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={8}>
-          <Card title="CPU Resources" size="small">
+          <Card title={t('system.cpuResources')} size="small">
             <Row align="middle" gutter={16}>
               <Col span={12}>
                 <ResponsiveContainer width="100%" height={150}>
@@ -208,7 +208,7 @@ const SystemDashboard: React.FC = () => {
                   <Typography.Text strong style={{ fontSize: 24 }}>{stats.cpuPercent.toFixed(1)}%</Typography.Text>
                   <br />
                   <Typography.Text type="secondary">
-                    {stats.usedCpu} / {stats.totalCpu} Cores
+                    {stats.usedCpu} / {stats.totalCpu} {t('system.cores')}
                   </Typography.Text>
                 </div>
               </Col>
@@ -216,7 +216,7 @@ const SystemDashboard: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title="Memory Resources" size="small">
+          <Card title={t('system.memoryResources')} size="small">
             <Progress
               percent={stats.memoryPercent}
               strokeColor={stats.memoryPercent > 80 ? '#ff4d4f' : '#722ed1'}
@@ -224,13 +224,13 @@ const SystemDashboard: React.FC = () => {
             />
             <div style={{ marginTop: 16 }}>
               <Typography.Text type="secondary">
-                Used: {(stats.usedMemory / 1024).toFixed(1)} GB / Total: {(stats.totalMemory / 1024).toFixed(1)} GB
+                {t('system.used')}: {(stats.usedMemory / 1024).toFixed(1)} GB / {t('system.available')}: {(stats.totalMemory / 1024).toFixed(1)} GB
               </Typography.Text>
             </div>
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title="Disk Resources" size="small">
+          <Card title={t('system.diskResources')} size="small">
             <Progress
               percent={stats.diskPercent}
               strokeColor={stats.diskPercent > 80 ? '#ff4d4f' : '#fa8c16'}
@@ -238,7 +238,7 @@ const SystemDashboard: React.FC = () => {
             />
             <div style={{ marginTop: 16 }}>
               <Typography.Text type="secondary">
-                Used: {stats.usedDisk} GB / Total: {stats.totalDisk} GB
+                {t('system.used')}: {stats.usedDisk} GB / {t('system.available')}: {stats.totalDisk} GB
               </Typography.Text>
             </div>
           </Card>
@@ -247,7 +247,7 @@ const SystemDashboard: React.FC = () => {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
-          <Card title="CPU Usage Trend" size="small">
+          <Card title={t('system.cpuUsageTrend')} size="small">
             <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={history.cpu}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -275,7 +275,7 @@ const SystemDashboard: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="Memory Usage Trend" size="small">
+          <Card title={t('system.memoryUsageTrend')} size="small">
             <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={history.memory}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
