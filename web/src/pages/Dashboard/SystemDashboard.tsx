@@ -18,7 +18,7 @@ import {
   Pie,
   Cell
 } from 'recharts'
-import { SystemResourceStats, statsApi } from '../../api/client'
+import { SystemResourceStats, statsApi, systemApi } from '../../api/client'
 
 const { Title } = Typography
 
@@ -29,9 +29,34 @@ const SystemDashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await statsApi.getSystemStats()
-      const data = response.data || response
-      setStats(data)
+      const [statsRes, resourcesRes] = await Promise.all([
+        statsApi.getSystemStats().catch(() => ({ code: 0, data: {} })),
+        systemApi.getResources().catch(() => ({ code: 0, data: {} }))
+      ])
+
+      const statsData = statsRes.data || {}
+      const resourcesData = resourcesRes.data || {}
+
+      const cpuPercent = resourcesData.cpu_percent || 0
+      const totalCpu = 8
+      const usedCpu = totalCpu * cpuPercent / 100
+
+      const combinedStats: SystemResourceStats = {
+        totalCpu,
+        usedCpu,
+        cpuPercent,
+        totalMemory: resourcesData.total_memory_mb || 0,
+        usedMemory: resourcesData.used_memory_mb || 0,
+        memoryPercent: resourcesData.memory_percent || 0,
+        totalDisk: resourcesData.total_disk_gb || 0,
+        usedDisk: resourcesData.used_disk_gb || 0,
+        diskPercent: resourcesData.disk_percent || 0,
+        vmCount: statsData.total_vms || 0,
+        runningVmCount: statsData.running_vms || 0,
+        activeUsers: statsData.total_users || 0
+      }
+
+      setStats(combinedStats)
     } catch (error) {
       console.error('Failed to fetch system stats:', error)
     } finally {
