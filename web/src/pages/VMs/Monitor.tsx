@@ -14,6 +14,7 @@ import {
 import { ThunderboltOutlined, CloudOutlined, HddOutlined, RiseOutlined } from '@ant-design/icons'
 import { VMResourceStats, statsApi } from '../../api/client'
 import { useTranslation } from 'react-i18next'
+import i18n from 'i18next'
 
 const { Option } = Select
 

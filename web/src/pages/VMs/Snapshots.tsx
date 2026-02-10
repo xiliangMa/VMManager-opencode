@@ -262,8 +262,8 @@ const VMSnapshots: React.FC = () => {
               {selectedSnapshot.name}
             </Descriptions.Item>
             <Descriptions.Item label={t('table.state')}>
-              <Tag color={getStateColor(selectedSnapshot.state)}>
-                {selectedSnapshot.state?.toUpperCase()}
+              <Tag color={getStateColor(selectedSnapshot.state || '')}>
+                {(selectedSnapshot.state || '').toUpperCase()}
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label={t('table.size')}>
