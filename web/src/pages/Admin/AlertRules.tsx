@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, Table, Button, Tag, Space, Modal, Form, Input, InputNumber, Select, Switch, message, Popconfirm } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, BellOutlined, ReloadOutlined } from '@ant-design/icons'
 import { alertRulesApi, AlertRule } from '../../api/client'
 
 const AlertRules: React.FC = () => {
+  const { t } = useTranslation()
   const [rules, setRules] = useState<AlertRule[]>([])
   const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -24,42 +26,42 @@ const AlertRules: React.FC = () => {
         })
       }
     } catch (error) {
-      message.error('Failed to load alert rules')
+      message.error(t('alert.loadingRules'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     fetchRules()
   }, [fetchRules])
 
   const metricOptions = [
-    { label: 'CPU Usage (%)', value: 'cpu_usage' },
-    { label: 'Memory Usage (%)', value: 'memory_usage' },
-    { label: 'Disk Usage (%)', value: 'disk_usage' },
-    { label: 'Network In (MB/s)', value: 'network_in' },
-    { label: 'Network Out (MB/s)', value: 'network_out' },
-    { label: 'VM Status', value: 'vm_status' }
+    { label: t('metric.cpuUsage'), value: 'cpu_usage' },
+    { label: t('metric.memoryUsage'), value: 'memory_usage' },
+    { label: t('metric.diskUsage'), value: 'disk_usage' },
+    { label: t('metric.networkIn'), value: 'network_in' },
+    { label: t('metric.networkOut'), value: 'network_out' },
+    { label: t('metric.vmStatus'), value: 'vm_status' }
   ]
 
   const conditionOptions = [
-    { label: 'Greater than (>)', value: '>' },
-    { label: 'Less than (<)', value: '<' },
-    { label: 'Equal to (=)', value: '=' },
-    { label: 'Not equal to (!=)', value: '!=' }
+    { label: t('condition.greaterThan'), value: '>' },
+    { label: t('condition.lessThan'), value: '<' },
+    { label: t('condition.equalTo'), value: '=' },
+    { label: t('condition.notEqualTo'), value: '!=' }
   ]
 
   const severityOptions = [
-    { label: 'Critical', value: 'critical', color: 'red' },
-    { label: 'Warning', value: 'warning', color: 'orange' },
-    { label: 'Info', value: 'info', color: 'blue' }
+    { label: t('severity.critical'), value: 'critical', color: 'red' },
+    { label: t('severity.warning'), value: 'warning', color: 'orange' },
+    { label: t('severity.info'), value: 'info', color: 'blue' }
   ]
 
   const channelOptions = [
-    { label: 'Email', value: 'email' },
-    { label: 'DingTalk', value: 'dingtalk' },
-    { label: 'Webhook', value: 'webhook' }
+    { label: t('channel.email'), value: 'email' },
+    { label: t('channel.dingTalk'), value: 'dingtalk' },
+    { label: t('channel.webhook'), value: 'webhook' }
   ]
 
   const handleAdd = () => {
@@ -80,10 +82,10 @@ const AlertRules: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await alertRulesApi.delete(id)
-      message.success('Alert rule deleted')
+      message.success(t('alert.ruleDeleted'))
       fetchRules(pagination.current, pagination.pageSize)
     } catch (error) {
-      message.error('Failed to delete alert rule')
+      message.error(t('alert.failedToDeleteRule'))
     }
   }
 
@@ -91,25 +93,25 @@ const AlertRules: React.FC = () => {
     try {
       if (editingRule) {
         await alertRulesApi.update(editingRule.id, values)
-        message.success('Alert rule updated')
+        message.success(t('alert.ruleUpdated'))
       } else {
         await alertRulesApi.create(values)
-        message.success('Alert rule created')
+        message.success(t('alert.ruleCreated'))
       }
       setIsModalOpen(false)
       fetchRules(pagination.current, pagination.pageSize)
     } catch (error) {
-      message.error('Failed to save alert rule')
+      message.error(t('alert.failedToSaveRule'))
     }
   }
 
   const handleToggle = async (id: string) => {
     try {
       await alertRulesApi.toggle(id)
-      message.success('Alert rule status updated')
+      message.success(t('alert.ruleStatusUpdated'))
       fetchRules(pagination.current, pagination.pageSize)
     } catch (error) {
-      message.error('Failed to update alert rule')
+      message.error(t('alert.failedToUpdateRuleStatus'))
     }
   }
 
@@ -119,12 +121,12 @@ const AlertRules: React.FC = () => {
 
   const columns = [
     {
-      title: 'Name',
+      title: t('alerts.ruleName'),
       dataIndex: 'name',
       key: 'name'
     },
     {
-      title: 'Metric',
+      title: t('alerts.metric'),
       dataIndex: 'metric',
       key: 'metric',
       render: (metric: string) => {
@@ -133,20 +135,20 @@ const AlertRules: React.FC = () => {
       }
     },
     {
-      title: 'Condition',
+      title: t('alerts.condition'),
       key: 'condition',
       render: (_: any, record: AlertRule) => (
         <span>{record.metric} {record.condition} {record.threshold}</span>
       )
     },
     {
-      title: 'Duration',
+      title: t('alerts.duration'),
       dataIndex: 'duration',
       key: 'duration',
-      render: (duration: number) => `${duration} min`
+      render: (duration: number) => `${duration} ${t('unit.minutes')}`
     },
     {
-      title: 'Severity',
+      title: t('alerts.severity'),
       dataIndex: 'severity',
       key: 'severity',
       render: (severity: string) => {
@@ -155,7 +157,7 @@ const AlertRules: React.FC = () => {
       }
     },
     {
-      title: 'Channels',
+      title: t('alerts.notifyChannels'),
       dataIndex: 'notifyChannels',
       key: 'notifyChannels',
       render: (channels: string[]) => (
@@ -167,20 +169,20 @@ const AlertRules: React.FC = () => {
       )
     },
     {
-      title: 'Status',
+      title: t('alerts.status'),
       dataIndex: 'enabled',
       key: 'enabled',
       render: (enabled: boolean, record: AlertRule) => (
         <Switch
           checked={enabled}
           onChange={() => handleToggle(record.id)}
-          checkedChildren="On"
-          unCheckedChildren="Off"
+          checkedChildren={t('option.on')}
+          unCheckedChildren={t('option.off')}
         />
       )
     },
     {
-      title: 'Actions',
+      title: t('table.action'),
       key: 'actions',
       render: (_: any, record: AlertRule) => (
         <Space>
@@ -190,7 +192,7 @@ const AlertRules: React.FC = () => {
             onClick={() => handleEdit(record)}
           />
           <Popconfirm
-            title="Delete this alert rule?"
+            title={t('popconfirm.deleteRule')}
             onConfirm={() => handleDelete(record.id)}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />
@@ -206,16 +208,16 @@ const AlertRules: React.FC = () => {
         title={
           <Space>
             <BellOutlined />
-            Alert Rules
+            {t('alerts.alertRules')}
           </Space>
         }
         extra={
           <Space>
             <Button icon={<ReloadOutlined />} onClick={() => fetchRules()}>
-              Refresh
+              {t('common.refresh')}
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              Add Rule
+              {t('alerts.createAlertRule')}
             </Button>
           </Space>
         }
@@ -231,7 +233,7 @@ const AlertRules: React.FC = () => {
       </Card>
 
       <Modal
-        title={editingRule ? 'Edit Alert Rule' : 'Add Alert Rule'}
+        title={editingRule ? t('alerts.editAlertRule') : t('alerts.createAlertRule')}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
@@ -244,42 +246,42 @@ const AlertRules: React.FC = () => {
         >
           <Form.Item
             name="name"
-            label="Rule Name"
-            rules={[{ required: true, message: 'Please enter rule name' }]}
+            label={t('alerts.ruleName')}
+            rules={[{ required: true, message: t('validation.pleaseEnterRuleName') }]}
           >
-            <Input placeholder="e.g., High CPU Usage" />
+            <Input placeholder={t('placeholder.ruleName')} />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label="Description"
+            label={t('form.description')}
           >
-            <Input.TextArea placeholder="Optional description" rows={2} />
+            <Input.TextArea placeholder={t('placeholder.optionalDescription')} rows={2} />
           </Form.Item>
 
           <Space style={{ width: '100%' }} size={16}>
             <Form.Item
               name="metric"
-              label="Metric"
-              rules={[{ required: true, message: 'Please select metric' }]}
+              label={t('alerts.metric')}
+              rules={[{ required: true, message: t('validation.pleaseSelectMetric') }]}
               style={{ flex: 1 }}
             >
-              <Select placeholder="Select metric" options={metricOptions} />
+              <Select placeholder={t('placeholder.selectMetric')} options={metricOptions} />
             </Form.Item>
 
             <Form.Item
               name="condition"
-              label="Condition"
-              rules={[{ required: true, message: 'Please select condition' }]}
+              label={t('alerts.condition')}
+              rules={[{ required: true, message: t('validation.pleaseSelectCondition') }]}
               style={{ flex: 1 }}
             >
-              <Select placeholder="Select condition" options={conditionOptions} />
+              <Select placeholder={t('placeholder.selectCondition')} options={conditionOptions} />
             </Form.Item>
 
             <Form.Item
               name="threshold"
-              label="Threshold"
-              rules={[{ required: true, message: 'Please enter threshold' }]}
+              label={t('alerts.threshold')}
+              rules={[{ required: true, message: t('validation.pleaseEnterThreshold') }]}
               style={{ flex: 1 }}
             >
               <InputNumber placeholder="Value" style={{ width: '100%' }} />
@@ -288,28 +290,28 @@ const AlertRules: React.FC = () => {
 
           <Form.Item
             name="duration"
-            label="Duration (minutes)"
-            rules={[{ required: true, message: 'Please enter duration' }]}
+            label={`${t('alerts.duration')} (${t('unit.minutes')})`}
+            rules={[{ required: true, message: t('validation.pleaseEnterDuration') }]}
           >
             <InputNumber min={1} max={60} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="severity"
-            label="Severity"
-            rules={[{ required: true, message: 'Please select severity' }]}
+            label={t('alerts.severity')}
+            rules={[{ required: true, message: t('validation.pleaseSelectSeverity') }]}
           >
-            <Select placeholder="Select severity" options={severityOptions} />
+            <Select placeholder={t('placeholder.selectSeverity')} options={severityOptions} />
           </Form.Item>
 
           <Form.Item
             name="notifyChannels"
-            label="Notification Channels"
-            rules={[{ required: true, message: 'Please select channels' }]}
+            label={t('alerts.notifyChannels')}
+            rules={[{ required: true, message: t('validation.pleaseSelectChannels') }]}
           >
             <Select
               mode="multiple"
-              placeholder="Select channels"
+              placeholder={t('placeholder.selectChannels')}
               options={channelOptions}
             />
           </Form.Item>
@@ -317,10 +319,10 @@ const AlertRules: React.FC = () => {
           <Form.Item>
             <Space>
               <Button type="primary" htmlType="submit">
-                {editingRule ? 'Update' : 'Create'}
+                {editingRule ? t('button.update') : t('button.create')}
               </Button>
               <Button onClick={() => setIsModalOpen(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </Space>
           </Form.Item>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Table, Button, Tag, Space, Modal, Form, Input, message, Popconfirm, Empty, Tooltip, Descriptions } from 'antd'
 import { PlusOutlined, DeleteOutlined, RestOutlined, CloudUploadOutlined } from '@ant-design/icons'
 import { snapshotsApi, VMSnapshot } from '../../api/client'
 
 const VMSnapshots: React.FC = () => {
+  const { t } = useTranslation()
   const { id: vmId } = useParams()
   const navigate = useNavigate()
 
@@ -24,11 +26,11 @@ const VMSnapshots: React.FC = () => {
         setSnapshots(response.data || [])
       }
     } catch (error) {
-      message.error('Failed to load snapshots')
+      message.error(t('alert.loadingSnapshots'))
     } finally {
       setLoading(false)
     }
-  }, [vmId])
+  }, [vmId, t])
 
   useEffect(() => {
     fetchSnapshots()
@@ -43,11 +45,11 @@ const VMSnapshots: React.FC = () => {
     if (!vmId) return
     try {
       await snapshotsApi.create(vmId, values)
-      message.success('Snapshot created successfully')
+      message.success(t('alert.snapshotCreatedSuccessfully'))
       setIsModalOpen(false)
       fetchSnapshots()
     } catch (error) {
-      message.error('Failed to create snapshot')
+      message.error(t('alert.failedToCreateSnapshot'))
     }
   }
 
@@ -55,10 +57,10 @@ const VMSnapshots: React.FC = () => {
     if (!vmId) return
     try {
       await snapshotsApi.restore(vmId, snapshot.name)
-      message.success(`Restoring to snapshot: ${snapshot.name}`)
+      message.success(`${t('alert.restoringTo')} ${snapshot.name}`)
       fetchSnapshots()
     } catch (error) {
-      message.error('Failed to restore snapshot')
+      message.error(t('alert.failedToRestoreSnapshot'))
     }
   }
 
@@ -66,10 +68,10 @@ const VMSnapshots: React.FC = () => {
     if (!vmId) return
     try {
       await snapshotsApi.delete(vmId, snapshot.name)
-      message.success('Snapshot deleted')
+      message.success(t('alert.snapshotDeletedSuccessfully'))
       fetchSnapshots()
     } catch (error) {
-      message.error('Failed to delete snapshot')
+      message.error(t('alert.failedToDeleteSnapshot'))
     }
   }
 
@@ -97,7 +99,7 @@ const VMSnapshots: React.FC = () => {
 
   const columns = [
     {
-      title: 'Name',
+      title: t('table.name'),
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record: VMSnapshot) => (
@@ -107,7 +109,7 @@ const VMSnapshots: React.FC = () => {
       )
     },
     {
-      title: 'State',
+      title: t('table.state'),
       dataIndex: 'state',
       key: 'state',
       render: (state: string) => (
@@ -117,23 +119,23 @@ const VMSnapshots: React.FC = () => {
       )
     },
     {
-      title: 'Size',
+      title: t('table.size'),
       dataIndex: 'size',
       key: 'size',
       render: (size: number) => formatSize(size)
     },
     {
-      title: 'Created',
+      title: t('table.created'),
       dataIndex: 'created_at',
       key: 'created_at',
       render: (time: string) => new Date(time).toLocaleString()
     },
     {
-      title: 'Actions',
+      title: t('table.action'),
       key: 'actions',
       render: (_: any, record: VMSnapshot) => (
         <Space>
-          <Tooltip title="Restore">
+          <Tooltip title={t('snapshot.restoreSnapshot')}>
             <Button
               type="text"
               icon={<RestOutlined />}
@@ -141,11 +143,11 @@ const VMSnapshots: React.FC = () => {
             />
           </Tooltip>
           <Popconfirm
-            title="Delete this snapshot?"
-            description="This action cannot be undone."
+            title={t('popconfirm.deleteSnapshot')}
+            description={t('message.actionCannotBeUndone')}
             onConfirm={() => handleDelete(record)}
           >
-            <Tooltip title="Delete">
+            <Tooltip title={t('common.delete')}>
               <Button type="text" danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
@@ -160,25 +162,25 @@ const VMSnapshots: React.FC = () => {
         title={
           <Space>
             <Button icon={<CloudUploadOutlined />} onClick={() => navigate(`/vms/${vmId}`)}>
-              Back
+              {t('common.back')}
             </Button>
-            VM Snapshots
+            {t('vm.snapshots')}
             <Tag color="blue">{snapshots.length}</Tag>
           </Space>
         }
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Create Snapshot
+            {t('snapshot.createSnapshot')}
           </Button>
         }
       >
         {snapshots.length === 0 ? (
           <Empty
-            description="No snapshots available"
+            description={t('snapshot.noSnapshots')}
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           >
             <Button type="primary" onClick={handleCreate}>
-              Create First Snapshot
+              {t('snapshot.createSnapshot')}
             </Button>
           </Empty>
         ) : (
@@ -193,7 +195,7 @@ const VMSnapshots: React.FC = () => {
       </Card>
 
       <Modal
-        title="Create Snapshot"
+        title={t('snapshot.createSnapshot')}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
@@ -205,14 +207,22 @@ const VMSnapshots: React.FC = () => {
         >
           <Form.Item
             name="name"
-            label="Snapshot Name"
+            label={t('snapshot.name')}
             rules={[
-              { required: true, message: 'Please enter snapshot name' },
-              { pattern: /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/, message: 'Name can only contain letters, numbers, hyphens and underscores' }
+              { required: true, message: t('alert.pleaseEnterName') },
+              { pattern: /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/, message: t('alert.namePattern') }
             ]}
-            extra="Unique identifier for this snapshot"
+            extra={t('helper.uniqueIdentifier')}
           >
-            <Input placeholder="e.g., before-upgrade-2024" />
+            <Input placeholder={t('placeholder.ruleName')} />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label={t('snapshot.description')}
+            extra={t('placeholder.snapshotDescription')}
+          >
+            <Input.TextArea rows={3} placeholder={t('placeholder.snapshotDescription')} />
           </Form.Item>
 
           <Form.Item
@@ -237,37 +247,30 @@ const VMSnapshots: React.FC = () => {
       </Modal>
 
       <Modal
-        title="Snapshot Details"
+        title={t('snapshot.createSnapshot')}
         open={isDetailOpen}
         onCancel={() => setIsDetailOpen(false)}
-        footer={[
-          <Button key="restore" type="primary" icon={<RestOutlined />} onClick={() => {
-            if (selectedSnapshot) {
-              handleRestore(selectedSnapshot)
-              setIsDetailOpen(false)
-            }
-          }}>
-            Restore
-          </Button>,
-          <Button key="close" onClick={() => setIsDetailOpen(false)}>
-            Close
+        footer={
+          <Button onClick={() => setIsDetailOpen(false)}>
+            {t('common.close')}
           </Button>
-        ]}
+        }
       >
         {selectedSnapshot && (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="Name">{selectedSnapshot.name}</Descriptions.Item>
-            <Descriptions.Item label="State">
-              <Tag color={getStateColor(selectedSnapshot.state || '')}>
-                {selectedSnapshot.state?.toUpperCase() || 'UNKNOWN'}
+          <Descriptions column={1}>
+            <Descriptions.Item label={t('table.name')}>
+              {selectedSnapshot.name}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('table.state')}>
+              <Tag color={getStateColor(selectedSnapshot.state)}>
+                {selectedSnapshot.state?.toUpperCase()}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="Size">{formatSize(selectedSnapshot.size)}</Descriptions.Item>
-            <Descriptions.Item label="Created">
-              {new Date(selectedSnapshot.created_at).toLocaleString()}
+            <Descriptions.Item label={t('table.size')}>
+              {formatSize(selectedSnapshot.size)}
             </Descriptions.Item>
-            <Descriptions.Item label="Updated">
-              {selectedSnapshot.updated_at ? new Date(selectedSnapshot.updated_at).toLocaleString() : '-'}
+            <Descriptions.Item label={t('table.created')}>
+              {new Date(selectedSnapshot.created_at).toLocaleString()}
             </Descriptions.Item>
           </Descriptions>
         )}
