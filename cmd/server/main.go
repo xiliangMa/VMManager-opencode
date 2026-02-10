@@ -17,11 +17,14 @@ import (
 	"vmmanager/internal/api/errors"
 	"vmmanager/internal/api/routes"
 	"vmmanager/internal/database"
+	"vmmanager/internal/i18n"
 	"vmmanager/internal/libvirt"
 	"vmmanager/internal/middleware"
 	"vmmanager/internal/repository"
 	"vmmanager/internal/tasks"
 	"vmmanager/internal/websocket"
+
+	apimiddleware "vmmanager/internal/api/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -54,6 +57,8 @@ func main() {
 		log.Printf("Warning: Failed to seed database: %v", err)
 	}
 
+	i18n.GetInstance()
+
 	repos := repository.NewRepositories(db)
 
 	libvirtClient, err := libvirt.NewClient(cfg.Libvirt.URI)
@@ -77,6 +82,7 @@ func main() {
 
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())
+	router.Use(apimiddleware.I18n())
 	router.Use(middleware.MetricsMiddleware())
 	router.Use(errors.Recovery())
 	router.Use(errors.ErrorHandler())

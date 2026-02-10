@@ -49,7 +49,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 
 	users, total, err := h.userRepo.List(ctx, (page-1)*pageSize, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch users", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_fetch_users"), err.Error()))
 		return
 	}
 
@@ -82,7 +82,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -90,7 +90,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 
 	existingUser, _ := h.userRepo.FindByUsername(ctx, req.Username)
 	if existingUser != nil {
-		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, "username already exists", req.Username))
+		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, t(c, "username_already_exists"), req.Username))
 		return
 	}
 
@@ -109,7 +109,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Create(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to create user", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_create_user"), err.Error()))
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), id))
 		return
 	}
 
@@ -153,7 +153,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), id))
 		return
 	}
 
@@ -164,7 +164,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -179,7 +179,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Update(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update user", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_user"), err.Error()))
 		return
 	}
 
@@ -197,12 +197,12 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 
 	_, err := h.userRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), id))
 		return
 	}
 
 	if err := h.userRepo.Delete(ctx, id); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to delete user", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_delete_user"), err.Error()))
 		return
 	}
 
@@ -221,12 +221,12 @@ func (h *AdminHandler) UpdateUserQuota(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
 	if err := h.userRepo.UpdateQuota(ctx, id, req.CPU, req.Memory, req.Disk, req.VMCount); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update quota", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_quota"), err.Error()))
 		return
 	}
 
@@ -246,7 +246,7 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), id))
 		return
 	}
 
@@ -255,13 +255,13 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
 	user.Role = req.Role
 	if err := h.userRepo.Update(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update role", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_role"), err.Error()))
 		return
 	}
 
@@ -279,7 +279,7 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 
 	logs, total, err := h.auditRepo.List(ctx, (page-1)*pageSize, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch audit logs", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_fetch_audit_logs"), err.Error()))
 		return
 	}
 

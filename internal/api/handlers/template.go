@@ -89,7 +89,7 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch templates", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_fetch_templates"), err.Error()))
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *TemplateHandler) GetTemplate(c *gin.Context) {
 
 	template, err := h.templateRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeTemplateNotFound, "template not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeTemplateNotFound, t(c, "template_not_found_id"), id))
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -170,7 +170,7 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 	}
 
 	if err := h.templateRepo.Create(ctx, template); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to create template", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_create_template"), err.Error()))
 		return
 	}
 
@@ -183,7 +183,7 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 
 	template, err := h.templateRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeTemplateNotFound, "template not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeTemplateNotFound, t(c, "template_not_found_id"), id))
 		return
 	}
 
@@ -196,7 +196,7 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -209,7 +209,7 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 	template.IsActive = req.IsActive
 
 	if err := h.templateRepo.Update(ctx, template); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update template", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_template"), err.Error()))
 		return
 	}
 
@@ -222,12 +222,12 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 
 	_, err := h.templateRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeTemplateNotFound, "template not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeTemplateNotFound, t(c, "template_not_found_id"), id))
 		return
 	}
 
 	if err := h.templateRepo.Delete(ctx, id); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to delete template", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_delete_template"), err.Error()))
 		return
 	}
 
@@ -287,19 +287,19 @@ func (h *TemplateHandler) InitTemplateUpload(c *gin.Context) {
 
 	var req InitUploadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
 	if !h.config.AllowedFormats[strings.ToLower(req.Format)] {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid format", fmt.Sprintf("allowed: %v", getAllowedFormats())))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "invalid_format"), fmt.Sprintf("allowed: %v", getAllowedFormats())))
 		return
 	}
 
 	uploadUUID := uuid.New()
 	uploadDir := filepath.Join(h.config.UploadPath, "templates", uploadUUID.String())
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, "failed to create upload directory", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_upload_directory"), err.Error()))
 		return
 	}
 
@@ -341,7 +341,7 @@ func getAllowedFormats() []string {
 func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
 	uploadID := c.Query("upload_id")
 	if uploadID == "" {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "upload_id is required", ""))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "upload_id_required"), ""))
 		return
 	}
 
@@ -349,57 +349,57 @@ func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
 	totalChunksStr := c.Query("total_chunks")
 
 	if chunkIndexStr == "" || totalChunksStr == "" {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "chunk_index and total_chunks are required", ""))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "chunk_index_and_total_chunks_required"), ""))
 		return
 	}
 
 	chunkIndex, err := strconv.Atoi(chunkIndexStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid chunk_index", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "invalid_chunk_index"), err.Error()))
 		return
 	}
 
 	totalChunks, err := strconv.Atoi(totalChunksStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid total_chunks", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "invalid_total_chunks"), err.Error()))
 		return
 	}
 
 	ctx := c.Request.Context()
 	upload, err := h.uploadRepo.FindByID(ctx, uploadID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, "upload not found", uploadID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, t(c, "upload_not_found"), uploadID))
 		return
 	}
 
 	if upload.Status != "uploading" {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeConflict, "upload is not in uploading status", upload.Status))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeConflict, t(c, "upload_is_not_in_uploading_status"), upload.Status))
 		return
 	}
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "failed to read file", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "failed_to_read_file"), err.Error()))
 		return
 	}
 	defer file.Close()
 
 	if header.Size > h.config.MaxPartSize {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "file chunk too large", fmt.Sprintf("max: %d", h.config.MaxPartSize)))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "file_chunk_too_large"), fmt.Sprintf("max: %d", h.config.MaxPartSize)))
 		return
 	}
 
 	chunkPath := filepath.Join(upload.UploadPath, fmt.Sprintf("chunk_%06d", chunkIndex))
 	dst, err := os.Create(chunkPath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, "failed to create chunk file", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_chunk_file"), err.Error()))
 		return
 	}
 	defer dst.Close()
 
 	written, err := io.Copy(dst, file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, "failed to write chunk", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_write_chunk"), err.Error()))
 		return
 	}
 
@@ -420,18 +420,18 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 
 	upload, err := h.uploadRepo.FindByID(ctx, uploadID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, "upload not found", uploadID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, t(c, "upload_not_found"), uploadID))
 		return
 	}
 
 	if upload.Status != "uploading" {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeConflict, "upload is not in uploading status", upload.Status))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeConflict, t(c, "upload_is_not_in_uploading_status"), upload.Status))
 		return
 	}
 
 	var req CompleteUploadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -440,19 +440,19 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 
 	if err := h.mergeChunks(uploadDir, finalPath, req.TotalChunks); err != nil {
 		h.uploadRepo.UpdateStatusWithError(ctx, uploadID, "failed", err.Error())
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, "failed to merge chunks", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_merge_chunks"), err.Error()))
 		return
 	}
 
 	fileInfo, err := os.Stat(finalPath)
 	if err != nil || fileInfo.Size() != upload.FileSize {
 		h.uploadRepo.UpdateStatusWithError(ctx, uploadID, "failed", "file size mismatch")
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeConflict, "file size verification failed", fmt.Sprintf("expected: %d, got: %d", upload.FileSize, fileInfo.Size())))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeConflict, t(c, "file_size_verification_failed"), fmt.Sprintf("expected: %d, got: %d", upload.FileSize, fileInfo.Size())))
 		return
 	}
 
 	if err := h.uploadRepo.Complete(ctx, uploadID); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to complete upload", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_complete_upload"), err.Error()))
 		return
 	}
 
@@ -486,7 +486,7 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 
 	if err := h.templateRepo.Create(ctx, template); err != nil {
 		h.uploadRepo.UpdateStatusWithError(ctx, uploadID, "failed", err.Error())
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to create template", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_create_template"), err.Error()))
 		return
 	}
 
@@ -530,12 +530,12 @@ func (h *TemplateHandler) AbortUpload(c *gin.Context) {
 
 	upload, err := h.uploadRepo.FindByID(ctx, uploadID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, "upload not found", uploadID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, t(c, "upload_not_found"), uploadID))
 		return
 	}
 
 	if err := h.uploadRepo.UpdateStatus(ctx, uploadID, "aborted"); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to abort upload", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_abort_upload"), err.Error()))
 		return
 	}
 
@@ -550,7 +550,7 @@ func (h *TemplateHandler) GetUploadStatus(c *gin.Context) {
 
 	upload, err := h.uploadRepo.FindByID(ctx, uploadID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, "upload not found", uploadID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, t(c, "upload_not_found"), uploadID))
 		return
 	}
 

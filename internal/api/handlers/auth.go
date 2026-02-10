@@ -75,7 +75,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -83,13 +83,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	existingUser, _ := h.userRepo.FindByUsername(ctx, req.Username)
 	if existingUser != nil {
-		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, "username already exists", req.Username))
+		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, t(c, "username_already_exists"), req.Username))
 		return
 	}
 
 	existingEmail, _ := h.userRepo.FindByEmail(ctx, req.Email)
 	if existingEmail != nil {
-		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, "email already exists", req.Email))
+		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeUserExists, t(c, "email_already_exists"), req.Email))
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Create(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to create user", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_create_user"), err.Error()))
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -141,17 +141,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	user, err := h.userRepo.FindByUsername(ctx, req.Username)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, "invalid credentials", "user not found"))
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, t(c, "invalid_request"), "user not found"))
 		return
 	}
 
 	if !user.IsActive {
-		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeForbidden, "account is disabled", "user is not active"))
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "account_is_disabled"), "user is not active"))
 		return
 	}
 
 	if !verifyPassword(user.PasswordHash, req.Password) {
-		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, "invalid credentials", "wrong password"))
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, t(c, "invalid_request"), t(c, "wrong_password")))
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, userID.(string))
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", userID.(string)))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), userID.(string)))
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, userID.(string))
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", userID.(string)))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), userID.(string)))
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -250,7 +250,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Update(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update profile", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_user"), err.Error()))
 		return
 	}
 
@@ -270,13 +270,13 @@ func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, userID.(string))
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", userID.(string)))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), userID.(string)))
 		return
 	}
 
 	file, err := c.FormFile("avatar")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "avatar file required", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "avatar_file_required"), err.Error()))
 		return
 	}
 
@@ -286,24 +286,24 @@ func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 		"image/gif":  true,
 	}
 	if !allowedTypes[file.Header.Get("Content-Type")] {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid file type", "only jpeg, png, gif allowed"))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "invalid_file_type"), t(c, "only_jpeg_png_gif_allowed")))
 		return
 	}
 
 	if file.Size > 2*1024*1024 {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "file too large", "max 2MB"))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "file_too_large"), t(c, "max_2mb")))
 		return
 	}
 
 	avatarURL := "/uploads/avatars/" + user.ID.String() + "_" + file.Filename
 	if err := c.SaveUploadedFile(file, "."+avatarURL); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to save avatar", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_save_avatar"), err.Error()))
 		return
 	}
 
 	user.AvatarURL = avatarURL
 	if err := h.userRepo.Update(ctx, user); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update avatar", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_avatar"), err.Error()))
 		return
 	}
 
@@ -318,7 +318,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -327,7 +327,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	})
 
 	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, "invalid refresh token", err.Error()))
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, t(c, "invalid_refresh_token"), err.Error()))
 		return
 	}
 
@@ -337,7 +337,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	ctx := c.Request.Context()
 	user, err := h.userRepo.FindByID(ctx, userID)
 	if err != nil || !user.IsActive {
-		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found or disabled", userID))
+		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found_or_disabled"), userID))
 		return
 	}
 

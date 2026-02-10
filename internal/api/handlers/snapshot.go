@@ -37,18 +37,18 @@ func (h *SnapshotHandler) CreateSnapshot(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
 	var req CreateSnapshotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -69,12 +69,12 @@ func (h *SnapshotHandler) ListSnapshots(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
@@ -92,12 +92,12 @@ func (h *SnapshotHandler) GetSnapshot(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
@@ -117,23 +117,23 @@ func (h *SnapshotHandler) RestoreSnapshot(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
 	var req RestoreSnapshotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, vmID, "running"); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to restore snapshot", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_restore_snapshot"), err.Error()))
 		return
 	}
 
@@ -154,12 +154,12 @@ func (h *SnapshotHandler) DeleteSnapshot(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", vmID))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), vmID))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 

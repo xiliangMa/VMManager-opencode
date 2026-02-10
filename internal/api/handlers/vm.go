@@ -62,7 +62,7 @@ func (h *VMHandler) ListVMs(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch VMs", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_fetch_vms"), err.Error()))
 		return
 	}
 
@@ -84,12 +84,12 @@ func (h *VMHandler) GetVM(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -121,23 +121,23 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 
 	user, err := h.userRepo.FindByID(ctx, userUUID.String())
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, "user not found", userUUID.String()))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), userUUID.String()))
 		return
 	}
 
 	vmCount, _ := h.vmRepo.CountByOwner(ctx, userUUID.String())
 	if user.QuotaVMCount > 0 && int(vmCount) >= user.QuotaVMCount {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, "VM quota exceeded", fmt.Sprintf("current: %d, limit: %d", vmCount, user.QuotaVMCount)))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "vm_quota_exceeded"), fmt.Sprintf("current: %d, limit: %d", vmCount, user.QuotaVMCount)))
 		return
 	}
 
 	if req.CPUAllocated > user.QuotaCPU {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, "CPU quota exceeded", fmt.Sprintf("requested: %d, limit: %d", req.CPUAllocated, user.QuotaCPU)))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "cpu_quota_exceeded"), fmt.Sprintf("requested: %d, limit: %d", req.CPUAllocated, user.QuotaCPU)))
 		return
 	}
 
 	if req.MemoryAllocated > user.QuotaMemory {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, "memory quota exceeded", fmt.Sprintf("requested: %d, limit: %d", req.MemoryAllocated, user.QuotaMemory)))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "memory_quota_exceeded"), fmt.Sprintf("requested: %d, limit: %d", req.MemoryAllocated, user.QuotaMemory)))
 		return
 	}
 
@@ -166,7 +166,7 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	}
 
 	if err := h.vmRepo.Create(ctx, &vm); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to create VM", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_create_vm"), err.Error()))
 		return
 	}
 
@@ -183,12 +183,12 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
@@ -201,7 +201,7 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, "validation error", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
 		return
 	}
 
@@ -220,7 +220,7 @@ func (h *VMHandler) UpdateVM(c *gin.Context) {
 	}
 
 	if err := h.vmRepo.Update(ctx, vm); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update VM", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm"), err.Error()))
 		return
 	}
 
@@ -237,17 +237,17 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
 	if err := h.vmRepo.Delete(ctx, id); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to delete VM", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "vm_deleted"), err.Error()))
 		return
 	}
 
@@ -287,17 +287,17 @@ func (h *VMHandler) updateVMStatus(id string, c *gin.Context, status string) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, status); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to update VM status", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
 		return
 	}
 
@@ -317,12 +317,12 @@ func (h *VMHandler) GetConsole(c *gin.Context) {
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, "VM not found", id))
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
 		return
 	}
 
 	if role != "admin" && vm.OwnerID != userUUID {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, "permission denied", "not VM owner"))
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
 		return
 	}
 
@@ -347,13 +347,13 @@ func (h *VMHandler) GetVMStats(c *gin.Context) {
 
 	vmUUID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, "invalid VM ID", err.Error()))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "invalid_vm_id"), err.Error()))
 		return
 	}
 
 	stats, err := h.statsRepo.FindByVMID(ctx, vmUUID.String(), 100)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, "failed to fetch VM stats", err.Error()))
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_fetch_vm_stats"), err.Error()))
 		return
 	}
 
