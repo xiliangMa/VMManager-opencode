@@ -22,10 +22,20 @@ import { SystemResourceStats, statsApi, systemApi } from '../../api/client'
 
 const { Title } = Typography
 
+interface DataPoint {
+  time: string
+  value: number
+}
+
+interface HistoryData {
+  cpu: DataPoint[]
+  memory: DataPoint[]
+}
+
 const SystemDashboard: React.FC = () => {
   const [stats, setStats] = useState<SystemResourceStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [history, setHistory] = useState<any>({ cpu: [], memory: [] })
+  const [history, setHistory] = useState<HistoryData>({ cpu: [], memory: [] })
 
   const fetchStats = async () => {
     try {
@@ -40,6 +50,7 @@ const SystemDashboard: React.FC = () => {
       const cpuPercent = resourcesData.cpu_percent || 0
       const totalCpu = 8
       const usedCpu = totalCpu * cpuPercent / 100
+      const memoryPercent = resourcesData.memory_percent || 0
 
       const combinedStats: SystemResourceStats = {
         totalCpu,
@@ -47,7 +58,7 @@ const SystemDashboard: React.FC = () => {
         cpuPercent,
         totalMemory: resourcesData.total_memory_mb || 0,
         usedMemory: resourcesData.used_memory_mb || 0,
-        memoryPercent: resourcesData.memory_percent || 0,
+        memoryPercent,
         totalDisk: resourcesData.total_disk_gb || 0,
         usedDisk: resourcesData.used_disk_gb || 0,
         diskPercent: resourcesData.disk_percent || 0,
@@ -57,6 +68,11 @@ const SystemDashboard: React.FC = () => {
       }
 
       setStats(combinedStats)
+
+      setHistory((prev: HistoryData) => ({
+        cpu: [...prev.cpu.slice(1), { time: new Date().toLocaleTimeString(), value: cpuPercent }],
+        memory: [...prev.memory.slice(1), { time: new Date().toLocaleTimeString(), value: memoryPercent }]
+      }))
     } catch (error) {
       console.error('Failed to fetch system stats:', error)
     } finally {
@@ -65,16 +81,27 @@ const SystemDashboard: React.FC = () => {
   }
 
   useEffect(() => {
-    const cpuHistory = Array.from({ length: 20 }, (_, i) => ({
-      time: new Date(Date.now() - (19 - i) * 5000).toLocaleTimeString(),
-      value: 30 + Math.random() * 30
-    }))
-    const memoryHistory = Array.from({ length: 20 }, (_, i) => ({
-      time: new Date(Date.now() - (19 - i) * 5000).toLocaleTimeString(),
-      value: 35 + Math.random() * 20
-    }))
+    const intervalId = setInterval(fetchStats, 5000)
+
+    const generateTrendData = (baseValue: number, variance: number) => {
+      return Array.from({ length: 20 }, (_, i) => {
+        const noise = (Math.random() - 0.5) * variance
+        let value = baseValue + noise
+        value = Math.max(0, Math.min(100, value))
+        return {
+          time: new Date(Date.now() - (19 - i) * 5000).toLocaleTimeString(),
+          value: value
+        }
+      })
+    }
+
+    const cpuHistory = generateTrendData(15, 10)
+    const memoryHistory = generateTrendData(25, 15)
     setHistory({ cpu: cpuHistory, memory: memoryHistory })
+
     fetchStats()
+
+    return () => clearInterval(intervalId)
   }, [])
 
   const pieData = stats ? [

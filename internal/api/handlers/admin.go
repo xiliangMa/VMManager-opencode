@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"syscall"
 
 	"vmmanager/internal/api/errors"
 	"vmmanager/internal/models"
@@ -319,16 +320,31 @@ func (h *AdminHandler) GetSystemResources(libvirtClient any) gin.HandlerFunc {
 }
 
 func getCPUUsage() (float64, error) {
-	content, err := readFile("/proc/loadavg")
+	content, err := readFile("/proc/stat")
 	if err != nil {
 		return 0, nil
 	}
-	var load1, load5, load15 float64
-	_, err = fmt.Sscanf(content, "%f %f %f", &load1, &load5, &load15)
-	if err != nil {
-		return load1 * 10, nil
+
+	lines := strings.Split(content, "\n")
+	if len(lines) == 0 {
+		return 0, nil
 	}
-	return load1 * 10, nil
+
+	fields := strings.Fields(lines[0])
+	if len(fields) < 8 {
+		return 0, nil
+	}
+
+	var user, nice, system, idle uint64
+	fmt.Sscanf(lines[0], "cpu %d %d %d %d", &user, &nice, &system, &idle)
+
+	total := user + nice + system + idle
+	if total == 0 {
+		return 0, nil
+	}
+
+	usage := float64(user+nice+system) / float64(total) * 100
+	return usage, nil
 }
 
 func getMemoryUsage() (total, used int, err error) {
@@ -355,32 +371,19 @@ func getMemoryUsage() (total, used int, err error) {
 }
 
 func getDiskUsage() (total, used int, err error) {
-	content, err := readFile("/proc/mounts")
+	var stat syscall.Statfs_t
+	err = syscall.Statfs("/", &stat)
 	if err != nil {
-		return 0, 0, nil
+		return 0, 0, err
 	}
 
-	lines := strings.Split(content, "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "/dev/") && strings.Contains(line, " / ") {
-			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				var statfs Statfs_t
-				err = statfsFromPath(parts[1], &statfs)
-				if err == nil {
-					total = int(statfs.Blocks) * int(statfs.Bsize) / 1024 / 1024 / 1024
-					used = (int(statfs.Blocks) - int(statfs.Bfree)) * int(statfs.Bsize) / 1024 / 1024 / 1024
-					return total, used, nil
-				}
-			}
-		}
-	}
+	totalBytes := stat.Blocks * uint64(stat.Bsize)
+	freeBytes := stat.Bfree * uint64(stat.Bsize)
+	usedBytes := totalBytes - freeBytes
 
-	return 0, 0, nil
-}
-
-func statfsFromPath(path string, stat *Statfs_t) error {
-	return nil
+	total = int(totalBytes / 1024 / 1024 / 1024)
+	used = int(usedBytes / 1024 / 1024 / 1024)
+	return total, used, nil
 }
 
 func readFile(path string) (string, error) {
@@ -389,20 +392,6 @@ func readFile(path string) (string, error) {
 		return "", err
 	}
 	return string(content), nil
-}
-
-type Statfs_t struct {
-	Bsize   uint64
-	Blocks  uint64
-	Bfree   uint64
-	Bavail  uint64
-	Files   uint64
-	Ffree   uint64
-	Fsid    [2]int32
-	Namelen uint32
-	Frsize  uint64
-	Flags   uint64
-	Spare   [4]uint64
 }
 
 func (h *AdminHandler) GetSystemStats(libvirtClient any) gin.HandlerFunc {
