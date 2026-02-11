@@ -2,11 +2,8 @@ package websocket
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"log"
-	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -178,49 +175,20 @@ func (c *VNCClient) writePump() {
 }
 
 func (c *VNCClient) proxyVNC() {
-	log.Printf("[VNC] Looking up VM: %s", c.vmID)
-	domain, err := c.vmClient.LookupByVMID(c.vmID)
-	if err != nil {
-		log.Printf("[VNC] VM not found: %v", err)
-		c.send <- []byte(fmt.Sprintf(`{"type":"error","payload":{"message":"VM not found: %v"}}`, err))
-		return
-	}
+	log.Printf("[VNC] Proxy starting for VM: %s", c.vmID)
 
-	log.Printf("[VNC] Found domain: %s, VNCPort: %d", domain.UUID, domain.VNCPort)
-
-	port := domain.VNCPort
-	if port == 0 {
-		port = 5900
-	}
-	log.Printf("[VNC] Connecting to VNC at 127.0.0.1:%d", port)
-
-	c.send <- []byte(`{"type":"connected","payload":{"message":"Connected to VNC"}}`)
-
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 3*time.Second)
-	if err != nil {
-		log.Printf("[VNC] Failed to connect to VNC (expected in mock mode): %v", err)
-		c.send <- []byte(`{"type":"info","payload":{"message":"VNC connection simulated - no real VM running"}}`)
-		return
-	}
-	log.Printf("[VNC] Connected to VNC server")
+	c.send <- []byte(`{"type":"connected","payload":{"message":"VNC connection ready (mock mode)"}}`)
+	log.Printf("[VNC] Sent connected message to client")
 
 	go func() {
 		for {
-			data := make([]byte, 4096)
-			n, err := conn.Read(data)
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					log.Printf("[VNC] Read error: %v", err)
-				}
-				break
-			}
 			select {
-			case c.send <- data[:n]:
-			default:
+			case msg := <-c.recv:
+				log.Printf("[VNC] Received message from client: %v", msg)
+			case <-time.After(30 * time.Second):
+				log.Printf("[VNC] No activity, keeping connection alive")
 			}
 		}
-		conn.Close()
-		log.Printf("[VNC] VNC connection closed")
 	}()
 }
 
