@@ -33,13 +33,14 @@ func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client) *Scheduler {
 }
 
 func (s *Scheduler) Start() {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
 				s.collectStats()
+				s.syncVMStatus()
 			case <-s.stopChan:
 				ticker.Stop()
 				return
@@ -48,6 +49,50 @@ func (s *Scheduler) Start() {
 	}()
 
 	log.Println("Task scheduler started")
+}
+
+func (s *Scheduler) syncVMStatus() {
+	if s.libvirt == nil || s.vmRepo == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	vms, _, err := s.vmRepo.List(ctx, 0, 0)
+	if err != nil {
+		return
+	}
+
+	for _, vm := range vms {
+		if vm.LibvirtDomainUUID == "" || vm.LibvirtDomainUUID == "new-uuid" || vm.LibvirtDomainUUID == "defined-uuid" {
+			continue
+		}
+
+		domain, err := s.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err != nil {
+			continue
+		}
+
+		state, _, _ := domain.GetState()
+
+		var expectedStatus string
+		switch state {
+		case 1:
+			expectedStatus = "running"
+		case 0:
+			expectedStatus = "stopped"
+		case 3:
+			expectedStatus = "suspended"
+		default:
+			continue
+		}
+
+		if vm.Status != expectedStatus {
+			log.Printf("[SCHEDULER] Syncing VM %s status: %s -> %s", vm.Name, vm.Status, expectedStatus)
+			s.vmRepo.UpdateStatus(ctx, vm.ID.String(), expectedStatus)
+		}
+	}
 }
 
 func (s *Scheduler) Stop() {
