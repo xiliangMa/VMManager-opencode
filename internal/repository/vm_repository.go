@@ -76,6 +76,13 @@ func (r *VMRepository) UpdateIPAddress(ctx context.Context, id string, ip net.IP
 		Update("ip_address", ip).Error
 }
 
+func (r *VMRepository) UpdateLibvirtDomainUUID(ctx context.Context, id, uuid string) error {
+	return r.db.WithContext(ctx).
+		Model(&models.VirtualMachine{}).
+		Where("id = ?", id).
+		Update("libvirt_domain_uuid", uuid).Error
+}
+
 func (r *VMRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.VirtualMachine{}).Error
 }

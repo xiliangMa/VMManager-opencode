@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -282,15 +283,58 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		return
 	}
 
-	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
-		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
-		if err == nil {
-			if err := domain.Create(); err != nil {
-				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_start_vm"), err.Error()))
-				return
-			}
+	log.Printf("[VM] Starting VM: %s, LibvirtDomainUUID: %s", id, vm.LibvirtDomainUUID)
+
+	if h.libvirt == nil {
+		log.Printf("[VM] libvirt client is nil, updating DB status only")
+		if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+			return
 		}
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"id":     vm.ID,
+			"status": "running",
+		}))
+		return
 	}
+
+	if vm.LibvirtDomainUUID == "" {
+		log.Printf("[VM] LibvirtDomainUUID is empty, creating domain in libvirt")
+
+		domain, err := h.libvirt.DomainCreateXML(generateDomainXML(*vm), 0)
+		if err != nil {
+			log.Printf("[VM] Failed to create domain: %v", err)
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_vm_domain"), err.Error()))
+			return
+		}
+
+		domainUUID, _ := domain.GetUUIDString()
+		vm.LibvirtDomainUUID = domainUUID
+
+		if err := h.vmRepo.UpdateLibvirtDomainUUID(ctx, id, domainUUID); err != nil {
+			log.Printf("[VM] Failed to update LibvirtDomainUUID: %v", err)
+		}
+
+		log.Printf("[VM] Domain created: %s", domainUUID)
+	}
+
+	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Failed to lookup domain: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_lookup_vm_domain"), err.Error()))
+		return
+	}
+
+	state, _, _ := domain.GetState()
+	log.Printf("[VM] Domain state before start: %d", state)
+
+	if err := domain.Create(); err != nil {
+		log.Printf("[VM] Failed to start domain: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_start_vm"), err.Error()))
+		return
+	}
+
+	log.Printf("[VM] Domain started successfully")
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
@@ -301,6 +345,46 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		"id":     vm.ID,
 		"status": "running",
 	}))
+}
+
+func generateDomainXML(vm models.VirtualMachine) string {
+	return fmt.Sprintf(`<domain type='qemu'>
+  <name>%s</name>
+  <uuid>%s</uuid>
+  <memory unit='MiB'>%d</memory>
+  <vcpu placement='static'>%d</vcpu>
+  <os>
+    <type arch='x86_64' machine='pc'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode='host-model'>
+    <model fallback='allow'/>
+  </cpu>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='hpet' present='no'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='%s'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <interface type='network'>
+      <source network='default'/>
+      <model type='virtio'/>
+    </interface>
+    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
+  </devices>
+</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.DiskPath)
 }
 
 func (h *VMHandler) StopVM(c *gin.Context) {
