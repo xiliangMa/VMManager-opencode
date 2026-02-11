@@ -69,7 +69,7 @@ const VMConsole: React.FC = () => {
     creating: 'processing'
   }
 
-  const vncUrl = `/novnc/vnc_lite.html?host=${window.location.hostname}&port=${window.location.port || '8080'}&path=ws/vnc/${id}&password=${token || ''}`
+  const vncUrl = `/novnc/vnc_lite.html?host=${window.location.hostname}&port=${window.location.port || '8080'}&path=api/v1/ws/vnc/${id}&password=${token || ''}`
 
   return (
     <div>
