@@ -298,38 +298,37 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		return
 	}
 
-	needsCreate := vm.LibvirtDomainUUID == "" || vm.LibvirtDomainUUID == "new-uuid" || vm.LibvirtDomainUUID == "defined-uuid"
-
-	if needsCreate {
-		log.Printf("[VM] LibvirtDomainUUID is invalid (%s), creating domain in libvirt", vm.LibvirtDomainUUID)
-
-		domainXML := generateDomainXML(*vm)
-		log.Printf("[VM] Generated domain XML:\n%s", domainXML)
-
-		domain, err := h.libvirt.DomainCreateXML(domainXML, 0)
-		if err != nil {
-			log.Printf("[VM] Failed to create domain: %v", err)
-			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_vm_domain"), err.Error()))
-			return
-		}
-
-		domainUUID := domain.UUID
-		log.Printf("[VM] Domain created with UUID: %s", domainUUID)
-
-		if err := h.vmRepo.UpdateLibvirtDomainUUID(ctx, id, domainUUID); err != nil {
-			log.Printf("[VM] Failed to update LibvirtDomainUUID: %v", err)
-		}
-
-		vm.LibvirtDomainUUID = domainUUID
-		log.Printf("[VM] Domain registered: %s", domainUUID)
-	}
-
 	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
 	if err != nil {
-		log.Printf("[VM] Failed to lookup domain: %v", err)
+		log.Printf("[VM] Domain lookup failed or not found: %v", err)
 		log.Printf("[VM] Available domains in libvirt: %v", h.libvirt.Domains)
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_lookup_vm_domain"), err.Error()))
-		return
+
+		if vm.LibvirtDomainUUID == "" || vm.LibvirtDomainUUID == "new-uuid" || vm.LibvirtDomainUUID == "defined-uuid" {
+			log.Printf("[VM] LibvirtDomainUUID is invalid, creating domain in libvirt")
+
+			domainXML := generateDomainXML(*vm)
+			log.Printf("[VM] Generated domain XML:\n%s", domainXML)
+
+			domain, err = h.libvirt.DomainCreateXML(domainXML, 0)
+			if err != nil {
+				log.Printf("[VM] Failed to create domain: %v", err)
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_vm_domain"), err.Error()))
+				return
+			}
+
+			domainUUID := domain.UUID
+			log.Printf("[VM] Domain created with UUID: %s", domainUUID)
+
+			if err := h.vmRepo.UpdateLibvirtDomainUUID(ctx, id, domainUUID); err != nil {
+				log.Printf("[VM] Failed to update LibvirtDomainUUID: %v", err)
+			}
+
+			vm.LibvirtDomainUUID = domainUUID
+			log.Printf("[VM] Domain registered: %s", domainUUID)
+		} else {
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_lookup_vm_domain"), err.Error()))
+			return
+		}
 	}
 
 	state, _, _ := domain.GetState()
