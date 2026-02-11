@@ -464,8 +464,13 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 		}
 	}
 
+	templateName := req.Name
+	if templateName == "" {
+		templateName = upload.Name
+	}
+
 	template := &models.VMTemplate{
-		Name:         req.Name,
+		Name:         templateName,
 		Description:  req.Description,
 		OSType:       req.OSType,
 		OSVersion:    req.OSVersion,
