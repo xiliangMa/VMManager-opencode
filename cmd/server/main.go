@@ -78,14 +78,16 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := gin.Default()
-
+	router := gin.New()
+	router.Use(gin.Recovery())
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())
 	router.Use(apimiddleware.I18n())
 	router.Use(middleware.MetricsMiddleware())
 	router.Use(errors.Recovery())
 	router.Use(errors.ErrorHandler())
+
+	router.MaxMultipartMemory = 500 << 20 // 500MB for large file uploads
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -113,8 +115,8 @@ func main() {
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.HTTPPort),
 		Handler:      router,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  300 * time.Second,
+		WriteTimeout: 600 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 

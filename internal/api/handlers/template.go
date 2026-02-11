@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -390,8 +391,10 @@ func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
 	}
 
 	chunkPath := filepath.Join(upload.UploadPath, fmt.Sprintf("chunk_%06d", chunkIndex))
+	log.Printf("[UPLOAD] Creating chunk file: %s", chunkPath)
 	dst, err := os.Create(chunkPath)
 	if err != nil {
+		log.Printf("[UPLOAD] Failed to create chunk file %s: %v", chunkPath, err)
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_chunk_file"), err.Error()))
 		return
 	}
@@ -399,9 +402,12 @@ func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
 
 	written, err := io.Copy(dst, file)
 	if err != nil {
+		log.Printf("[UPLOAD] Failed to write chunk %d for upload %s: %v", chunkIndex, uploadID, err)
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_write_chunk"), err.Error()))
 		return
 	}
+
+	log.Printf("[UPLOAD] Chunk %d/%d written successfully for upload %s (%d bytes)", chunkIndex, totalChunks, uploadID, written)
 
 	progress := int((int64(chunkIndex+1) * 100) / int64(totalChunks))
 	h.uploadRepo.UpdateProgress(ctx, uploadID, progress)
