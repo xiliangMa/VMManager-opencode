@@ -221,7 +221,7 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()
 
-	_, err := h.templateRepo.FindByID(ctx, id)
+	template, err := h.templateRepo.FindByID(ctx, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeTemplateNotFound, t(c, "template_not_found_id"), id))
 		return
@@ -230,6 +230,22 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 	if err := h.templateRepo.Delete(ctx, id); err != nil {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_delete_template"), err.Error()))
 		return
+	}
+
+	if template.TemplatePath != "" {
+		log.Printf("[TEMPLATE] Deleting template file: %s", template.TemplatePath)
+		if err := os.Remove(template.TemplatePath); err != nil {
+			log.Printf("[TEMPLATE] Failed to remove template file %s: %v", template.TemplatePath, err)
+		} else {
+			log.Printf("[TEMPLATE] Successfully removed template file: %s", template.TemplatePath)
+		}
+		uploadDir := filepath.Dir(template.TemplatePath)
+		log.Printf("[TEMPLATE] Deleting upload directory: %s", uploadDir)
+		if err := os.RemoveAll(uploadDir); err != nil {
+			log.Printf("[TEMPLATE] Failed to remove upload directory %s: %v", uploadDir, err)
+		} else {
+			log.Printf("[TEMPLATE] Successfully removed upload directory: %s", uploadDir)
+		}
 	}
 
 	c.JSON(http.StatusOK, errors.Success(nil))
