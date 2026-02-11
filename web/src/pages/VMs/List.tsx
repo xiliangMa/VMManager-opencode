@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm } from 'antd'
-import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PoweroffOutlined } from '@ant-design/icons'
 import { vmsApi, VM } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
@@ -79,13 +79,28 @@ const VMs: React.FC = () => {
       key: 'actions',
       render: (_: any, record: VM) => (
         <Space>
-          <Button 
-            type="text" 
+          <Button
+            type="text"
             icon={<VideoCameraOutlined />}
             onClick={() => navigate(`/vms/${record.id}/console`)}
           />
-          <Button 
-            type="text" 
+          {record.status === 'stopped' && (
+            <Button
+              type="text"
+              icon={<PlayCircleOutlined />}
+              onClick={() => handleStart(record.id)}
+            />
+          )}
+          {record.status === 'running' && (
+            <Button
+              type="text"
+              danger
+              icon={<PoweroffOutlined />}
+              onClick={() => handleStop(record.id)}
+            />
+          )}
+          <Button
+            type="text"
             icon={<EditOutlined />}
             onClick={() => navigate(`/vms/${record.id}/edit`)}
           />
@@ -108,6 +123,26 @@ const VMs: React.FC = () => {
       refresh()
     } catch (error) {
       message.error(t('common.error'))
+    }
+  }
+
+  const handleStart = async (id: string) => {
+    try {
+      await vmsApi.start(id)
+      message.success(t('vm.startSuccess'))
+      refresh()
+    } catch (error) {
+      message.error(t('vm.startFailed'))
+    }
+  }
+
+  const handleStop = async (id: string) => {
+    try {
+      await vmsApi.stop(id)
+      message.success(t('vm.stopSuccess'))
+      refresh()
+    } catch (error) {
+      message.error(t('vm.stopFailed'))
     }
   }
 
