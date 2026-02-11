@@ -2,7 +2,9 @@ package websocket
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"vmmanager/internal/libvirt"
@@ -42,18 +44,37 @@ func NewHandler(libvirtClient *libvirt.Client) *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	vmID := r.URL.Query().Get("vm_id")
-	token := r.URL.Query().Get("token")
+	log.Printf("[WS] ServeHTTP called: path=%s", r.URL.Path)
 
-	if vmID == "" || token == "" {
-		http.Error(w, "vm_id and token are required", http.StatusBadRequest)
+	vmID := r.URL.Query().Get("vm_id")
+	if vmID == "" {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if strings.HasPrefix(path, "ws/vnc/") {
+			vmID = strings.TrimPrefix(path, "ws/vnc/")
+		} else if strings.HasPrefix(path, "api/v1/ws/vnc/") {
+			vmID = strings.TrimPrefix(path, "api/v1/ws/vnc/")
+		} else if strings.HasPrefix(path, "ws/") {
+			vmID = strings.TrimPrefix(path, "ws/")
+		}
+	}
+
+	log.Printf("[WS] Extracted VM ID: %s", vmID)
+
+	if vmID == "" {
+		log.Printf("[WS] VM ID is empty")
+		http.Error(w, "vm_id is required", http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("[WS] Upgrading WebSocket connection for VM: %s", vmID)
 
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		log.Printf("[WS] Failed to upgrade WebSocket: %v", err)
 		return
 	}
+
+	log.Printf("[WS] WebSocket upgraded successfully")
 
 	client := &Client{
 		conn: conn,
@@ -62,6 +83,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.clients[vmID] = client
+
+	log.Printf("[WS] Starting pumps for VM: %s", vmID)
 
 	go client.writePump()
 	go client.readPump(h)

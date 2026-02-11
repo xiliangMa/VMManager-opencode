@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -54,8 +55,22 @@ var vncUpgrader = websocket.Upgrader{
 }
 
 func (h *Handler) HandleVNC(w http.ResponseWriter, r *http.Request, vmID string) {
+	log.Printf("[VNC] HandleVNC called: vmID=%s, path=%s", vmID, r.URL.Path)
+
+	if vmID == "" {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if strings.HasPrefix(path, "ws/vnc/") {
+			vmID = strings.TrimPrefix(path, "ws/vnc/")
+		} else if strings.HasPrefix(path, "api/v1/ws/vnc/") {
+			vmID = strings.TrimPrefix(path, "api/v1/ws/vnc/")
+		}
+	}
+
+	log.Printf("[VNC] Final VM ID: %s", vmID)
+
 	conn, err := vncUpgrader.Upgrade(w, r, nil)
 	if err != nil {
+		log.Printf("[VNC] Failed to upgrade: %v", err)
 		return
 	}
 
@@ -66,6 +81,8 @@ func (h *Handler) HandleVNC(w http.ResponseWriter, r *http.Request, vmID string)
 		recv:     make(chan []byte, 1024),
 		vmClient: h.libvirt,
 	}
+
+	log.Printf("[VNC] Starting VNC proxy for: %s", vmID)
 
 	go client.writePump()
 	go client.readPump()
