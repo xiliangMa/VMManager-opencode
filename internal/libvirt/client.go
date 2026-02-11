@@ -3,6 +3,7 @@ package libvirt
 import (
 	"encoding/xml"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -117,14 +118,18 @@ func (c *Client) LookupByUUID(uuid string) (*MockDomain, error) {
 	return nil, fmt.Errorf("domain not found: %s", uuid)
 }
 
+type domainXML struct {
+	Name string `xml:"name"`
+	UUID string `xml:"uuid"`
+}
+
 func (c *Client) DomainCreateXML(xmlData string, flags uint32) (*MockDomain, error) {
-	var domainDef struct {
-		Name string `xml:"name"`
-		UUID string `xml:"uuid"`
-	}
+	var domainDef domainXML
 	if err := xml.Unmarshal([]byte(xmlData), &domainDef); err != nil {
 		return nil, fmt.Errorf("failed to parse domain XML: %w", err)
 	}
+
+	log.Printf("[LIBVIRT] Creating domain with Name=%s, UUID=%s", domainDef.Name, domainDef.UUID)
 
 	domain := &MockDomain{
 		Name:    domainDef.Name,
@@ -138,6 +143,8 @@ func (c *Client) DomainCreateXML(xmlData string, flags uint32) (*MockDomain, err
 	c.mu.Lock()
 	c.Domains[domain.UUID] = domain
 	c.mu.Unlock()
+
+	log.Printf("[LIBVIRT] Domain registered: %s", domain.UUID)
 
 	return domain, nil
 }

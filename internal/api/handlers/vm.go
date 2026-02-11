@@ -301,15 +301,18 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 	if vm.LibvirtDomainUUID == "" {
 		log.Printf("[VM] LibvirtDomainUUID is empty, creating domain in libvirt")
 
-		domain, err := h.libvirt.DomainCreateXML(generateDomainXML(*vm), 0)
+		domainXML := generateDomainXML(*vm)
+		log.Printf("[VM] Generated domain XML:\n%s", domainXML)
+
+		domain, err := h.libvirt.DomainCreateXML(domainXML, 0)
 		if err != nil {
 			log.Printf("[VM] Failed to create domain: %v", err)
 			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_vm_domain"), err.Error()))
 			return
 		}
 
-		domainUUID, _ := domain.GetUUIDString()
-		vm.LibvirtDomainUUID = domainUUID
+		domainUUID := domain.UUID
+		log.Printf("[VM] Domain created with UUID: %s", domainUUID)
 
 		if err := h.vmRepo.UpdateLibvirtDomainUUID(ctx, id, domainUUID); err != nil {
 			log.Printf("[VM] Failed to update LibvirtDomainUUID: %v", err)
