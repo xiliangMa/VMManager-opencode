@@ -1,6 +1,7 @@
 package libvirt
 
 import (
+	"encoding/xml"
 	"fmt"
 	"sync"
 	"time"
@@ -116,27 +117,53 @@ func (c *Client) LookupByUUID(uuid string) (*MockDomain, error) {
 	return nil, fmt.Errorf("domain not found: %s", uuid)
 }
 
-func (c *Client) DomainCreateXML(xml string, flags uint32) (*MockDomain, error) {
-	domain := &MockDomain{
-		Name:    "new-vm",
-		UUID:    "new-uuid",
-		State:   1,
-		CPUTime: 0,
-		MaxMem:  4194304,
-		MemUsed: 0,
+func (c *Client) DomainCreateXML(xmlData string, flags uint32) (*MockDomain, error) {
+	var domainDef struct {
+		Name string `xml:"name"`
+		UUID string `xml:"uuid"`
 	}
-	return domain, nil
-}
+	if err := xml.Unmarshal([]byte(xmlData), &domainDef); err != nil {
+		return nil, fmt.Errorf("failed to parse domain XML: %w", err)
+	}
 
-func (c *Client) DefineXML(xml string) (*MockDomain, error) {
 	domain := &MockDomain{
-		Name:    "defined-vm",
-		UUID:    "defined-uuid",
+		Name:    domainDef.Name,
+		UUID:    domainDef.UUID,
 		State:   0,
 		CPUTime: 0,
 		MaxMem:  4194304,
 		MemUsed: 0,
 	}
+
+	c.mu.Lock()
+	c.Domains[domain.UUID] = domain
+	c.mu.Unlock()
+
+	return domain, nil
+}
+
+func (c *Client) DefineXML(xmlData string, flags uint32) (*MockDomain, error) {
+	var domainDef struct {
+		Name string `xml:"name"`
+		UUID string `xml:"uuid"`
+	}
+	if err := xml.Unmarshal([]byte(xmlData), &domainDef); err != nil {
+		return nil, fmt.Errorf("failed to parse domain XML: %w", err)
+	}
+
+	domain := &MockDomain{
+		Name:    domainDef.Name,
+		UUID:    domainDef.UUID,
+		State:   0,
+		CPUTime: 0,
+		MaxMem:  4194304,
+		MemUsed: 0,
+	}
+
+	c.mu.Lock()
+	c.Domains[domain.UUID] = domain
+	c.mu.Unlock()
+
 	return domain, nil
 }
 
