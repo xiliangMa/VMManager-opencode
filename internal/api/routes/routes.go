@@ -15,7 +15,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	jwtMiddleware := middleware.JWTRequired(cfg.JWT.Secret)
 
 	authHandler := handlers.NewAuthHandler(repos.User, cfg.JWT)
-	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats)
+	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats, libvirtClient)
 	templateHandler := handlers.NewTemplateHandler(repos.Template, repos.TemplateUpload)
 	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
 	auditHandler := handlers.NewAuditHandler(repos.AuditLog)

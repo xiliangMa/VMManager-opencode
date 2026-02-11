@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"vmmanager/internal/api/errors"
+	"vmmanager/internal/libvirt"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
 
@@ -18,6 +19,7 @@ type VMHandler struct {
 	userRepo     *repository.UserRepository
 	templateRepo *repository.TemplateRepository
 	statsRepo    *repository.VMStatsRepository
+	libvirt      *libvirt.Client
 }
 
 func NewVMHandler(
@@ -25,12 +27,14 @@ func NewVMHandler(
 	userRepo *repository.UserRepository,
 	templateRepo *repository.TemplateRepository,
 	statsRepo *repository.VMStatsRepository,
+	libvirtClient *libvirt.Client,
 ) *VMHandler {
 	return &VMHandler{
 		vmRepo:       vmRepo,
 		userRepo:     userRepo,
 		templateRepo: templateRepo,
 		statsRepo:    statsRepo,
+		libvirt:      libvirtClient,
 	}
 }
 
@@ -255,27 +259,272 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 }
 
 func (h *VMHandler) StartVM(c *gin.Context) {
-	h.updateVMStatus(c.Param("id"), c, "running")
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.Status == "running" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_already_running"), ""))
+		return
+	}
+
+	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err == nil {
+			if err := domain.Create(); err != nil {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_start_vm"), err.Error()))
+				return
+			}
+		}
+	}
+
+	if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":     vm.ID,
+		"status": "running",
+	}))
 }
 
 func (h *VMHandler) StopVM(c *gin.Context) {
-	h.updateVMStatus(c.Param("id"), c, "stopping")
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.Status != "running" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_not_running"), ""))
+		return
+	}
+
+	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err == nil {
+			if err := domain.Shutdown(); err != nil {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), err.Error()))
+				return
+			}
+		}
+	}
+
+	if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":     vm.ID,
+		"status": "stopped",
+	}))
 }
 
 func (h *VMHandler) ForceStopVM(c *gin.Context) {
-	h.updateVMStatus(c.Param("id"), c, "stopped")
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err == nil {
+			if err := domain.Destroy(); err != nil {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_force_stop_vm"), err.Error()))
+				return
+			}
+		}
+	}
+
+	if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":     vm.ID,
+		"status": "stopped",
+	}))
 }
 
 func (h *VMHandler) RebootVM(c *gin.Context) {
-	h.updateVMStatus(c.Param("id"), c, "running")
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.Status != "running" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_not_running_reboot"), ""))
+		return
+	}
+
+	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err == nil {
+			if err := domain.Shutdown(); err != nil {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), err.Error()))
+				return
+			}
+			if err := domain.Create(); err != nil {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), err.Error()))
+				return
+			}
+		}
+	}
+
+	if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":     vm.ID,
+		"status": "running",
+	}))
 }
 
 func (h *VMHandler) SuspendVM(c *gin.Context) {
-	h.updateVMStatus(c.Param("id"), c, "suspended")
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.Status != "running" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_not_running_suspend"), ""))
+		return
+	}
+
+	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err == nil {
+			if err := domain.Suspend(); err != nil {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_suspend_vm"), err.Error()))
+				return
+			}
+		}
+	}
+
+	if err := h.vmRepo.UpdateStatus(ctx, id, "suspended"); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":     vm.ID,
+		"status": "suspended",
+	}))
 }
 
 func (h *VMHandler) ResumeVM(c *gin.Context) {
-	h.updateVMStatus(c.Param("id"), c, "running")
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.Status != "suspended" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_not_suspended"), ""))
+		return
+	}
+
+	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err == nil {
+			if err := domain.Resume(); err != nil {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_resume_vm"), err.Error()))
+				return
+			}
+		}
+	}
+
+	if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"id":     vm.ID,
+		"status": "running",
+	}))
 }
 
 func (h *VMHandler) updateVMStatus(id string, c *gin.Context, status string) {
