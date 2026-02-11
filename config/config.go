@@ -46,6 +46,7 @@ type DatabaseConfig struct {
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 	Driver          string        `mapstructure:"driver"`
 	Path            string        `mapstructure:"path"`
+	Debug           bool          `mapstructure:"debug"`
 }
 
 type RedisConfig struct {

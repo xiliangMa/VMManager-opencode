@@ -56,12 +56,17 @@ func newSQLite(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		dbPath = "vmmanager.db"
 	}
 
+	logLevel := logger.Warn
+	if cfg.Debug {
+		logLevel = logger.Info
+	}
+
 	gormConfig := &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   "",
 			SingularTable: true,
 		},
-		Logger: logger.Default.LogMode(logger.Warn),
+		Logger: logger.Default.LogMode(logLevel),
 	}
 
 	db, err := gorm.Open(sqlite.Open(dbPath), gormConfig)
@@ -78,12 +83,17 @@ func newPostgreSQL(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.Name, cfg.SSLMode,
 	)
 
+	logLevel := logger.Info
+	if !cfg.Debug {
+		logLevel = logger.Warn
+	}
+
 	gormConfig := &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   "",
 			SingularTable: false,
 		},
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logLevel),
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), gormConfig)
