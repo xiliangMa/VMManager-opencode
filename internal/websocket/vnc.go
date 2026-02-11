@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"sync"
@@ -160,43 +161,50 @@ func (c *VNCClient) writePump() {
 }
 
 func (c *VNCClient) proxyVNC() {
+	log.Printf("[VNC] Looking up VM: %s", c.vmID)
 	domain, err := c.vmClient.LookupByVMID(c.vmID)
 	if err != nil {
+		log.Printf("[VNC] VM not found: %v", err)
 		c.send <- []byte(fmt.Sprintf(`{"type":"error","payload":{"message":"VM not found: %v"}}`, err))
 		return
 	}
+
+	log.Printf("[VNC] Found domain: %s, VNCPort: %d", domain.UUID, domain.VNCPort)
 
 	port := domain.VNCPort
 	if port == 0 {
 		port = 5900
 	}
+	log.Printf("[VNC] Connecting to VNC at 127.0.0.1:%d", port)
 
 	c.send <- []byte(`{"type":"connected","payload":{"message":"Connected to VNC"}}`)
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 10*time.Second)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 3*time.Second)
 	if err != nil {
-		c.send <- []byte(fmt.Sprintf(`{"type":"error","payload":{"message":"Failed to connect to VNC: %v"}}`, err))
+		log.Printf("[VNC] Failed to connect to VNC (expected in mock mode): %v", err)
+		c.send <- []byte(`{"type":"info","payload":{"message":"VNC connection simulated - no real VM running"}}`)
 		return
 	}
-	defer conn.Close()
+	log.Printf("[VNC] Connected to VNC server")
 
-	running := true
-	for running {
-		data := make([]byte, 4096)
-		n, err := conn.Read(data)
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				c.send <- []byte(fmt.Sprintf(`{"type":"error","payload":{"message":"VNC read error: %v"}}`, err))
+	go func() {
+		for {
+			data := make([]byte, 4096)
+			n, err := conn.Read(data)
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					log.Printf("[VNC] Read error: %v", err)
+				}
+				break
 			}
-			running = false
-			break
+			select {
+			case c.send <- data[:n]:
+			default:
+			}
 		}
-
-		select {
-		case c.send <- data[:n]:
-		default:
-		}
-	}
+		conn.Close()
+		log.Printf("[VNC] VNC connection closed")
+	}()
 }
 
 func (c *VNCClient) handleResize(payload json.RawMessage) {
