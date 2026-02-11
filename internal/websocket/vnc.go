@@ -160,16 +160,18 @@ func (c *VNCClient) writePump() {
 }
 
 func (c *VNCClient) proxyVNC() {
-	vm := c.vmClient.Domains[c.vmID]
-	if vm == nil {
-		c.send <- []byte(`{"type":"error","payload":{"message":"VM not found"}}`)
+	domain, err := c.vmClient.LookupByVMID(c.vmID)
+	if err != nil {
+		c.send <- []byte(fmt.Sprintf(`{"type":"error","payload":{"message":"VM not found: %v"}}`, err))
 		return
 	}
 
-	port := vm.VNCPort
+	port := domain.VNCPort
 	if port == 0 {
 		port = 5900
 	}
+
+	c.send <- []byte(`{"type":"connected","payload":{"message":"Connected to VNC"}}`)
 
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 10*time.Second)
 	if err != nil {

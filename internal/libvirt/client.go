@@ -118,6 +118,18 @@ func (c *Client) LookupByUUID(uuid string) (*MockDomain, error) {
 	return nil, fmt.Errorf("domain not found: %s", uuid)
 }
 
+func (c *Client) LookupByVMID(vmID string) (*MockDomain, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for _, d := range c.Domains {
+		if d.UUID == vmID || d.Name == vmID {
+			return d, nil
+		}
+	}
+	return nil, fmt.Errorf("domain not found: %s", vmID)
+}
+
 type domainXML struct {
 	Name string `xml:"name"`
 	UUID string `xml:"uuid"`
