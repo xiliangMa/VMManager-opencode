@@ -84,7 +84,11 @@ const VMs: React.FC = () => {
             icon={<VideoCameraOutlined />}
             onClick={() => navigate(`/vms/${record.id}/console`)}
           />
-          <Button type="text" icon={<EditOutlined />} />
+          <Button 
+            type="text" 
+            icon={<EditOutlined />}
+            onClick={() => navigate(`/vms/${record.id}/edit`)}
+          />
           <Popconfirm
             title={t('common.delete')}
             description={t('popconfirm.deleteVm')}
