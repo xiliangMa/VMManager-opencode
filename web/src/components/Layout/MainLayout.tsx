@@ -1,7 +1,7 @@
 import React from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Avatar, Dropdown, Button, theme } from 'antd'
-import { 
+import {
   DashboardOutlined,
   DesktopOutlined,
   FileOutlined,
@@ -12,7 +12,8 @@ import {
   MenuUnfoldOutlined,
   TranslationOutlined,
   BellOutlined,
-  MonitorOutlined
+  MonitorOutlined,
+  HistoryOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
@@ -65,6 +66,11 @@ const MainLayout: React.FC = () => {
         key: '/admin/alerts',
         icon: <BellOutlined />,
         label: t('common.alertRules')
+      },
+      {
+        key: '/admin/alert-history',
+        icon: <HistoryOutlined />,
+        label: t('alerts.alertHistory')
       }
     ] : [])
   ]

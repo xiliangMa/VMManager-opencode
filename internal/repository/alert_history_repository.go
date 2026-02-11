@@ -31,6 +31,21 @@ func (r *AlertHistoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*mo
 	return &history, nil
 }
 
+func (r *AlertHistoryRepository) List(ctx context.Context, offset, limit int) ([]models.AlertHistory, int64, error) {
+	var histories []models.AlertHistory
+	var total int64
+
+	r.db.WithContext(ctx).Model(&models.AlertHistory{}).Count(&total)
+
+	err := r.db.WithContext(ctx).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&histories).Error
+
+	return histories, total, err
+}
+
 func (r *AlertHistoryRepository) GetByVM(ctx context.Context, vmID string, limit int) ([]models.AlertHistory, error) {
 	var histories []models.AlertHistory
 	query := r.db.WithContext(ctx).Where("vm_id = ?", vmID).Order("created_at DESC")

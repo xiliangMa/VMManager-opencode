@@ -337,6 +337,22 @@ export interface AlertRule {
   updated_at?: string
 }
 
+export interface AlertHistory {
+  id: string
+  alertRuleId: string
+  vmId?: string
+  severity: string
+  metric: string
+  currentValue: number
+  threshold: number
+  condition: string
+  message: string
+  status: string
+  resolvedAt?: string
+  notifiedAt?: string
+  createdAt: string
+}
+
 export const alertRulesApi = {
   list: (params?: { page?: number; page_size?: number }) =>
     client.get('/admin/alert-rules', { params }).then(res => res.data),
@@ -358,4 +374,21 @@ export const alertRulesApi = {
 
   getStats: () =>
     client.get('/admin/alert-rules/stats/summary').then(res => res.data)
+}
+
+export const alertHistoryApi = {
+  list: (params?: { page?: number; page_size?: number; status?: string }) =>
+    client.get('/admin/alert-histories', { params }).then(res => res.data),
+
+  get: (id: string) =>
+    client.get(`/admin/alert-histories/${id}`).then(res => res.data),
+
+  resolve: (id: string) =>
+    client.post(`/admin/alert-histories/${id}/resolve`).then(res => res.data),
+
+  getActive: () =>
+    client.get('/admin/alert-histories/active').then(res => res.data),
+
+  getStats: () =>
+    client.get('/admin/alert-histories/stats').then(res => res.data)
 }

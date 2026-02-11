@@ -17,6 +17,7 @@ import TemplateEdit from './pages/Templates/Edit'
 import UserManagement from './pages/Admin/Users'
 import AuditLogs from './pages/Admin/AuditLogs'
 import AlertRules from './pages/Admin/AlertRules'
+import AlertHistory from './pages/Admin/AlertHistory'
 import SystemDashboard from './pages/Dashboard/SystemDashboard'
 import Profile from './pages/Settings/Profile'
 
@@ -59,6 +60,7 @@ const App: React.FC = () => {
         <Route path="admin/users" element={<UserManagement />} />
         <Route path="admin/audit-logs" element={<AuditLogs />} />
         <Route path="admin/alerts" element={<AlertRules />} />
+        <Route path="admin/alert-history" element={<AlertHistory />} />
         <Route path="settings/profile" element={<Profile />} />
       </Route>
 

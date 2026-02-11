@@ -214,6 +214,7 @@
   },
   "alerts": {
     "alertRules": "Alert Rules",
+    "alertHistory": "Alert History",
     "createAlertRule": "Create Alert Rule",
     "editAlertRule": "Edit Alert Rule",
     "deleteAlertRule": "Delete Alert Rule",
@@ -235,7 +236,13 @@
     "greaterThan": "Greater than",
     "lessThan": "Less than",
     "equalTo": "Equal to",
-    "notEqualTo": "Not equal to"
+    "notEqualTo": "Not equal to",
+    "time": "Time",
+    "message": "Message",
+    "totalAlerts": "Total Alerts",
+    "resolve": "Resolve",
+    "triggered": "Triggered",
+    "resolved": "Resolved"
   },
   "dashboard": {
     "welcome": "Welcome",
@@ -526,7 +533,9 @@
     "login": "Login",
     "vmCreate": "VM Create",
     "vmDelete": "VM Delete",
-    "templateUpload": "Template Upload"
+    "templateUpload": "Template Upload",
+    "triggered": "Triggered",
+    "resolved": "Resolved"
   },
   "tab": {
     "information": "Information",
@@ -609,7 +618,10 @@
     "pleaseEnterThreshold": "Please enter threshold",
     "pleaseEnterDuration": "Please enter duration",
     "pleaseSelectSeverity": "Please select severity",
-    "pleaseSelectChannels": "Please select channels"
+    "pleaseSelectChannels": "Please select channels",
+    "loadingHistory": "Failed to load alert history",
+    "historyResolved": "Alert history resolved",
+    "failedToResolveHistory": "Failed to resolve alert history"
   },
   "app": {
     "vmManager": "VMManager",

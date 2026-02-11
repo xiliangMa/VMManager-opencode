@@ -214,6 +214,7 @@
   },
   "alerts": {
     "alertRules": "告警规则",
+    "alertHistory": "告警历史",
     "createAlertRule": "创建告警规则",
     "editAlertRule": "编辑告警规则",
     "deleteAlertRule": "删除告警规则",
@@ -235,7 +236,13 @@
     "greaterThan": "大于",
     "lessThan": "小于",
     "equalTo": "等于",
-    "notEqualTo": "不等于"
+    "notEqualTo": "不等于",
+    "time": "时间",
+    "message": "消息",
+    "totalAlerts": "告警总数",
+    "resolve": "解决",
+    "triggered": "已触发",
+    "resolved": "已解决"
   },
   "dashboard": {
     "welcome": "欢迎",
@@ -526,7 +533,9 @@
     "login": "登录",
     "vmCreate": "虚拟机创建",
     "vmDelete": "虚拟机删除",
-    "templateUpload": "模板上传"
+    "templateUpload": "模板上传",
+    "triggered": "已触发",
+    "resolved": "已解决"
   },
   "tab": {
     "information": "信息",
@@ -609,7 +618,10 @@
     "pleaseEnterThreshold": "请输入阈值",
     "pleaseEnterDuration": "请输入持续时间",
     "pleaseSelectSeverity": "请选择严重程度",
-    "pleaseSelectChannels": "请选择渠道"
+    "pleaseSelectChannels": "请选择渠道",
+    "loadingHistory": "加载告警历史失败",
+    "historyResolved": "告警历史已解决",
+    "failedToResolveHistory": "解决告警历史失败"
   },
   "app": {
     "vmManager": "VMManager",

@@ -23,6 +23,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	batchHandler := handlers.NewBatchHandler(repos.VM)
 	statsHandler := handlers.NewVMStatsHandler(repos.VMStats)
 	alertRuleHandler := handlers.NewAlertRuleHandler(repos.AlertRule)
+	alertHistoryHandler := handlers.NewAlertHistoryHandler(repos.AlertHistory)
 
 	api := router.Group("/api/v1")
 	{
@@ -116,6 +117,15 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 				alertRules.DELETE("/:id", alertRuleHandler.DeleteAlertRule)
 				alertRules.POST("/:id/toggle", alertRuleHandler.ToggleAlertRule)
 				alertRules.GET("/stats/summary", alertRuleHandler.GetAlertStats)
+			}
+
+			alertHistories := admin.Group("/alert-histories")
+			{
+				alertHistories.GET("", alertHistoryHandler.ListAlertHistories)
+				alertHistories.GET("/:id", alertHistoryHandler.GetAlertHistory)
+				alertHistories.POST("/:id/resolve", alertHistoryHandler.ResolveAlertHistory)
+				alertHistories.GET("/active", alertHistoryHandler.GetActiveAlerts)
+				alertHistories.GET("/stats", alertHistoryHandler.GetAlertStats)
 			}
 
 			admin.GET("/audit-logs", auditHandler.ListAuditLogs)
