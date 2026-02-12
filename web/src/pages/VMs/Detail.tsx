@@ -206,11 +206,11 @@ const VMDetail: React.FC = () => {
               <Button onClick={handleRestart}>{t('vm.restart')}</Button>
               <Button onClick={() => navigate(`/vms/${id}/console`)}>{t('vm.console')}</Button>
             </>
-          ) : vm.status === 'stopped' && !locked ? (
+          ) : !locked && (vm.status === 'stopped' || vm.status === 'pending' || vm.status === 'creating') ? (
             <Button type="primary" onClick={handleStart}>{t('vm.start')}</Button>
           ) : (
             <Tag color="processing" icon={locked ? <SyncOutlined spin /> : undefined}>
-              {locked ? t('vm.operationInProgress') : t('vm.suspended')}
+              {locked ? t('vm.operationInProgress') : t(`vm.${vm.status}`)}
             </Tag>
           )}
         </Space>

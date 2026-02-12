@@ -110,7 +110,7 @@ const VMs: React.FC = () => {
               disabled={locked || record.status !== 'running'}
               onClick={() => navigate(`/vms/${record.id}/console`)}
             />
-            {record.status === 'stopped' && !locked && (
+            {!locked && (record.status === 'stopped' || record.status === 'pending' || record.status === 'creating') && (
               <Button
                 type="text"
                 icon={<PlayCircleOutlined />}
