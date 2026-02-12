@@ -318,14 +318,14 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		domainXML := generateDomainXML(*vm, diskPath)
 		log.Printf("[VM] Generated domain XML:\n%s", domainXML)
 
-		domain, err = h.libvirt.DomainCreateXML(domainXML)
+		domain, err = h.libvirt.DefineXML(domainXML)
 		if err != nil {
-			log.Printf("[VM] Failed to create domain: %v", err)
+			log.Printf("[VM] Failed to define domain: %v", err)
 			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_vm_domain"), err.Error()))
 			return
 		}
 
-		log.Printf("[VM] Domain created successfully: %s", domain.UUID)
+		log.Printf("[VM] Domain defined successfully: %s", domain.UUID)
 
 		if vm.LibvirtDomainUUID == "" || vm.LibvirtDomainUUID == "new-uuid" || vm.LibvirtDomainUUID == "defined-uuid" {
 			if err := h.vmRepo.UpdateLibvirtDomainUUID(ctx, id, domain.UUID); err != nil {
@@ -337,6 +337,19 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 
 	state, _, _ := domain.GetState()
 	log.Printf("[VM] Domain state before start: %d", state)
+
+	if state == 1 {
+		log.Printf("[VM] Domain is already running")
+		if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+			return
+		}
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"id":     vm.ID,
+			"status": "running",
+		}))
+		return
+	}
 
 	if err := domain.Create(); err != nil {
 		log.Printf("[VM] Failed to start domain: %v", err)
