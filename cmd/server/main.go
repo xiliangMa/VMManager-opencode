@@ -104,7 +104,8 @@ func main() {
 
 	router.GET("/ws/vnc/:vm_id", func(c *gin.Context) {
 		vmID := c.Param("vm_id")
-		wsHandler.HandleVNC(c.Writer, c.Request, vmID)
+		c.Request.URL.Path = "/ws/vnc/" + vmID
+		wsHandler.ServeHTTP(c.Writer, c.Request)
 	})
 
 	routes.Register(router, cfg, repos, libvirtClient, wsHandler)
