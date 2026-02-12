@@ -257,6 +257,24 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 		return
 	}
 
+	if h.libvirt != nil && vm.LibvirtDomainUUID != "" && vm.LibvirtDomainUUID != "new-uuid" && vm.LibvirtDomainUUID != "defined-uuid" {
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err == nil {
+			state, _, err := domain.GetState()
+			if err == nil && state == 1 {
+				log.Printf("[VM] Shutting down running VM: %s", id)
+				domain.Shutdown()
+				domain.Destroy()
+			}
+			domain.Free()
+
+			log.Printf("[VM] Undefining libvirt domain: %s", vm.LibvirtDomainUUID)
+			if err := h.libvirt.UndefineDomain(vm.LibvirtDomainUUID); err != nil {
+				log.Printf("[VM] Failed to undefine domain: %v", err)
+			}
+		}
+	}
+
 	if err := h.vmRepo.Delete(ctx, id); err != nil {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "vm_deleted"), err.Error()))
 		return

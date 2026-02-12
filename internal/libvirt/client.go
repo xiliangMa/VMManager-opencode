@@ -65,6 +65,15 @@ func (c *Client) LookupByUUID(uuid string) (*Domain, error) {
 	return c.wrapDomain(domain), nil
 }
 
+func (c *Client) UndefineDomain(uuid string) error {
+	domain, err := c.conn.LookupDomainByUUIDString(uuid)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+	return domain.Undefine()
+}
+
 func (c *Client) DomainCreateXML(xmlData string) (*Domain, error) {
 	domain, err := c.conn.DomainCreateXML(xmlData, 0)
 	if err != nil {
