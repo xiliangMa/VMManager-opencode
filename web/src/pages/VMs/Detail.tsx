@@ -61,8 +61,9 @@ const VMDetail: React.FC = () => {
       await vmsApi.delete(id!)
       message.success(t('vm.delete') + ' ' + t('common.success'))
       navigate('/vms')
-    } catch (error) {
-      message.error(t('common.error'))
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMessage)
     }
   }
 

@@ -121,8 +121,9 @@ const VMs: React.FC = () => {
       await vmsApi.delete(id)
       message.success(t('common.success'))
       refresh()
-    } catch (error) {
-      message.error(t('common.error'))
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMessage)
     }
   }
 
@@ -131,8 +132,9 @@ const VMs: React.FC = () => {
       await vmsApi.start(id)
       message.success(t('vm.startSuccess'))
       refresh()
-    } catch (error) {
-      message.error(t('vm.startFailed'))
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('vm.startFailed')
+      message.error(errorMessage)
     }
   }
 
@@ -141,8 +143,9 @@ const VMs: React.FC = () => {
       await vmsApi.stop(id)
       message.success(t('vm.stopSuccess'))
       refresh()
-    } catch (error) {
-      message.error(t('vm.stopFailed'))
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('vm.stopFailed')
+      message.error(errorMessage)
     }
   }
 
