@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm } from 'antd'
-import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PoweroffOutlined } from '@ant-design/icons'
+import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PoweroffOutlined, SyncOutlined } from '@ant-design/icons'
 import { vmsApi, VM } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
@@ -11,10 +11,27 @@ const VMs: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [lockingVms, setLockingVms] = useState<Set<string>>(new Set())
 
   const { data, loading, pagination, refresh, search, setSearch } = useTable<VM>({
     api: vmsApi.list
   })
+
+  useEffect(() => {
+    if (lockingVms.size > 0) {
+      const interval = setInterval(() => {
+        refresh()
+        const stillLocked = Array.from(lockingVms).some(id => {
+          const vm = data?.find((v: VM) => v.id === id)
+          return vm && !['running', 'stopped'].includes(vm.status)
+        })
+        if (!stillLocked) {
+          setLockingVms(new Set())
+        }
+      }, 2000)
+      return () => clearInterval(interval)
+    }
+  }, [lockingVms.size, data, refresh])
 
   const statusColors: Record<string, string> = {
     running: 'green',
@@ -27,8 +44,8 @@ const VMs: React.FC = () => {
     stopping: 'processing'
   }
 
-  const isLocked = (status: string) => {
-    return ['starting', 'stopping', 'creating'].includes(status)
+  const isVmLocked = (id: string, status: string) => {
+    return lockingVms.has(id) || ['starting', 'stopping', 'creating'].includes(status)
   }
 
   const columns = [
@@ -84,7 +101,7 @@ const VMs: React.FC = () => {
       title: t('common.edit'),
       key: 'actions',
       render: (_: any, record: VM) => {
-        const locked = isLocked(record.status)
+        const locked = isVmLocked(record.id, record.status)
         return (
           <Space>
             <Button
@@ -93,14 +110,14 @@ const VMs: React.FC = () => {
               disabled={locked || record.status !== 'running'}
               onClick={() => navigate(`/vms/${record.id}/console`)}
             />
-            {record.status === 'stopped' && (
+            {record.status === 'stopped' && !locked && (
               <Button
                 type="text"
                 icon={<PlayCircleOutlined />}
                 onClick={() => handleStart(record.id)}
               />
             )}
-            {record.status === 'running' && (
+            {record.status === 'running' && !locked && (
               <Button
                 type="text"
                 danger
@@ -108,8 +125,8 @@ const VMs: React.FC = () => {
                 onClick={() => handleStop(record.id)}
               />
             )}
-            {locked && record.status !== 'running' && record.status !== 'stopped' && (
-              <Tag color="processing">{t('vm.starting')}</Tag>
+            {locked && (
+              <Tag color="processing" icon={<SyncOutlined spin />}>{t('vm.operationInProgress')}</Tag>
             )}
             <Button
               type="text"
@@ -132,6 +149,7 @@ const VMs: React.FC = () => {
   ]
 
   const handleDelete = async (id: string) => {
+    setLockingVms(prev => new Set(prev).add(id))
     try {
       await vmsApi.delete(id)
       message.success(t('common.success'))
@@ -139,10 +157,17 @@ const VMs: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
       message.error(errorMessage)
+    } finally {
+      setLockingVms(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
   const handleStart = async (id: string) => {
+    setLockingVms(prev => new Set(prev).add(id))
     try {
       await vmsApi.start(id)
       message.success(t('vm.startSuccess'))
@@ -150,10 +175,17 @@ const VMs: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || t('vm.startFailed')
       message.error(errorMessage)
+    } finally {
+      setLockingVms(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
   const handleStop = async (id: string) => {
+    setLockingVms(prev => new Set(prev).add(id))
     try {
       await vmsApi.stop(id)
       message.success(t('vm.stopSuccess'))
@@ -161,6 +193,12 @@ const VMs: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || t('vm.stopFailed')
       message.error(errorMessage)
+    } finally {
+      setLockingVms(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 

@@ -508,17 +508,63 @@ func (h *VMHandler) StopVM(c *gin.Context) {
 	}
 
 	log.Printf("[VM] Attempting to shutdown VM: %s (libvirt: %s)", id, vm.LibvirtDomainUUID)
-	
+
+	var shutdownErr error
 	if err := domain.Shutdown(); err != nil {
 		log.Printf("[VM] Shutdown failed, trying destroy: %v", err)
-		if err := domain.Destroy(); err != nil {
-			log.Printf("[VM] Failed to destroy VM: %v", err)
-			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), err.Error()))
-			return
-		}
-		log.Printf("[VM] VM destroyed successfully: %s", id)
+		shutdownErr = domain.Destroy()
 	} else {
 		log.Printf("[VM] Shutdown signal sent: %s", id)
+		shutdownErr = nil
+	}
+
+	if shutdownErr != nil {
+		log.Printf("[VM] Failed to stop VM: %v", shutdownErr)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), shutdownErr.Error()))
+		return
+	}
+
+	log.Printf("[VM] Waiting for VM to stop: %s", id)
+	domain.Free()
+
+	waitStart := time.Now()
+	waitTimeout := 60 * time.Second
+	for {
+		if time.Since(waitStart) > waitTimeout {
+			log.Printf("[VM] Timeout waiting for VM to stop: %s", id)
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), "timeout waiting for VM to stop"))
+			return
+		}
+
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err != nil {
+			log.Printf("[VM] Domain no longer exists (may be deleted): %s", id)
+			if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
+				return
+			}
+			c.JSON(http.StatusOK, errors.Success(gin.H{
+				"id":     vm.ID,
+				"status": "stopped",
+			}))
+			return
+		}
+
+		state, _, err := domain.GetState()
+		domain.Free()
+		if err != nil {
+			log.Printf("[VM] Failed to get VM state: %v", err)
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+
+		if state == 0 {
+			log.Printf("[VM] VM is now stopped: %s", id)
+			break
+		}
+
+		log.Printf("[VM] VM still running, state=%d, waiting...", state)
+		time.Sleep(1 * time.Second)
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
@@ -620,19 +666,63 @@ func (h *VMHandler) RebootVM(c *gin.Context) {
 
 	log.Printf("[VM] Rebooting VM: %s (libvirt: %s)", id, vm.LibvirtDomainUUID)
 
+	var shutdownErr error
 	if err := domain.Shutdown(); err != nil {
 		log.Printf("[VM] Shutdown failed, trying destroy: %v", err)
-		domain.Destroy()
+		shutdownErr = domain.Destroy()
+	} else {
+		log.Printf("[VM] Shutdown signal sent")
+		shutdownErr = nil
 	}
 
+	if shutdownErr != nil {
+		log.Printf("[VM] Failed to stop VM for reboot: %v", shutdownErr)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), shutdownErr.Error()))
+		return
+	}
+
+	domain.Free()
+	domain = nil
+
 	log.Printf("[VM] Waiting for VM to stop...")
-	for i := 0; i < 30; i++ {
-		time.Sleep(1 * time.Second)
-		state, _, _ := domain.GetState()
-		log.Printf("[VM] VM state: %d", state)
-		if state != 1 {
+	waitStart := time.Now()
+	waitTimeout := 60 * time.Second
+	for {
+		if time.Since(waitStart) > waitTimeout {
+			log.Printf("[VM] Timeout waiting for VM to stop during reboot: %s", id)
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), "timeout waiting for VM to stop"))
+			return
+		}
+
+		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+		if err != nil {
+			log.Printf("[VM] Domain not found during reboot wait: %v", err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		state, _, err := domain.GetState()
+		domain.Free()
+		if err != nil {
+			log.Printf("[VM] Failed to get VM state during reboot: %v", err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		log.Printf("[VM] VM state during reboot wait: %d", state)
+		if state == 0 {
+			log.Printf("[VM] VM is now stopped, starting again: %s", id)
 			break
 		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	domain, err = h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Domain not found when trying to start after reboot: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "vm_domain_not_found"), err.Error()))
+		return
 	}
 
 	log.Printf("[VM] Starting VM again...")
@@ -641,6 +731,7 @@ func (h *VMHandler) RebootVM(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), err.Error()))
 		return
 	}
+	domain.Free()
 
 	log.Printf("[VM] VM rebooted successfully: %s", id)
 

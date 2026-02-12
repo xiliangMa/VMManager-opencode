@@ -108,5 +108,6 @@
   "vm.suspended": "Suspended",
   "vm.pending": "Pending",
   "vm.creating": "Creating",
-  "vm.error": "Error"
+  "vm.error": "Error",
+  "vm.operationInProgress": "Operation in progress..."
 }

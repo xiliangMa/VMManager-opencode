@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined } from '@ant-design/icons'
 import { vmsApi, VM } from '../../api/client'
 import dayjs from 'dayjs'
 
@@ -11,12 +11,16 @@ const VMDetail: React.FC = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [vm, setVm] = useState<VM | null>(null)
+  const [locked, setLocked] = useState(false)
 
   const fetchVm = async () => {
     if (!id) return
     try {
       const response = await vmsApi.get(id)
       setVm(response.data || response)
+      if (locked && ['running', 'stopped'].includes(response.data?.status || response.status)) {
+        setLocked(false)
+      }
     } catch (error) {
       message.error(t('message.failedToLoad') + ' VM')
     }
@@ -27,36 +31,46 @@ const VMDetail: React.FC = () => {
   }, [id])
 
   const handleStart = async () => {
+    setLocked(true)
     try {
       await vmsApi.start(id!)
       message.success(t('vm.start') + ' ' + t('common.success'))
       fetchVm()
-    } catch (error) {
-      message.error(t('common.error'))
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMessage)
+      setLocked(false)
     }
   }
 
   const handleStop = async () => {
+    setLocked(true)
     try {
       await vmsApi.stop(id!)
       message.success(t('vm.stop') + ' ' + t('common.success'))
       fetchVm()
-    } catch (error) {
-      message.error(t('common.error'))
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMessage)
+      setLocked(false)
     }
   }
 
   const handleRestart = async () => {
+    setLocked(true)
     try {
       await vmsApi.restart(id!)
       message.success(t('vm.restart') + ' ' + t('common.success'))
       fetchVm()
-    } catch (error) {
-      message.error(t('common.error'))
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMessage)
+      setLocked(false)
     }
   }
 
   const handleDelete = async () => {
+    setLocked(true)
     try {
       await vmsApi.delete(id!)
       message.success(t('vm.delete') + ' ' + t('common.success'))
@@ -64,6 +78,7 @@ const VMDetail: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
       message.error(errorMessage)
+      setLocked(false)
     }
   }
 
@@ -76,10 +91,6 @@ const VMDetail: React.FC = () => {
     error: 'error',
     starting: 'processing',
     stopping: 'processing'
-  }
-
-  const isLocked = (status: string) => {
-    return ['starting', 'stopping', 'creating'].includes(status)
   }
 
   if (!vm) return <div>{t('common.loading')}</div>
@@ -171,17 +182,17 @@ const VMDetail: React.FC = () => {
         title={vm.name}
         extra={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {isLocked(vm.status) && (
-              <Tag color="processing">{t('vm.starting')}</Tag>
+            {locked && (
+              <Tag color="processing" icon={<SyncOutlined spin />}>{t('vm.operationInProgress')}</Tag>
             )}
-            <a href={`/vms/${id}/edit`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: isLocked(vm.status) ? '#999' : '#1677ff', textDecoration: 'none', pointerEvents: isLocked(vm.status) ? 'none' : 'auto' }}>
+            <a href={`/vms/${id}/edit`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: locked ? '#999' : '#1677ff', textDecoration: 'none', pointerEvents: locked ? 'none' : 'auto' }}>
               <EditOutlined /> {t('common.edit')}
             </a>
-            <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)} disabled={vm.status !== 'running' || isLocked(vm.status)}>
+            <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)} disabled={vm.status !== 'running' || locked}>
               {t('console.fullscreen')}
             </Button>
-            <Popconfirm title={t('popconfirm.areYouSure')} onConfirm={handleDelete} disabled={isLocked(vm.status)}>
-              <Button danger icon={<DeleteOutlined />} disabled={isLocked(vm.status)}>
+            <Popconfirm title={t('popconfirm.areYouSure')} onConfirm={handleDelete} disabled={locked}>
+              <Button danger icon={<DeleteOutlined />} disabled={locked}>
                 {t('common.delete')}
               </Button>
             </Popconfirm>
@@ -189,16 +200,18 @@ const VMDetail: React.FC = () => {
         }
       >
         <Space style={{ marginBottom: 16 }}>
-          {vm.status === 'running' && !isLocked(vm.status) ? (
+          {vm.status === 'running' && !locked ? (
             <>
               <Button onClick={handleStop}>{t('vm.stop')}</Button>
               <Button onClick={handleRestart}>{t('vm.restart')}</Button>
               <Button onClick={() => navigate(`/vms/${id}/console`)}>{t('vm.console')}</Button>
             </>
-          ) : vm.status === 'stopped' && !isLocked(vm.status) ? (
+          ) : vm.status === 'stopped' && !locked ? (
             <Button type="primary" onClick={handleStart}>{t('vm.start')}</Button>
           ) : (
-            <Tag color="processing">{isLocked(vm.status) ? t('vm.starting') : t('vm.suspended')}</Tag>
+            <Tag color="processing" icon={locked ? <SyncOutlined spin /> : undefined}>
+              {locked ? t('vm.operationInProgress') : t('vm.suspended')}
+            </Tag>
           )}
         </Space>
 
