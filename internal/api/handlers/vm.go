@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
 	"time"
 
 	"vmmanager/internal/api/errors"
@@ -300,7 +301,21 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		log.Printf("[VM] Domain not found in libvirt: %v", err)
 		log.Printf("[VM] LibvirtDomainUUID: %s, creating new domain", vm.LibvirtDomainUUID)
 
-		domainXML := generateDomainXML(*vm)
+		diskPath := vm.DiskPath
+		if diskPath == "" {
+			diskPath = fmt.Sprintf("%s/%s.qcow2", h.storagePath, vm.ID.String())
+		}
+
+		log.Printf("[VM] Creating disk image: %s", diskPath)
+
+		cmd := exec.Command("qemu-img", "create", "-f", "qcow2", diskPath, fmt.Sprintf("%dG", vm.DiskAllocated))
+		if err := cmd.Run(); err != nil {
+			log.Printf("[VM] Failed to create disk image: %v", err)
+		} else {
+			log.Printf("[VM] Disk image created successfully")
+		}
+
+		domainXML := generateDomainXML(*vm, diskPath)
 		log.Printf("[VM] Generated domain XML:\n%s", domainXML)
 
 		domain, err = h.libvirt.DomainCreateXML(domainXML)
@@ -342,7 +357,7 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 	}))
 }
 
-func generateDomainXML(vm models.VirtualMachine) string {
+func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
 	return fmt.Sprintf(`<domain type='qemu'>
   <name>%s</name>
   <uuid>%s</uuid>
@@ -379,7 +394,7 @@ func generateDomainXML(vm models.VirtualMachine) string {
     </interface>
     <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
   </devices>
-</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.DiskPath)
+</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, diskPath)
 }
 
 func (h *VMHandler) StopVM(c *gin.Context) {
