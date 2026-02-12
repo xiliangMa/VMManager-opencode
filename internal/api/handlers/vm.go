@@ -286,15 +286,8 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 	log.Printf("[VM] Starting VM: %s, LibvirtDomainUUID: %s", id, vm.LibvirtDomainUUID)
 
 	if h.libvirt == nil {
-		log.Printf("[VM] libvirt client is nil, updating DB status only")
-		if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
-			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
-			return
-		}
-		c.JSON(http.StatusOK, errors.Success(gin.H{
-			"id":     vm.ID,
-			"status": "running",
-		}))
+		log.Printf("[VM] libvirt client is nil, cannot start VM")
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized"))
 		return
 	}
 
@@ -409,14 +402,23 @@ func (h *VMHandler) StopVM(c *gin.Context) {
 		return
 	}
 
-	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
-		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
-		if err == nil {
-			if err := domain.Shutdown(); err != nil {
-				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), err.Error()))
-				return
-			}
-		}
+	if h.libvirt == nil || vm.LibvirtDomainUUID == "" {
+		log.Printf("[VM] libvirt client is nil or LibvirtDomainUUID is empty, cannot stop VM")
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized or domain not configured"))
+		return
+	}
+
+	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Domain not found in libvirt: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "vm_domain_not_found"), err.Error()))
+		return
+	}
+
+	if err := domain.Shutdown(); err != nil {
+		log.Printf("[VM] Failed to shutdown domain: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), err.Error()))
+		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
@@ -449,14 +451,23 @@ func (h *VMHandler) ForceStopVM(c *gin.Context) {
 		return
 	}
 
-	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
-		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
-		if err == nil {
-			if err := domain.Destroy(); err != nil {
-				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_force_stop_vm"), err.Error()))
-				return
-			}
-		}
+	if h.libvirt == nil || vm.LibvirtDomainUUID == "" {
+		log.Printf("[VM] libvirt client is nil or LibvirtDomainUUID is empty, cannot force stop VM")
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized or domain not configured"))
+		return
+	}
+
+	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Domain not found in libvirt: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "vm_domain_not_found"), err.Error()))
+		return
+	}
+
+	if err := domain.Destroy(); err != nil {
+		log.Printf("[VM] Failed to destroy domain: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_force_stop_vm"), err.Error()))
+		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
@@ -494,18 +505,29 @@ func (h *VMHandler) RebootVM(c *gin.Context) {
 		return
 	}
 
-	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
-		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
-		if err == nil {
-			if err := domain.Shutdown(); err != nil {
-				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), err.Error()))
-				return
-			}
-			if err := domain.Create(); err != nil {
-				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), err.Error()))
-				return
-			}
-		}
+	if h.libvirt == nil || vm.LibvirtDomainUUID == "" {
+		log.Printf("[VM] libvirt client is nil or LibvirtDomainUUID is empty, cannot reboot VM")
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized or domain not configured"))
+		return
+	}
+
+	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Domain not found in libvirt: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "vm_domain_not_found"), err.Error()))
+		return
+	}
+
+	if err := domain.Shutdown(); err != nil {
+		log.Printf("[VM] Failed to shutdown domain: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), err.Error()))
+		return
+	}
+
+	if err := domain.Create(); err != nil {
+		log.Printf("[VM] Failed to start domain after reboot: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_reboot_vm"), err.Error()))
+		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
@@ -543,14 +565,23 @@ func (h *VMHandler) SuspendVM(c *gin.Context) {
 		return
 	}
 
-	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
-		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
-		if err == nil {
-			if err := domain.Suspend(); err != nil {
-				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_suspend_vm"), err.Error()))
-				return
-			}
-		}
+	if h.libvirt == nil || vm.LibvirtDomainUUID == "" {
+		log.Printf("[VM] libvirt client is nil or LibvirtDomainUUID is empty, cannot suspend VM")
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized or domain not configured"))
+		return
+	}
+
+	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Domain not found in libvirt: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "vm_domain_not_found"), err.Error()))
+		return
+	}
+
+	if err := domain.Suspend(); err != nil {
+		log.Printf("[VM] Failed to suspend domain: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_suspend_vm"), err.Error()))
+		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "suspended"); err != nil {
@@ -588,14 +619,23 @@ func (h *VMHandler) ResumeVM(c *gin.Context) {
 		return
 	}
 
-	if h.libvirt != nil && vm.LibvirtDomainUUID != "" {
-		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
-		if err == nil {
-			if err := domain.Resume(); err != nil {
-				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_resume_vm"), err.Error()))
-				return
-			}
-		}
+	if h.libvirt == nil || vm.LibvirtDomainUUID == "" {
+		log.Printf("[VM] libvirt client is nil or LibvirtDomainUUID is empty, cannot resume VM")
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized or domain not configured"))
+		return
+	}
+
+	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Domain not found in libvirt: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "vm_domain_not_found"), err.Error()))
+		return
+	}
+
+	if err := domain.Resume(); err != nil {
+		log.Printf("[VM] Failed to resume domain: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_resume_vm"), err.Error()))
+		return
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
