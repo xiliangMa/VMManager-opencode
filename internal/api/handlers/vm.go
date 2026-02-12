@@ -152,7 +152,7 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	}
 
 	macAddress, _ := models.GenerateMACAddress()
-	vncPassword, _ := models.GenerateVNCPassword(12)
+	vncPassword, _ := models.GenerateVNCPassword(8)
 
 	vm := models.VirtualMachine{
 		ID:              uuid.New(),
@@ -431,6 +431,11 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 }
 
 func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
+	// libvirt only supports VNC passwords up to 8 characters
+	vncPassword := vm.VNCPassword
+	if len(vncPassword) > 8 {
+		vncPassword = vncPassword[:8]
+	}
 	return fmt.Sprintf(`<domain type='qemu'>
   <name>%s</name>
   <uuid>%s</uuid>
@@ -465,9 +470,12 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
       <source network='default'/>
       <model type='virtio'/>
     </interface>
-    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
+    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' passwd='%s'/>
+    <video>
+      <model type='vga' vram='16384' heads='1'/>
+    </video>
   </devices>
-</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, diskPath)
+</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, diskPath, vncPassword)
 }
 
 func (h *VMHandler) StopVM(c *gin.Context) {
@@ -912,7 +920,7 @@ func (h *VMHandler) GetConsole(c *gin.Context) {
 	}
 
 	if vm.VNCPassword == "" {
-		vm.VNCPassword, _ = models.GenerateVNCPassword(12)
+		vm.VNCPassword, _ = models.GenerateVNCPassword(8)
 		h.vmRepo.Update(ctx, vm)
 	}
 
