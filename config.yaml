@@ -41,7 +41,7 @@ libvirt:
 
 # Storage Configuration
 storage:
-  path: "/root/work/code/VMManager-opencode/data/disks"
+  path: "/var/lib/libvirt/images"
 
 # JWT Configuration
 jwt:
