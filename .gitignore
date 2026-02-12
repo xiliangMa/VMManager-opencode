@@ -20,3 +20,9 @@ web/build/
 
 # Uploads
 uploads/
+
+# SSL Certificates
+*.pem
+!</nginx/ssl/*.pem
+!</web/cert.pem
+web/key.pem
