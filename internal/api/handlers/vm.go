@@ -303,7 +303,7 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		domainXML := generateDomainXML(*vm)
 		log.Printf("[VM] Generated domain XML:\n%s", domainXML)
 
-		domain, err = h.libvirt.DomainCreateXML(domainXML, 0)
+		domain, err = h.libvirt.DomainCreateXML(domainXML)
 		if err != nil {
 			log.Printf("[VM] Failed to create domain: %v", err)
 			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_create_vm_domain"), err.Error()))

@@ -7,6 +7,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/uuid v1.5.0
 	github.com/gorilla/websocket v1.5.1
+	github.com/libvirt/libvirt-go v7.4.0+incompatible
 	github.com/spf13/viper v1.18.2
 	golang.org/x/crypto v0.35.0
 	gorm.io/driver/postgres v1.5.4
