@@ -130,75 +130,109 @@ func extractVNCPort(xmlDesc string) (int, error) {
 }
 
 func (c *VNCClient) proxyVNC(h *Handler) {
-	log.Printf("[VNC] Starting proxy for: %s", c.vmID)
+	log.Printf("[VNC][%s] Starting proxy", c.vmID)
 
-	if h.libvirt == nil || !h.libvirt.IsConnected() {
-		log.Printf("[VNC] libvirt not connected")
+	if h.libvirt == nil {
+		log.Printf("[VNC][%s] libvirt is nil", c.vmID)
 		return
 	}
 
+	if !h.libvirt.IsConnected() {
+		log.Printf("[VNC][%s] libvirt not connected", c.vmID)
+		return
+	}
+
+	log.Printf("[VNC][%s] Looking up domain", c.vmID)
 	domain, err := h.libvirt.LookupByUUID(c.vmID)
 	if err != nil {
-		log.Printf("[VNC] Domain not found: %v", err)
+		log.Printf("[VNC][%s] Domain not found: %v", c.vmID, err)
 		return
 	}
 
 	state, _, err := domain.GetState()
 	if err != nil {
-		log.Printf("[VNC] Failed to get domain state: %v", err)
+		log.Printf("[VNC][%s] Failed to get domain state: %v", c.vmID, err)
 		return
 	}
 
+	log.Printf("[VNC][%s] Domain state: %d", c.vmID, state)
 	if state != 1 {
-		log.Printf("[VNC] Domain is not running, state: %d", state)
+		log.Printf("[VNC][%s] Domain not running", c.vmID)
 		return
 	}
 
 	xmlDesc, err := domain.GetXMLDesc()
 	if err != nil {
-		log.Printf("[VNC] Failed to get domain XML: %v", err)
+		log.Printf("[VNC][%s] Failed to get domain XML: %v", c.vmID, err)
 		return
 	}
 
 	vncPort, err := extractVNCPort(xmlDesc)
 	if err != nil {
-		log.Printf("[VNC] Failed to extract VNC port: %v", err)
+		log.Printf("[VNC][%s] Failed to extract VNC port: %v", c.vmID, err)
 		return
 	}
 
-	log.Printf("[VNC] Connecting to QEMU VNC port: %d", vncPort)
+	log.Printf("[VNC][%s] VNC port: %d, connecting...", c.vmID, vncPort)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", vncPort)
 	c.targetConn, err = net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {
-		log.Printf("[VNC] Failed to connect to VNC: %v", err)
+		log.Printf("[VNC][%s] Failed to connect to VNC: %v", c.vmID, err)
 		return
 	}
 
-	log.Printf("[VNC] Connected to QEMU VNC")
+	log.Printf("[VNC][%s] Connected to QEMU VNC", c.vmID)
 
-	go func() {
-		buf := make([]byte, 4096)
-		for {
-			n, err := c.targetConn.Read(buf)
-			if err != nil {
-				log.Printf("[VNC] VNC read error: %v", err)
-				return
-			}
-			select {
-			case c.send <- buf[:n]:
-			default:
-			}
-		}
-	}()
+	go c.vncToWS()
+	go c.wsToVNC()
+}
 
-	go func() {
-		for msg := range c.recv {
-			if c.targetConn != nil {
-				c.targetConn.Write(msg)
-			}
+func (c *VNCClient) vncToWS() {
+	buf := make([]byte, 4096)
+	for {
+		c.connMu.Lock()
+		if c.closed || c.targetConn == nil {
+			c.connMu.Unlock()
+			return
 		}
-	}()
+		c.connMu.Unlock()
+
+		n, err := c.targetConn.Read(buf)
+		if err != nil {
+			log.Printf("[VNC][%s] VNC read error: %v", c.vmID, err)
+			return
+		}
+
+		c.connMu.Lock()
+		if c.closed {
+			c.connMu.Unlock()
+			return
+		}
+		c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		if err := c.conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+			log.Printf("[VNC][%s] WS write error: %v", c.vmID, err)
+			c.connMu.Unlock()
+			return
+		}
+		c.connMu.Unlock()
+	}
+}
+
+func (c *VNCClient) wsToVNC() {
+	for msg := range c.recv {
+		c.connMu.Lock()
+		if c.closed || c.targetConn == nil {
+			c.connMu.Unlock()
+			return
+		}
+		c.connMu.Unlock()
+
+		if _, err := c.targetConn.Write(msg); err != nil {
+			log.Printf("[VNC][%s] VNC write error: %v", c.vmID, err)
+			return
+		}
+	}
 }
 
 func (c *VNCClient) readPump() {
