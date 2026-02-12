@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"time"
 
@@ -264,6 +265,11 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 	c.JSON(http.StatusOK, errors.Success(nil))
 }
 
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 func (h *VMHandler) StartVM(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()
@@ -306,14 +312,34 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 			diskPath = fmt.Sprintf("%s/%s.qcow2", h.storagePath, vm.ID.String())
 		}
 
-		log.Printf("[VM] Creating disk image: %s", diskPath)
-
-		cmd := exec.Command("qemu-img", "create", "-f", "qcow2", diskPath, fmt.Sprintf("%dG", vm.DiskAllocated))
-		if err := cmd.Run(); err != nil {
-			log.Printf("[VM] Failed to create disk image: %v", err)
-		} else {
-			log.Printf("[VM] Disk image created successfully")
+		templatePath := ""
+		if vm.TemplateID != nil {
+			template, err := h.templateRepo.FindByID(ctx, vm.TemplateID.String())
+			if err == nil && template.TemplatePath != "" {
+				templatePath = template.TemplatePath
+				log.Printf("[VM] Template path: %s", templatePath)
+			}
 		}
+
+		if templatePath != "" && exists(templatePath) {
+			log.Printf("[VM] Copying template disk to: %s", diskPath)
+			cmd := exec.Command("cp", templatePath, diskPath)
+			if err := cmd.Run(); err != nil {
+				log.Printf("[VM] Failed to copy template disk: %v, creating empty disk", err)
+				cmd = exec.Command("qemu-img", "create", "-f", "qcow2", "-o", "preallocation=off", diskPath, fmt.Sprintf("%dG", vm.DiskAllocated))
+				if err := cmd.Run(); err != nil {
+					log.Printf("[VM] Failed to create disk image: %v", err)
+				}
+			}
+		} else {
+			log.Printf("[VM] Creating empty disk image: %s", diskPath)
+			cmd := exec.Command("qemu-img", "create", "-f", "qcow2", "-o", "preallocation=off", diskPath, fmt.Sprintf("%dG", vm.DiskAllocated))
+			if err := cmd.Run(); err != nil {
+				log.Printf("[VM] Failed to create disk image: %v", err)
+			}
+		}
+
+		log.Printf("[VM] Disk prepared: %s", diskPath)
 
 		domainXML := generateDomainXML(*vm, diskPath)
 		log.Printf("[VM] Generated domain XML:\n%s", domainXML)
