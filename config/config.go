@@ -12,6 +12,7 @@ type Config struct {
 	Database     DatabaseConfig     `mapstructure:"database"`
 	Redis        RedisConfig        `mapstructure:"redis"`
 	Libvirt      LibvirtConfig      `mapstructure:"libvirt"`
+	Storage      StorageConfig      `mapstructure:"storage"`
 	JWT          JWTConfig          `mapstructure:"jwt"`
 	VNC          VNCConfig          `mapstructure:"vnc"`
 	SPICE        SPICEConfig        `mapstructure:"spice"`
@@ -19,7 +20,7 @@ type Config struct {
 	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
 	Quota        QuotaConfig        `mapstructure:"quota"`
 	Email        EmailConfig        `mapstructure:"email"`
-	Notification NotificationConfig `mapstructure:"notification"`
+	Notification NotificationConfig  `mapstructure:"notification"`
 }
 
 type AppConfig struct {
@@ -62,6 +63,11 @@ type LibvirtConfig struct {
 	ConnectionTimeout time.Duration `mapstructure:"connection_timeout"`
 	ReadTimeout       time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout      time.Duration `mapstructure:"write_timeout"`
+	StoragePath       string        `mapstructure:"storage_path"`
+}
+
+type StorageConfig struct {
+	Path string `mapstructure:"path"`
 }
 
 type JWTConfig struct {

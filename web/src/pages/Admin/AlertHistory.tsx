@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Table, Button, Tag, Space, Modal, message, Select, Statistic, Row, Col } from 'antd'
+import { Card, Table, Button, Tag, Space, message, Select, Statistic, Row, Col } from 'antd'
 import { ReloadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { alertHistoryApi, AlertHistory as AlertHistoryType } from '../../api/client'
 

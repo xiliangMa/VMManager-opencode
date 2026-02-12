@@ -21,6 +21,7 @@ type VMHandler struct {
 	templateRepo *repository.TemplateRepository
 	statsRepo    *repository.VMStatsRepository
 	libvirt      *libvirt.Client
+	storagePath  string
 }
 
 func NewVMHandler(
@@ -29,6 +30,7 @@ func NewVMHandler(
 	templateRepo *repository.TemplateRepository,
 	statsRepo *repository.VMStatsRepository,
 	libvirtClient *libvirt.Client,
+	storagePath string,
 ) *VMHandler {
 	return &VMHandler{
 		vmRepo:       vmRepo,
@@ -36,6 +38,7 @@ func NewVMHandler(
 		templateRepo: templateRepo,
 		statsRepo:    statsRepo,
 		libvirt:      libvirtClient,
+		storagePath:  storagePath,
 	}
 }
 
@@ -160,9 +163,10 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 		CPUAllocated:    req.CPUAllocated,
 		MemoryAllocated: req.MemoryAllocated,
 		DiskAllocated:   req.DiskAllocated,
-		BootOrder:       req.BootOrder,
-		Autostart:       req.Autostart,
-		Tags:            req.Tags,
+		DiskPath:       fmt.Sprintf("%s/%s.qcow2", h.storagePath, uuid.New().String()),
+		BootOrder:      req.BootOrder,
+		Autostart:      req.Autostart,
+		Tags:           req.Tags,
 	}
 
 	if req.TemplateID != nil {

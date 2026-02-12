@@ -173,6 +173,9 @@ export const vmsApi = {
   resume: (id: string) =>
     client.post(`/vms/${id}/resume`).then(res => res.data),
 
+  getConsole: (id: string) =>
+    client.get(`/vms/${id}/console`).then(res => res.data),
+
   getStats: (id: string) =>
     client.get(`/vms/${id}/stats`).then(res => res.data)
 }

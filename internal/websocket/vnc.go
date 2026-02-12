@@ -175,10 +175,8 @@ func (c *VNCClient) writePump() {
 }
 
 func (c *VNCClient) proxyVNC() {
-	log.Printf("[VNC] Proxy starting for VM: %s", c.vmID)
-
-	c.send <- []byte(`{"type":"connected","payload":{"message":"VNC connection ready (mock mode)"}}`)
-	log.Printf("[VNC] Sent connected message to client")
+	log.Printf("[VNC] Proxy starting for VM: %s (mock mode)", c.vmID)
+	log.Printf("[VNC] WebSocket connection established, waiting for RFB protocol data")
 
 	go func() {
 		for {

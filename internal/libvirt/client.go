@@ -131,8 +131,24 @@ func (c *Client) LookupByVMID(vmID string) (*MockDomain, error) {
 }
 
 type domainXML struct {
-	Name string `xml:"name"`
-	UUID string `xml:"uuid"`
+	Name     string `xml:"name"`
+	UUID     string `xml:"uuid"`
+	DiskPath string `xml:"devices>disk>source>file"`
+}
+
+type diskXML struct {
+	Source string `xml:"source,attr"`
+}
+
+type devicesXML struct {
+	Disks []diskXML `xml:"disk"`
+}
+
+func (d *domainXML) getDiskPath() string {
+	if d.DiskPath != "" {
+		return d.DiskPath
+	}
+	return ""
 }
 
 func (c *Client) DomainCreateXML(xmlData string, flags uint32) (*MockDomain, error) {
@@ -142,6 +158,7 @@ func (c *Client) DomainCreateXML(xmlData string, flags uint32) (*MockDomain, err
 	}
 
 	log.Printf("[LIBVIRT] Creating domain with Name=%s, UUID=%s", domainDef.Name, domainDef.UUID)
+	log.Printf("[LIBVIRT] Disk path from XML: %s", domainDef.DiskPath)
 
 	domain := &MockDomain{
 		Name:    domainDef.Name,
@@ -150,6 +167,7 @@ func (c *Client) DomainCreateXML(xmlData string, flags uint32) (*MockDomain, err
 		CPUTime: 0,
 		MaxMem:  4194304,
 		MemUsed: 0,
+		DiskPath: domainDef.DiskPath,
 	}
 
 	c.mu.Lock()
@@ -162,21 +180,21 @@ func (c *Client) DomainCreateXML(xmlData string, flags uint32) (*MockDomain, err
 }
 
 func (c *Client) DefineXML(xmlData string, flags uint32) (*MockDomain, error) {
-	var domainDef struct {
-		Name string `xml:"name"`
-		UUID string `xml:"uuid"`
-	}
+	var domainDef domainXML
 	if err := xml.Unmarshal([]byte(xmlData), &domainDef); err != nil {
 		return nil, fmt.Errorf("failed to parse domain XML: %w", err)
 	}
 
+	log.Printf("[LIBVIRT] Defining domain with Name=%s, UUID=%s", domainDef.Name, domainDef.UUID)
+
 	domain := &MockDomain{
-		Name:    domainDef.Name,
-		UUID:    domainDef.UUID,
-		State:   0,
-		CPUTime: 0,
-		MaxMem:  4194304,
-		MemUsed: 0,
+		Name:     domainDef.Name,
+		UUID:     domainDef.UUID,
+		State:    0,
+		CPUTime:  0,
+		MaxMem:   4194304,
+		MemUsed:  0,
+		DiskPath: domainDef.DiskPath,
 	}
 
 	c.mu.Lock()

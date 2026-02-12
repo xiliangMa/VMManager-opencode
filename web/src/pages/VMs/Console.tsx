@@ -4,17 +4,25 @@ import { useTranslation } from 'react-i18next'
 import { Button, Space, Card, Tag, Typography, message, Tooltip } from 'antd'
 import { ArrowLeftOutlined, DisconnectOutlined, ReloadOutlined, CompressOutlined, ExpandOutlined } from '@ant-design/icons'
 import { vmsApi } from '../../api/client'
-import { useAuthStore } from '../../stores/authStore'
+
+interface ConsoleInfo {
+  type: string
+  host: string
+  port: number
+  password: string
+  websocket_url: string
+  expires_at: string
+}
 
 const VMConsole: React.FC = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { token } = useAuthStore()
   
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [vmStatus, setVmStatus] = useState<string>('unknown')
   const [fullscreen, setFullscreen] = useState(false)
+  const [consoleInfo, setConsoleInfo] = useState<ConsoleInfo | null>(null)
 
   const fetchVmStatus = useCallback(async () => {
     if (!id) return
@@ -26,11 +34,22 @@ const VMConsole: React.FC = () => {
     }
   }, [id])
 
+  const fetchConsoleInfo = useCallback(async () => {
+    if (!id) return
+    try {
+      const response = await vmsApi.getConsole(id)
+      setConsoleInfo(response.data)
+    } catch (err) {
+      console.error('Failed to fetch console info:', err)
+    }
+  }, [id])
+
   useEffect(() => {
     fetchVmStatus()
+    fetchConsoleInfo()
     const interval = setInterval(fetchVmStatus, 10000)
     return () => clearInterval(interval)
-  }, [fetchVmStatus])
+  }, [fetchVmStatus, fetchConsoleInfo])
 
   const handleRefresh = () => {
     if (iframeRef.current) {
@@ -69,7 +88,9 @@ const VMConsole: React.FC = () => {
     creating: 'processing'
   }
 
-  const vncUrl = `/novnc/vnc_lite.html?host=${window.location.hostname}&port=${window.location.port || '8080'}&path=api/v1/ws/vnc/${id}&password=${token || ''}`
+  const vncUrl = consoleInfo
+    ? `/novnc/vnc_lite.html?host=${window.location.hostname}&port=${window.location.port || '8080'}&path=${consoleInfo.websocket_url.replace(/^(wss?|ws):\/\/[^\/]+\//, '')}&password=${consoleInfo.password || ''}`
+    : ''
 
   return (
     <div>
