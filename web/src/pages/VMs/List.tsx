@@ -22,7 +22,13 @@ const VMs: React.FC = () => {
     suspended: 'orange',
     pending: 'blue',
     creating: 'processing',
-    error: 'error'
+    error: 'error',
+    starting: 'processing',
+    stopping: 'processing'
+  }
+
+  const isLocked = (status: string) => {
+    return ['starting', 'stopping', 'creating'].includes(status)
   }
 
   const columns = [
@@ -77,42 +83,51 @@ const VMs: React.FC = () => {
     {
       title: t('common.edit'),
       key: 'actions',
-      render: (_: any, record: VM) => (
-        <Space>
-          <Button
-            type="text"
-            icon={<VideoCameraOutlined />}
-            onClick={() => navigate(`/vms/${record.id}/console`)}
-          />
-          {record.status === 'stopped' && (
+      render: (_: any, record: VM) => {
+        const locked = isLocked(record.status)
+        return (
+          <Space>
             <Button
               type="text"
-              icon={<PlayCircleOutlined />}
-              onClick={() => handleStart(record.id)}
+              icon={<VideoCameraOutlined />}
+              disabled={locked || record.status !== 'running'}
+              onClick={() => navigate(`/vms/${record.id}/console`)}
             />
-          )}
-          {record.status === 'running' && (
+            {record.status === 'stopped' && (
+              <Button
+                type="text"
+                icon={<PlayCircleOutlined />}
+                onClick={() => handleStart(record.id)}
+              />
+            )}
+            {record.status === 'running' && (
+              <Button
+                type="text"
+                danger
+                icon={<PoweroffOutlined />}
+                onClick={() => handleStop(record.id)}
+              />
+            )}
+            {locked && record.status !== 'running' && record.status !== 'stopped' && (
+              <Tag color="processing">{t('vm.starting')}</Tag>
+            )}
             <Button
               type="text"
-              danger
-              icon={<PoweroffOutlined />}
-              onClick={() => handleStop(record.id)}
+              icon={<EditOutlined />}
+              disabled={locked}
+              onClick={() => navigate(`/vms/${record.id}/edit`)}
             />
-          )}
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => navigate(`/vms/${record.id}/edit`)}
-          />
-          <Popconfirm
-            title={t('common.delete')}
-            description={t('popconfirm.deleteVm')}
-            onConfirm={() => handleDelete(record.id)}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      )
+            <Popconfirm
+              title={t('common.delete')}
+              description={t('popconfirm.deleteVm')}
+              onConfirm={() => handleDelete(record.id)}
+              disabled={locked}
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} disabled={locked} />
+            </Popconfirm>
+          </Space>
+        )
+      }
     }
   ]
 

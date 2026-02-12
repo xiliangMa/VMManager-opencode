@@ -73,7 +73,13 @@ const VMDetail: React.FC = () => {
     suspended: 'orange',
     pending: 'blue',
     creating: 'processing',
-    error: 'error'
+    error: 'error',
+    starting: 'processing',
+    stopping: 'processing'
+  }
+
+  const isLocked = (status: string) => {
+    return ['starting', 'stopping', 'creating'].includes(status)
   }
 
   if (!vm) return <div>{t('common.loading')}</div>
@@ -165,14 +171,17 @@ const VMDetail: React.FC = () => {
         title={vm.name}
         extra={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <a href={`/vms/${id}/edit`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#1677ff', textDecoration: 'none' }}>
+            {isLocked(vm.status) && (
+              <Tag color="processing">{t('vm.starting')}</Tag>
+            )}
+            <a href={`/vms/${id}/edit`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: isLocked(vm.status) ? '#999' : '#1677ff', textDecoration: 'none', pointerEvents: isLocked(vm.status) ? 'none' : 'auto' }}>
               <EditOutlined /> {t('common.edit')}
             </a>
-            <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)}>
+            <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)} disabled={vm.status !== 'running' || isLocked(vm.status)}>
               {t('console.fullscreen')}
             </Button>
-            <Popconfirm title={t('popconfirm.areYouSure')} onConfirm={handleDelete}>
-              <Button danger icon={<DeleteOutlined />}>
+            <Popconfirm title={t('popconfirm.areYouSure')} onConfirm={handleDelete} disabled={isLocked(vm.status)}>
+              <Button danger icon={<DeleteOutlined />} disabled={isLocked(vm.status)}>
                 {t('common.delete')}
               </Button>
             </Popconfirm>
@@ -180,16 +189,16 @@ const VMDetail: React.FC = () => {
         }
       >
         <Space style={{ marginBottom: 16 }}>
-          {vm.status === 'running' ? (
+          {vm.status === 'running' && !isLocked(vm.status) ? (
             <>
               <Button onClick={handleStop}>{t('vm.stop')}</Button>
               <Button onClick={handleRestart}>{t('vm.restart')}</Button>
               <Button onClick={() => navigate(`/vms/${id}/console`)}>{t('vm.console')}</Button>
             </>
-          ) : vm.status === 'stopped' ? (
+          ) : vm.status === 'stopped' && !isLocked(vm.status) ? (
             <Button type="primary" onClick={handleStart}>{t('vm.start')}</Button>
           ) : (
-            <Button onClick={handleStart}>{t('vm.resume')}</Button>
+            <Tag color="processing">{isLocked(vm.status) ? t('vm.starting') : t('vm.suspended')}</Tag>
           )}
         </Space>
 

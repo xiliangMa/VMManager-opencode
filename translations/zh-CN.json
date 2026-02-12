@@ -98,5 +98,15 @@
   "invalid_vm_id": "无效的虚拟机ID",
   "libvirt_service_unavailable": "Libvirt服务不可用，无法启动虚拟机",
   "vm_domain_not_found": "在libvirt中未找到虚拟机域",
-  "vm_running_delete": "请先停止虚拟机后再删除"
+  "vm_running_delete": "请先停止虚拟机后再删除",
+  "starting": "启动中",
+  "stopping": "停止中",
+  "vm.running": "运行中",
+  "vm.stopped": "已停止",
+  "vm.starting": "启动中",
+  "vm.stopping": "停止中",
+  "vm.suspended": "已暂停",
+  "vm.pending": "等待中",
+  "vm.creating": "创建中",
+  "vm.error": "错误"
 }

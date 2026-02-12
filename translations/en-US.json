@@ -98,5 +98,15 @@
   "invalid_vm_id": "Invalid VM ID",
   "libvirt_service_unavailable": "Libvirt service is unavailable, VM cannot be started",
   "vm_domain_not_found": "VM domain not found in libvirt",
-  "vm_running_delete": "Please stop the VM before deleting"
+  "vm_running_delete": "Please stop the VM before deleting",
+  "starting": "Starting",
+  "stopping": "Stopping",
+  "vm.running": "Running",
+  "vm.stopped": "Stopped",
+  "vm.starting": "Starting",
+  "vm.stopping": "Stopping",
+  "vm.suspended": "Suspended",
+  "vm.pending": "Pending",
+  "vm.creating": "Creating",
+  "vm.error": "Error"
 }
