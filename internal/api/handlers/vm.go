@@ -507,10 +507,18 @@ func (h *VMHandler) StopVM(c *gin.Context) {
 		return
 	}
 
+	log.Printf("[VM] Attempting to shutdown VM: %s (libvirt: %s)", id, vm.LibvirtDomainUUID)
+	
 	if err := domain.Shutdown(); err != nil {
-		log.Printf("[VM] Failed to shutdown domain: %v", err)
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), err.Error()))
-		return
+		log.Printf("[VM] Shutdown failed, trying destroy: %v", err)
+		if err := domain.Destroy(); err != nil {
+			log.Printf("[VM] Failed to destroy VM: %v", err)
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), err.Error()))
+			return
+		}
+		log.Printf("[VM] VM destroyed successfully: %s", id)
+	} else {
+		log.Printf("[VM] Shutdown signal sent: %s", id)
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
