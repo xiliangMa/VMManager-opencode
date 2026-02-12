@@ -702,12 +702,17 @@ func (h *VMHandler) GetConsole(c *gin.Context) {
 		h.vmRepo.Update(ctx, vm)
 	}
 
+	scheme := "ws"
+	if c.Request.TLS != nil || c.Request.URL.Scheme == "https" {
+		scheme = "wss"
+	}
+
 	c.JSON(http.StatusOK, errors.Success(gin.H{
 		"type":          "vnc",
 		"host":          c.Request.Host,
 		"port":          vm.VNCPort,
 		"password":      vm.VNCPassword,
-		"websocket_url": fmt.Sprintf("ws://%s/ws/vnc/%s", c.Request.Host, vm.ID),
+		"websocket_url": fmt.Sprintf("%s://%s/ws/vnc/%s", scheme, c.Request.Host, vm.ID),
 		"expires_at":    time.Now().Add(30 * time.Minute).Format(time.RFC3339),
 	}))
 }
