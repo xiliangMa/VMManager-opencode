@@ -97,5 +97,6 @@
   "failed_to_update_vm_status": "Failed to update VM status",
   "invalid_vm_id": "Invalid VM ID",
   "libvirt_service_unavailable": "Libvirt service is unavailable, VM cannot be started",
-  "vm_domain_not_found": "VM domain not found in libvirt"
+  "vm_domain_not_found": "VM domain not found in libvirt",
+  "vm_running_delete": "Please stop the VM before deleting"
 }

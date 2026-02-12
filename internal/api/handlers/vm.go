@@ -257,13 +257,16 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 		return
 	}
 
+	if vm.Status == "running" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_running_delete"), "Please stop the VM before deleting"))
+		return
+	}
+
 	if h.libvirt != nil && vm.LibvirtDomainUUID != "" && vm.LibvirtDomainUUID != "new-uuid" && vm.LibvirtDomainUUID != "defined-uuid" {
 		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
 		if err == nil {
-			state, _, err := domain.GetState()
-			if err == nil && state == 1 {
-				log.Printf("[VM] Shutting down running VM: %s", id)
-				domain.Shutdown()
+			state, _, _ := domain.GetState()
+			if state == 1 {
 				domain.Destroy()
 			}
 			domain.Free()
@@ -272,6 +275,13 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 			if err := h.libvirt.UndefineDomain(vm.LibvirtDomainUUID); err != nil {
 				log.Printf("[VM] Failed to undefine domain: %v", err)
 			}
+		}
+	}
+
+	if vm.DiskPath != "" && exists(vm.DiskPath) {
+		log.Printf("[VM] Deleting disk file: %s", vm.DiskPath)
+		if err := os.Remove(vm.DiskPath); err != nil {
+			log.Printf("[VM] Failed to delete disk file: %v", err)
 		}
 	}
 
