@@ -76,7 +76,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	vmID := r.URL.Query().Get("vm_id")
 	connType := "vnc"
-	
+
 	if vmID == "" {
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		log.Printf("[WebSocket] Full path: %s", r.URL.Path)
@@ -126,9 +126,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		recv:     make(chan []byte, 1024),
 	}
 
-	h.clients[vmID] = client
+	// For SPICE, allow multiple connections (main, display, inputs, cursor channels)
+	// Use a unique key for each connection
+	clientKey := vmID
+	if connType == "spice" {
+		clientKey = fmt.Sprintf("%s-%d", vmID, len(h.clients))
+	}
+	h.clients[clientKey] = client
 
-	log.Printf("[WebSocket] Starting %s proxy for: %s", connType, vmID)
+	log.Printf("[WebSocket] Starting %s proxy for: %s (key: %s)", connType, vmID, clientKey)
 
 	go client.proxyVNC(h)
 	go client.writePump()
@@ -505,9 +511,10 @@ func (c *VNCClient) wsToVNC() {
 		c.connMu.Unlock()
 
 		if _, err := c.targetConn.Write(msg); err != nil {
-			log.Printf("c.logPrefix()%s] VNC write error: %v", c.vmID, err)
+			log.Printf("%s VNC/SPICE write error: %v", c.logPrefix(), err)
 			return
 		}
+		log.Printf("%s Forwarded %d bytes from WS to target", c.logPrefix(), len(msg))
 	}
 }
 
@@ -532,15 +539,34 @@ func (c *VNCClient) readPump() {
 	})
 
 	for {
-		_, message, err := c.conn.ReadMessage()
+		messageType, message, err := c.conn.ReadMessage()
 		if err != nil {
-			log.Printf("c.logPrefix()%s] WebSocket read error: %v", c.vmID, err)
+			log.Printf("%s WebSocket read error: %v", c.logPrefix(), err)
 			break
 		}
 
-		log.Printf("c.logPrefix()%s] Received %d bytes, type: %d", c.vmID, len(message), message[0])
+		log.Printf("%s Received %d bytes, WS message type: %d", c.logPrefix(), len(message), messageType)
 
-		// Try to parse as JSON message (for mouse/keyboard/resize events)
+		// For SPICE connections, forward all binary messages directly
+		// SPICE protocol doesn't use JSON messages like VNC
+		if c.connType == "spice" {
+			c.connMu.Lock()
+			if c.closed || c.targetConn == nil {
+				c.connMu.Unlock()
+				return
+			}
+			c.connMu.Unlock()
+
+			n, err := c.targetConn.Write(message)
+			if err != nil {
+				log.Printf("%s SPICE write error: %v", c.logPrefix(), err)
+				return
+			}
+			log.Printf("%s Forwarded %d bytes to SPICE", c.logPrefix(), n)
+			continue
+		}
+
+		// For VNC connections, try to parse as JSON message (for mouse/keyboard/resize events)
 		var msg VNCMessage
 		if err := json.Unmarshal(message, &msg); err == nil {
 			// JSON message - handle control commands
