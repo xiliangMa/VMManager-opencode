@@ -92,6 +92,7 @@
   "only_jpeg_png_gif_allowed": "仅支持jpeg、png、gif格式",
   "max_2mb": "最大支持2MB",
   "vm_quota_exceeded": "虚拟机数量超出配额限制",
+  "vm_name_exists": "虚拟机名称已存在",
   "cpu_quota_exceeded": "CPU配额超出限制",
   "memory_quota_exceeded": "内存配额超出限制",
   "failed_to_update_vm_status": "更新虚拟机状态失败",

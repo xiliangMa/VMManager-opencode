@@ -74,6 +74,15 @@ func (c *Client) UndefineDomain(uuid string) error {
 	return domain.Undefine()
 }
 
+func (c *Client) UndefineDomainByName(name string) error {
+	domain, err := c.conn.LookupDomainByName(name)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+	return domain.Undefine()
+}
+
 func (c *Client) DomainCreateXML(xmlData string) (*Domain, error) {
 	domain, err := c.conn.DomainCreateXML(xmlData, 0)
 	if err != nil {

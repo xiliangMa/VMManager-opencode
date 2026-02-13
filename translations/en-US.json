@@ -92,6 +92,7 @@
   "only_jpeg_png_gif_allowed": "only jpeg, png, gif allowed",
   "max_2mb": "max 2MB",
   "vm_quota_exceeded": "VM quota exceeded",
+  "vm_name_exists": "VM name already exists",
   "cpu_quota_exceeded": "CPU quota exceeded",
   "memory_quota_exceeded": "Memory quota exceeded",
   "failed_to_update_vm_status": "Failed to update VM status",

@@ -152,6 +152,15 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 		return
 	}
 
+	if h.libvirt != nil {
+		existingDomain, err := h.libvirt.LookupByName(req.Name)
+		if err == nil {
+			existingDomain.Free()
+			c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeVMConflict, t(c, "vm_name_exists"), fmt.Sprintf("VM with name '%s' already exists in libvirt", req.Name)))
+			return
+		}
+	}
+
 	macAddress, _ := models.GenerateMACAddress()
 	vncPassword, _ := models.GenerateVNCPassword(8)
 
@@ -268,22 +277,44 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 		return
 	}
 
-	if h.libvirt != nil && vm.LibvirtDomainUUID != "" && vm.LibvirtDomainUUID != "new-uuid" && vm.LibvirtDomainUUID != "defined-uuid" {
-		log.Printf("[VM] Deleting libvirt domain: %s", vm.LibvirtDomainUUID)
-		
-		domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
-		if err == nil {
-			state, _, _ := domain.GetState()
-			if state == 1 {
-				log.Printf("[VM] Force destroying running VM: %s", id)
-				domain.Destroy()
+	if h.libvirt != nil {
+		deleted := false
+		if vm.LibvirtDomainUUID != "" && vm.LibvirtDomainUUID != "new-uuid" && vm.LibvirtDomainUUID != "defined-uuid" {
+			log.Printf("[VM] Deleting libvirt domain by UUID: %s", vm.LibvirtDomainUUID)
+			domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+			if err == nil {
+				state, _, _ := domain.GetState()
+				if state == 1 {
+					log.Printf("[VM] Force destroying running VM: %s", id)
+					domain.Destroy()
+				}
+				domain.Free()
+
+				if err := h.libvirt.UndefineDomain(vm.LibvirtDomainUUID); err != nil {
+					log.Printf("[VM] Failed to undefine domain by UUID: %v", err)
+				} else {
+					log.Printf("[VM] Libvirt domain undefined by UUID: %s", vm.LibvirtDomainUUID)
+					deleted = true
+				}
 			}
-			domain.Free()
-			
-			if err := h.libvirt.UndefineDomain(vm.LibvirtDomainUUID); err != nil {
-				log.Printf("[VM] Failed to undefine domain: %v", err)
-			} else {
-				log.Printf("[VM] Libvirt domain undefined: %s", vm.LibvirtDomainUUID)
+		}
+
+		if !deleted && vm.Name != "" {
+			log.Printf("[VM] Deleting libvirt domain by name: %s", vm.Name)
+			domain, err := h.libvirt.LookupByName(vm.Name)
+			if err == nil {
+				state, _, _ := domain.GetState()
+				if state == 1 {
+					log.Printf("[VM] Force destroying running VM by name: %s", vm.Name)
+					domain.Destroy()
+				}
+				domain.Free()
+
+				if err := h.libvirt.UndefineDomainByName(vm.Name); err != nil {
+					log.Printf("[VM] Failed to undefine domain by name: %v", err)
+				} else {
+					log.Printf("[VM] Libvirt domain undefined by name: %s", vm.Name)
+				}
 			}
 		}
 	}
@@ -294,6 +325,16 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 			log.Printf("[VM] Failed to delete disk file: %v", err)
 		} else {
 			log.Printf("[VM] Disk file deleted: %s", vm.DiskPath)
+		}
+	}
+
+	nvramPath := fmt.Sprintf("/var/lib/libvirt/qemu/nvram/%s_VARS.fd", vm.Name)
+	if exists(nvramPath) {
+		log.Printf("[VM] Deleting nvram file: %s", nvramPath)
+		if err := os.Remove(nvramPath); err != nil {
+			log.Printf("[VM] Failed to delete nvram file: %v", err)
+		} else {
+			log.Printf("[VM] Nvram file deleted: %s", nvramPath)
 		}
 	}
 
@@ -357,6 +398,9 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 			template, err := h.templateRepo.FindByID(ctx, vm.TemplateID.String())
 			if err == nil && template.TemplatePath != "" {
 				templatePath = template.TemplatePath
+				if !strings.HasPrefix(templatePath, "/") {
+					templatePath = "./" + templatePath
+				}
 				log.Printf("[VM] Template path: %s", templatePath)
 			}
 		}
@@ -481,6 +525,12 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
     <nvram template='/usr/share/AAVMF/AAVMF_VARS.fd'>/var/lib/libvirt/qemu/nvram/%s_VARS.fd</nvram>
     <boot dev='hd'/>
   </os>
+  <serial type='pty'>
+    <target port='0'/>
+  </serial>
+  <console type='pty'>
+    <target type='serial' port='0'/>
+  </console>
   <features>
     <acpi/>
     <apic/>
@@ -527,6 +577,12 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
     <nvram template='/usr/share/OVMF/OVMF_VARS.fd'>/var/lib/libvirt/qemu/nvram/%s_VARS.fd</nvram>
     <boot dev='hd'/>
   </os>
+  <serial type='pty'>
+    <target port='0'/>
+  </serial>
+  <console type='pty'>
+    <target type='serial' port='0'/>
+  </console>
   <features>
     <acpi/>
     <apic/>
