@@ -302,35 +302,39 @@ SpiceConn.prototype =
             }
             else
             {
-                this.state = "error";
-                if (this.auth_reply.auth_code == Constants.SPICE_LINK_ERR_PERMISSION_DENIED)
+                if (this.auth_reply.auth_code == Constants.SPICE_LINK_ERR_OK)
                 {
-                    var e = new Error("Permission denied.");
+                    DEBUG > 0 && console.log(this.type + ': Connected');
+
+                    if (this.type == Constants.SPICE_CHANNEL_DISPLAY)
+                    {
+                        var dinit = new SpiceMsgcDisplayInit();
+                        var reply = new SpiceMiniData();
+                        reply.build_msg(Constants.SPICE_MSGC_DISPLAY_INIT, dinit);
+                        DEBUG > 0 && console.log("Request display init");
+                        this.send_msg(reply);
+                    }
+                    this.state = "ready";
+                    this.wire_reader.request(SpiceMiniData.prototype.buffer_size());
+                    if (this.timeout)
+                    {
+                        window.clearTimeout(this.timeout);
+                        delete this.timeout;
+                    }
                 }
                 else
                 {
-                    var e = new Error("Unexpected link error " + this.auth_reply.auth_code);
+                    this.state = "error";
+                    if (this.auth_reply.auth_code == Constants.SPICE_LINK_ERR_PERMISSION_DENIED)
+                    {
+                        var e = new Error("Permission denied.");
+                    }
+                    else
+                    {
+                        var e = new Error("Unexpected link error " + this.auth_reply.auth_code);
+                    }
+                    this.report_error(e);
                 }
-                this.state = "ready";
-                console.log("Channel " + this.channel_type() + " state is now: ready");
-                
-                // Update parent reference for inputs channel
-                if (this.channel_type() === "inputs" && this.parent) {
-                    console.log("Inputs channel ready, parent.inputs:", this.parent.inputs);
-                }
-                
-                this.wire_reader.request(SpiceMiniData.prototype.buffer_size());
-                if (this.timeout)
-                {
-                    window.clearTimeout(this.timeout);
-                    delete this.timeout;
-                }
-            }
-            else
-            {
-                this.state = "error";
-                console.error("Channel " + this.channel_type() + " auth error:", this.auth_reply.auth_code);
-                this.report_error(e);
             }
         }
     },
