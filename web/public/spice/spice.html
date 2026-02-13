@@ -72,10 +72,16 @@
                 window.spice_connection = sc;
                 SpiceHtml5.resize_helper(sc);
                 
-                // Debug: monitor channels
-                setInterval(function() {
-                    if (sc && sc.inputs) {
-                        console.log("inputs.state:", sc.inputs.state, "this.sc:", sc.inputs.sc ? "exists" : "undefined");
+                // Debug: check if display is hooked
+                setTimeout(function() {
+                    console.log("sc.display:", sc.display);
+                    console.log("sc.inputs:", sc.inputs);
+                    console.log("sc.display.primary_surface:", sc.display ? sc.display.primary_surface : "none");
+                    
+                    if (sc.display && sc.display.primary_surface !== undefined) {
+                        var canvas = sc.display.surfaces[sc.display.primary_surface].canvas;
+                        console.log("canvas.sc:", canvas.sc);
+                        console.log("canvas.sc.inputs:", canvas.sc ? canvas.sc.inputs : "none");
                     }
                 }, 2000);
                 
