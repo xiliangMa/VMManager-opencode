@@ -272,13 +272,15 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 		return
 	}
 
-	if vm.Status == "running" {
+	if vm.Status == "running" || vm.Status == "paused" || vm.Status == "suspended" {
 		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_running_delete"), "虚拟机正在运行，无法删除"))
 		return
 	}
 
-	if h.libvirt != nil {
-		deleted := false
+	deleted := false
+	tryDelete := func() bool {
+		domainDeleted := false
+
 		if vm.LibvirtDomainUUID != "" && vm.LibvirtDomainUUID != "new-uuid" && vm.LibvirtDomainUUID != "defined-uuid" {
 			log.Printf("[VM] Deleting libvirt domain by UUID: %s", vm.LibvirtDomainUUID)
 			domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
@@ -290,16 +292,28 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 				}
 				domain.Free()
 
-				if err := h.libvirt.UndefineDomain(vm.LibvirtDomainUUID); err != nil {
-					log.Printf("[VM] Failed to undefine domain by UUID: %v", err)
+				cmd := exec.Command("virsh", "undefine", "--nvram", vm.LibvirtDomainUUID)
+				if output, err := cmd.CombinedOutput(); err != nil {
+					log.Printf("[VM] Failed to undefine domain by UUID: %v, output: %s", err, string(output))
+					if strings.Contains(string(output), "cannot undefine domain with nvram") {
+						cmd = exec.Command("virsh", "undefine", vm.LibvirtDomainUUID)
+						if output, err := cmd.CombinedOutput(); err != nil {
+							log.Printf("[VM] Failed to undefine domain by UUID (fallback): %v, output: %s", err, string(output))
+						} else {
+							log.Printf("[VM] Libvirt domain undefined by UUID: %s", vm.LibvirtDomainUUID)
+							domainDeleted = true
+						}
+					}
 				} else {
 					log.Printf("[VM] Libvirt domain undefined by UUID: %s", vm.LibvirtDomainUUID)
-					deleted = true
+					domainDeleted = true
 				}
+			} else {
+				log.Printf("[VM] Domain not found by UUID: %v", err)
 			}
 		}
 
-		if !deleted && vm.Name != "" {
+		if !domainDeleted && vm.Name != "" {
 			log.Printf("[VM] Deleting libvirt domain by name: %s", vm.Name)
 			domain, err := h.libvirt.LookupByName(vm.Name)
 			if err == nil {
@@ -310,13 +324,52 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 				}
 				domain.Free()
 
-				if err := h.libvirt.UndefineDomainByName(vm.Name); err != nil {
-					log.Printf("[VM] Failed to undefine domain by name: %v", err)
+				cmd := exec.Command("virsh", "undefine", "--nvram", vm.Name)
+				if output, err := cmd.CombinedOutput(); err != nil {
+					log.Printf("[VM] Failed to undefine domain by name: %v, output: %s", err, string(output))
+					if strings.Contains(string(output), "cannot undefine domain with nvram") {
+						cmd = exec.Command("virsh", "undefine", vm.Name)
+						if output, err := cmd.CombinedOutput(); err != nil {
+							log.Printf("[VM] Failed to undefine domain by name (fallback): %v, output: %s", err, string(output))
+						} else {
+							log.Printf("[VM] Libvirt domain undefined by name: %s", vm.Name)
+							domainDeleted = true
+						}
+					}
 				} else {
 					log.Printf("[VM] Libvirt domain undefined by name: %s", vm.Name)
+					domainDeleted = true
 				}
+			} else {
+				log.Printf("[VM] Domain not found by name: %v", err)
 			}
 		}
+		return domainDeleted
+	}
+
+	if vm.Name != "" {
+		nvramPath := fmt.Sprintf("/var/lib/libvirt/qemu/nvram/%s_VARS.fd", vm.Name)
+		if exists(nvramPath) {
+			log.Printf("[VM] Deleting nvram file before undefine: %s", nvramPath)
+			if err := os.Remove(nvramPath); err != nil {
+				log.Printf("[VM] Failed to delete nvram file: %v", err)
+			} else {
+				log.Printf("[VM] Nvram file deleted: %s", nvramPath)
+			}
+		}
+	}
+
+	if h.libvirt != nil {
+		deleted = tryDelete()
+		if !deleted {
+			log.Printf("[VM] Warning: Failed to delete libvirt domain for VM: %s (uuid: %s, name: %s)", id, vm.LibvirtDomainUUID, vm.Name)
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, "failed_to_delete_vm", "Failed to delete libvirt domain"))
+			return
+		}
+	} else {
+		log.Printf("[VM] Error: libvirt client is nil, cannot delete domain for VM: %s", id)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, "failed_to_delete_vm", "libvirt client is not initialized"))
+		return
 	}
 
 	if vm.DiskPath != "" && exists(vm.DiskPath) {
@@ -325,16 +378,6 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 			log.Printf("[VM] Failed to delete disk file: %v", err)
 		} else {
 			log.Printf("[VM] Disk file deleted: %s", vm.DiskPath)
-		}
-	}
-
-	nvramPath := fmt.Sprintf("/var/lib/libvirt/qemu/nvram/%s_VARS.fd", vm.Name)
-	if exists(nvramPath) {
-		log.Printf("[VM] Deleting nvram file: %s", nvramPath)
-		if err := os.Remove(nvramPath); err != nil {
-			log.Printf("[VM] Failed to delete nvram file: %v", err)
-		} else {
-			log.Printf("[VM] Nvram file deleted: %s", nvramPath)
 		}
 	}
 
@@ -558,7 +601,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
     </interface>
     <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
     <video>
-      <model type='virtio' heads='1'/>
+      <model type='none'/>
     </video>
     <controller type='usb' model='qemu-xhci'/>
     <controller type='pci' model='pcie-root'/>
