@@ -169,8 +169,10 @@ SpiceMainConn.prototype.process_channel_message = function(msg)
             }
             else if (chans.channels[i].type == Constants.SPICE_CHANNEL_INPUTS)
             {
+                console.log("Creating INPUTS channel");
                 this.inputs = new SpiceInputsConn(conn);
                 this.inputs.mouse_mode = this.mouse_mode;
+                console.log("INPUTS channel created, state:", this.inputs.state);
             }
             else if (chans.channels[i].type == Constants.SPICE_CHANNEL_CURSOR)
                 this.cursor = new SpiceCursorConn(conn);

@@ -69,30 +69,48 @@
             function agent_connected(sc) {
                 console.log("SPICE agent connected");
                 window.addEventListener('resize', SpiceHtml5.handle_resize);
-                window.spice_connection = this;
-                SpiceHtml5.resize_helper(this);
+                window.spice_connection = sc;
+                SpiceHtml5.resize_helper(sc);
                 
-                // Debug: Check inputs channel state
-                setTimeout(function() {
-                    console.log("Inputs channel state:", sc.inputs ? sc.inputs.state : "not found");
-                    console.log("Display channel state:", sc.display ? sc.display.state : "not found");
-                }, 2000);
-                
-                // Add keyboard event listeners to ensure keyboard works
+                // Force focus on spice-screen and add global keyboard handlers
+                var spiceArea = document.getElementById('spice-area');
                 var spiceScreen = document.getElementById('spice-screen');
+                
                 if (spiceScreen) {
                     spiceScreen.tabIndex = 0;
                     
-                    // Auto focus when clicking anywhere in spice area
-                    spiceScreen.addEventListener('click', function() {
-                        spiceScreen.focus();
-                    });
+                    // Ensure focus when clicking anywhere in spice area
+                    if (spiceArea) {
+                        spiceArea.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            spiceScreen.focus();
+                        });
+                        
+                        spiceArea.addEventListener('mousedown', function(e) {
+                            spiceScreen.focus();
+                        });
+                    }
                     
-                    // Try to focus after a short delay
+                    // Try to focus after connection
                     setTimeout(function() {
                         spiceScreen.focus();
                     }, 500);
+                    
+                    // Also try to focus immediately
+                    spiceScreen.focus();
                 }
+                
+                // Global keyboard event handlers as fallback
+                window.addEventListener('keydown', function(e) {
+                    console.log("Window keydown:", e.keyCode);
+                    if (sc && sc.inputs && sc.inputs.state === "ready") {
+                        // Handled by canvas, but we log it here
+                    }
+                }, true);
+                
+                window.addEventListener('keyup', function(e) {
+                    console.log("Window keyup:", e.keyCode);
+                }, true);
             }
 
             // Auto-connect on load
