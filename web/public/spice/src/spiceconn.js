@@ -280,6 +280,7 @@ SpiceConn.prototype =
         else if (this.state == "ticket")
         {
             this.auth_reply = new SpiceLinkAuthReply(mb);
+            console.log("Auth reply for channel " + this.channel_type() + ":", this.auth_reply.auth_code);
             if (this.auth_reply.auth_code == Constants.SPICE_LINK_ERR_OK)
             {
                 DEBUG > 0 && console.log(this.type + ': Connected');
@@ -294,6 +295,7 @@ SpiceConn.prototype =
                     this.send_msg(reply);
                 }
                 this.state = "ready";
+                console.log("Channel " + this.channel_type() + " state is now: ready");
                 this.wire_reader.request(SpiceMiniData.prototype.buffer_size());
                 if (this.timeout)
                 {
@@ -304,14 +306,7 @@ SpiceConn.prototype =
             else
             {
                 this.state = "error";
-                if (this.auth_reply.auth_code == Constants.SPICE_LINK_ERR_PERMISSION_DENIED)
-                {
-                    var e = new Error("Permission denied.");
-                }
-                else
-                {
-                    var e = new Error("Unexpected link error " + this.auth_reply.auth_code);
-                }
+                console.error("Channel " + this.channel_type() + " auth error:", this.auth_reply.auth_code);
                 this.report_error(e);
             }
         }
