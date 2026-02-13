@@ -263,6 +263,9 @@ func Migrate(db *gorm.DB) error {
 		notified_at TIMESTAMPTZ,
 		created_at TIMESTAMPTZ NOT NULL
 	);
+
+	-- Migration: Add architecture column to existing virtual_machines table
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS architecture VARCHAR(20) DEFAULT 'x86_64';
 	`
 	return db.Exec(sql).Error
 }
