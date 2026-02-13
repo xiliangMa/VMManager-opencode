@@ -175,6 +175,11 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	if req.TemplateID != nil {
 		templateUUID, _ := uuid.Parse(*req.TemplateID)
 		vm.TemplateID = &templateUUID
+
+		template, err := h.templateRepo.FindByID(ctx, *req.TemplateID)
+		if err == nil && template != nil && template.Architecture != "" {
+			vm.Architecture = template.Architecture
+		}
 	}
 
 	if err := h.vmRepo.Create(ctx, &vm); err != nil {
@@ -455,7 +460,63 @@ func extractVNCPasswordFromXML(xmlDesc string) string {
 func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
 	// Note: VNC password is disabled for WebSocket proxy compatibility
 	// The proxy forwards raw bytes and doesn't handle VNC auth protocol
-	return fmt.Sprintf(`<domain type='qemu'>
+
+	arch := vm.Architecture
+	if arch == "" {
+		arch = "x86_64"
+	}
+
+	var archConfig string
+	switch arch {
+	case "arm64", "aarch64":
+		// ARM64 架构配置 - 在 x86 主机上使用 TCG 进行二进制翻译
+		archConfig = fmt.Sprintf(`<domain type='qemu'>
+  <name>%s</name>
+  <uuid>%s</uuid>
+  <memory unit='MiB'>%d</memory>
+  <vcpu placement='static'>%d</vcpu>
+  <os>
+    <type arch='aarch64' machine='virt'>hvm</type>
+    <loader readonly='yes' type='pflash'>/usr/share/AAVMF/AAVMF_CODE.fd</loader>
+    <nvram template='/usr/share/AAVMF/AAVMF_VARS.fd'>/var/lib/libvirt/qemu/nvram/%s_VARS.fd</nvram>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <gic version='3'/>
+  </features>
+  <cpu mode='custom' match='exact'>
+    <model>cortex-a72</model>
+  </cpu>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>/usr/bin/qemu-system-aarch64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='%s'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <interface type='network'>
+      <source network='default'/>
+      <model type='virtio'/>
+    </interface>
+    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
+    <video>
+      <model type='virtio' heads='1'/>
+    </video>
+    <controller type='usb' model='qemu-xhci'/>
+    <controller type='pci' model='pcie-root'/>
+  </devices>
+</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), diskPath)
+	default:
+		// x86_64 架构配置
+		archConfig = fmt.Sprintf(`<domain type='qemu'>
   <name>%s</name>
   <uuid>%s</uuid>
   <memory unit='MiB'>%d</memory>
@@ -497,6 +558,9 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
     </video>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), diskPath)
+	}
+
+	return archConfig
 }
 
 func (h *VMHandler) StopVM(c *gin.Context) {
