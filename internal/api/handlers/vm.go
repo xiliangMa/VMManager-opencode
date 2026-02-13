@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"vmmanager/internal/api/errors"
@@ -430,12 +431,25 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 	}))
 }
 
-func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
-	// libvirt only supports VNC passwords up to 8 characters
-	vncPassword := vm.VNCPassword
-	if len(vncPassword) > 8 {
-		vncPassword = vncPassword[:8]
+// extractVNCPasswordFromXML extracts the VNC password from domain XML
+func extractVNCPasswordFromXML(xmlDesc string) string {
+	for _, line := range strings.Split(xmlDesc, "\n") {
+		if strings.Contains(line, "<graphics") && strings.Contains(line, "type='vnc'") {
+			for _, part := range strings.Fields(line) {
+				if strings.HasPrefix(part, "passwd='") {
+					passwd := strings.TrimPrefix(part, "passwd='")
+					passwd = strings.TrimSuffix(passwd, "'")
+					return passwd
+				}
+			}
+		}
 	}
+	return ""
+}
+
+func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
+	// Note: VNC password is disabled for WebSocket proxy compatibility
+	// The proxy forwards raw bytes and doesn't handle VNC auth protocol
 	return fmt.Sprintf(`<domain type='qemu'>
   <name>%s</name>
   <uuid>%s</uuid>
@@ -470,12 +484,12 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
       <source network='default'/>
       <model type='virtio'/>
     </interface>
-    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' passwd='%s'/>
+    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
     <video>
       <model type='vga' vram='16384' heads='1'/>
     </video>
   </devices>
-</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, diskPath, vncPassword)
+</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, diskPath)
 }
 
 func (h *VMHandler) StopVM(c *gin.Context) {
@@ -919,9 +933,12 @@ func (h *VMHandler) GetConsole(c *gin.Context) {
 		return
 	}
 
-	if vm.VNCPassword == "" {
-		vm.VNCPassword, _ = models.GenerateVNCPassword(8)
-		h.vmRepo.Update(ctx, vm)
+	// Get VNC password from libvirt domain XML (if set)
+	// This ensures we return the actual password the VNC server expects
+	if domain, err := h.libvirt.LookupByUUID(vm.ID.String()); err == nil {
+		if xmlDesc, err := domain.GetXMLDesc(); err == nil {
+			vm.VNCPassword = extractVNCPasswordFromXML(xmlDesc)
+		}
 	}
 
 	scheme := "ws"

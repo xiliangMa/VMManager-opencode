@@ -88,8 +88,13 @@ const VMConsole: React.FC = () => {
     creating: 'processing'
   }
 
+  // Use relative WebSocket path to work with both direct backend and nginx proxy
+  const wsPath = consoleInfo?.websocket_url 
+    ? consoleInfo.websocket_url.replace(/^(wss?|ws):\/\/[^\/]+\//, '')
+    : `ws/vnc/${id}`
+  
   const vncUrl = consoleInfo
-    ? `/novnc/vnc_lite.html?host=${window.location.hostname}&port=${window.location.port || '8080'}&path=${consoleInfo.websocket_url.replace(/^(wss?|ws):\/\/[^\/]+\//, '')}&password=${consoleInfo.password || ''}`
+    ? `/novnc/vnc_lite.html?host=${window.location.hostname}&port=${window.location.port || ''}&path=${wsPath}&password=${consoleInfo.password || ''}`
     : ''
 
   return (

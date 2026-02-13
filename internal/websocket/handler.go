@@ -1,8 +1,11 @@
 package websocket
 
 import (
+	"crypto/des"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -182,10 +185,198 @@ func (c *VNCClient) proxyVNC(h *Handler) {
 		return
 	}
 
-	log.Printf("[VNC][%s] Connected to QEMU VNC", c.vmID)
+	log.Printf("[VNC][%s] Connected to QEMU VNC, starting transparent proxy", c.vmID)
+
+	// Note: We don't perform VNC handshake here.
+	// The WebSocket proxy should be transparent, forwarding raw bytes between
+	// the noVNC client and the VNC server. The noVNC client will handle the
+	// VNC protocol handshake (version, auth, init) directly with the server.
 
 	go c.vncToWS()
 	go c.wsToVNC()
+}
+
+// performVNCHandshake completes the VNC protocol handshake and authentication
+func (c *VNCClient) performVNCHandshake(h *Handler) error {
+	// Read server version (12 bytes)
+	buf := make([]byte, 12)
+	if _, err := io.ReadFull(c.targetConn, buf); err != nil {
+		return fmt.Errorf("failed to read server version: %w", err)
+	}
+	log.Printf("[VNC][%s] Server version: %s", c.vmID, string(buf))
+
+	// Send client version (RFB 003.008)
+	if _, err := c.targetConn.Write([]byte("RFB 003.008\n")); err != nil {
+		return fmt.Errorf("failed to send client version: %w", err)
+	}
+
+	// Read number of security types
+	var nSecTypes uint8
+	if err := binary.Read(c.targetConn, binary.BigEndian, &nSecTypes); err != nil {
+		return fmt.Errorf("failed to read security types count: %w", err)
+	}
+	log.Printf("[VNC][%s] Security types count: %d", c.vmID, nSecTypes)
+
+	if nSecTypes == 0 {
+		return fmt.Errorf("no security types offered")
+	}
+
+	// Read security types
+	secTypes := make([]uint8, nSecTypes)
+	if _, err := io.ReadFull(c.targetConn, secTypes); err != nil {
+		return fmt.Errorf("failed to read security types: %w", err)
+	}
+	log.Printf("[VNC][%s] Security types: %v", c.vmID, secTypes)
+
+	// Select security type (prefer None=1, otherwise VNC auth=2)
+	var selectedType uint8 = 0xFF
+	for _, t := range secTypes {
+		if t == 1 { // None authentication
+			selectedType = 1
+			break
+		} else if t == 2 && selectedType == 0xFF { // VNC authentication
+			selectedType = 2
+		}
+	}
+
+	if selectedType == 0xFF {
+		return fmt.Errorf("no supported security type found")
+	}
+
+	// Send selected security type
+	if err := binary.Write(c.targetConn, binary.BigEndian, selectedType); err != nil {
+		return fmt.Errorf("failed to send security type: %w", err)
+	}
+	log.Printf("[VNC][%s] Selected security type: %d", c.vmID, selectedType)
+
+	// Handle VNC authentication (type 2)
+	if selectedType == 2 {
+		// Read challenge (16 bytes)
+		challenge := make([]byte, 16)
+		if _, err := io.ReadFull(c.targetConn, challenge); err != nil {
+			return fmt.Errorf("failed to read challenge: %w", err)
+		}
+
+		// Get VNC password from libvirt domain
+		password := c.getVNCPassword(h)
+		response := c.encryptVNCChallenge(challenge, password)
+		
+		if _, err := c.targetConn.Write(response); err != nil {
+			return fmt.Errorf("failed to send auth response: %w", err)
+		}
+		log.Printf("[VNC][%s] Sent password response (password length: %d)", c.vmID, len(password))
+	}
+
+	// Read security result
+	var secResult uint32
+	if err := binary.Read(c.targetConn, binary.BigEndian, &secResult); err != nil {
+		return fmt.Errorf("failed to read security result: %w", err)
+	}
+	log.Printf("[VNC][%s] Security result: %d", c.vmID, secResult)
+
+	if secResult != 0 {
+		return fmt.Errorf("authentication failed: %d", secResult)
+	}
+
+	// Send ClientInit (shared flag = 1)
+	if err := binary.Write(c.targetConn, binary.BigEndian, uint8(1)); err != nil {
+		return fmt.Errorf("failed to send client init: %w", err)
+	}
+
+	// Read ServerInit
+	var width, height uint16
+	if err := binary.Read(c.targetConn, binary.BigEndian, &width); err != nil {
+		return fmt.Errorf("failed to read server init width: %w", err)
+	}
+	if err := binary.Read(c.targetConn, binary.BigEndian, &height); err != nil {
+		return fmt.Errorf("failed to read server init height: %w", err)
+	}
+
+	// Read pixel format (16 bytes)
+	pixelFormat := make([]byte, 16)
+	if _, err := io.ReadFull(c.targetConn, pixelFormat); err != nil {
+		return fmt.Errorf("failed to read pixel format: %w", err)
+	}
+
+	// Read desktop name length
+	var nameLen uint32
+	if err := binary.Read(c.targetConn, binary.BigEndian, &nameLen); err != nil {
+		return fmt.Errorf("failed to read desktop name length: %w", err)
+	}
+
+	// Read desktop name
+	desktopName := make([]byte, nameLen)
+	if _, err := io.ReadFull(c.targetConn, desktopName); err != nil {
+		return fmt.Errorf("failed to read desktop name: %w", err)
+	}
+
+	log.Printf("[VNC][%s] Handshake complete: %dx%d - %s", c.vmID, width, height, string(desktopName))
+	return nil
+}
+
+// getVNCPassword retrieves the VNC password from the domain XML
+func (c *VNCClient) getVNCPassword(h *Handler) string {
+	domain, err := h.libvirt.LookupByUUID(c.vmID)
+	if err != nil {
+		return ""
+	}
+	
+	xmlDesc, err := domain.GetXMLDesc()
+	if err != nil {
+		return ""
+	}
+	
+	// Extract passwd attribute from graphics element
+	for _, line := range strings.Split(xmlDesc, "\n") {
+		if strings.Contains(line, "<graphics") && strings.Contains(line, "type='vnc'") {
+			for _, part := range strings.Fields(line) {
+				if strings.HasPrefix(part, "passwd='") {
+					passwd := strings.TrimPrefix(part, "passwd='")
+					passwd = strings.TrimSuffix(passwd, "'")
+					return passwd
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// encryptVNCChallenge encrypts the challenge using VNC DES algorithm
+func (c *VNCClient) encryptVNCChallenge(challenge []byte, password string) []byte {
+	// VNC uses a modified DES with reversed key bits
+	// Pad password to 8 bytes
+	key := make([]byte, 8)
+	copy(key, password)
+	
+	// Reverse bits in each byte (VNC specific)
+	for i := range key {
+		key[i] = reverseBits(key[i])
+	}
+	
+	// Encrypt challenge (16 bytes = 2 blocks)
+	response := make([]byte, 16)
+	
+	block, err := des.NewCipher(key)
+	if err != nil {
+		// Fallback: return empty response
+		return response
+	}
+	
+	// Encrypt first 8 bytes
+	block.Encrypt(response[0:8], challenge[0:8])
+	// Encrypt second 8 bytes
+	block.Encrypt(response[8:16], challenge[8:16])
+	
+	return response
+}
+
+// reverseBits reverses the bits in a byte
+func reverseBits(b byte) byte {
+	var result byte
+	for i := 0; i < 8; i++ {
+		result = (result << 1) | ((b >> i) & 1)
+	}
+	return result
 }
 
 func (c *VNCClient) vncToWS() {
@@ -264,18 +455,33 @@ func (c *VNCClient) readPump() {
 			break
 		}
 
+		// Try to parse as JSON message (for mouse/keyboard/resize events)
 		var msg VNCMessage
-		if err := json.Unmarshal(message, &msg); err != nil {
-			continue
-		}
+		if err := json.Unmarshal(message, &msg); err == nil {
+			// JSON message - handle control commands
+			switch msg.Type {
+			case "mouse":
+				c.handleMouse(msg.Payload)
+			case "keyboard":
+				c.handleKeyboard(msg.Payload)
+			case "resize":
+				c.handleResize(msg.Payload)
+			}
+		} else {
+			// Binary message - forward directly to VNC server
+			// This includes VNC protocol handshake and framebuffer requests
+			c.connMu.Lock()
+			if c.closed || c.targetConn == nil {
+				c.connMu.Unlock()
+				return
+			}
+			c.connMu.Unlock()
 
-		switch msg.Type {
-		case "mouse":
-			c.handleMouse(msg.Payload)
-		case "keyboard":
-			c.handleKeyboard(msg.Payload)
-		case "resize":
-			c.handleResize(msg.Payload)
+			if _, err := c.targetConn.Write(message); err != nil {
+				log.Printf("[VNC][%s] VNC write error: %v", c.vmID, err)
+				return
+			}
+			log.Printf("[VNC][%s] Forwarded %d bytes to VNC", c.vmID, len(message))
 		}
 	}
 }
