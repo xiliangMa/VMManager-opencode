@@ -266,6 +266,10 @@ func (c *VNCClient) proxyVNC(h *Handler) {
 
 	log.Printf("[%s][%s] %s port: %d, connecting...", strings.ToUpper(c.connType), c.vmID, strings.ToUpper(c.connType), targetPort)
 
+	if c.connType == "spice" {
+		log.Printf("[SPICE][%s] New SPICE connection, existing connections: %d", c.vmID, len(h.clients))
+	}
+
 	addr := fmt.Sprintf("127.0.0.1:%d", targetPort)
 	c.targetConn, err = net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {
