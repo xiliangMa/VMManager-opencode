@@ -461,7 +461,9 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
   <memory unit='MiB'>%d</memory>
   <vcpu placement='static'>%d</vcpu>
   <os>
-    <type arch='x86_64' machine='pc'>hvm</type>
+    <type arch='x86_64' machine='q35'>hvm</type>
+    <loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE.fd</loader>
+    <nvram template='/usr/share/OVMF/OVMF_VARS.fd'>/var/lib/libvirt/qemu/nvram/%s_VARS.fd</nvram>
     <boot dev='hd'/>
   </os>
   <features>
@@ -494,7 +496,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
       <model type='vga' vram='16384' heads='1'/>
     </video>
   </devices>
-</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, diskPath)
+</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), diskPath)
 }
 
 func (h *VMHandler) StopVM(c *gin.Context) {
