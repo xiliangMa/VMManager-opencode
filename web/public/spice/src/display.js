@@ -899,6 +899,12 @@ function handle_draw_jpeg_onload()
     var temp_canvas = null;
     var context;
 
+    // Add null check to prevent error
+    if (!this.o || !this.o.sc)
+    {
+        return;
+    }
+
     if (this.o.sc.streams[this.o.id])
         this.o.sc.streams[this.o.id].frames_loading--;
 
