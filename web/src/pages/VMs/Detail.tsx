@@ -17,8 +17,10 @@ const VMDetail: React.FC = () => {
     if (!id) return
     try {
       const response = await vmsApi.get(id)
-      setVm(response.data || response)
-      if (locked && ['running', 'stopped'].includes(response.data?.status || response.status)) {
+      const newVm = response.data || response
+      setVm(newVm)
+      // 只在状态从中间状态变为最终状态时解锁
+      if (locked && !['starting', 'stopping', 'creating', 'pending'].includes(newVm.status)) {
         setLocked(false)
       }
     } catch (error) {
@@ -29,6 +31,16 @@ const VMDetail: React.FC = () => {
   useEffect(() => {
     fetchVm()
   }, [id])
+
+  // 当 VM 处于中间状态时，自动轮询更新
+  useEffect(() => {
+    if (vm && ['starting', 'stopping', 'creating'].includes(vm.status)) {
+      const interval = setInterval(() => {
+        fetchVm()
+      }, 2000)
+      return () => clearInterval(interval)
+    }
+  }, [vm?.status])
 
   const handleStart = async () => {
     setLocked(true)

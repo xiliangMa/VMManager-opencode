@@ -85,7 +85,8 @@ func (s *Scheduler) syncVMStatus() {
 			continue
 		}
 
-		if vm.Status != expectedStatus {
+		// 避免覆盖中间状态（starting/stopping/creating）
+		if vm.Status != expectedStatus && !isTransitionalStatus(vm.Status) {
 			log.Printf("[SCHEDULER] Syncing VM %s status: %s -> %s", vm.Name, vm.Status, expectedStatus)
 			s.vmRepo.UpdateStatus(ctx, vm.ID.String(), expectedStatus)
 		}
@@ -95,6 +96,12 @@ func (s *Scheduler) syncVMStatus() {
 func (s *Scheduler) Stop() {
 	close(s.stopChan)
 	log.Println("Task scheduler stopped")
+}
+
+// isTransitionalStatus 检查状态是否为中间状态
+// 中间状态表示 VM 正在执行操作中，不应被调度器覆盖
+func isTransitionalStatus(status string) bool {
+	return status == "starting" || status == "stopping" || status == "creating" || status == "pending"
 }
 
 func (s *Scheduler) collectStats() {

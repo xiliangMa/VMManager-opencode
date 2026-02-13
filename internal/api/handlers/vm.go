@@ -412,6 +412,11 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		return
 	}
 
+	// 立即更新状态为 starting，避免前端状态回跳
+	if err := h.vmRepo.UpdateStatus(ctx, id, "starting"); err != nil {
+		log.Printf("[VM] Failed to update status to starting: %v", err)
+	}
+
 	if err := domain.Create(); err != nil {
 		log.Printf("[VM] Failed to start domain: %v", err)
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_start_vm"), err.Error()))
@@ -530,6 +535,11 @@ func (h *VMHandler) StopVM(c *gin.Context) {
 	}
 
 	log.Printf("[VM] Attempting to shutdown VM: %s (libvirt: %s)", id, vm.LibvirtDomainUUID)
+
+	// 立即更新状态为 stopping，避免前端状态回跳
+	if err := h.vmRepo.UpdateStatus(ctx, id, "stopping"); err != nil {
+		log.Printf("[VM] Failed to update status to stopping: %v", err)
+	}
 
 	if err := domain.Shutdown(); err != nil {
 		log.Printf("[VM] Shutdown failed, using destroy: %v", err)
