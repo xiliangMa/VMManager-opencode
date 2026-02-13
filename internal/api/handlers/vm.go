@@ -273,7 +273,7 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 	}
 
 	if vm.Status == "running" || vm.Status == "paused" || vm.Status == "suspended" {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_running_delete"), "虚拟机正在运行，无法删除"))
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_running_delete"), ""))
 		return
 	}
 

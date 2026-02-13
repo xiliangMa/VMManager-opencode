@@ -157,7 +157,6 @@ const VMs: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
       message.error(errorMessage)
-    } finally {
       setLockingVms(prev => {
         const next = new Set(prev)
         next.delete(id)
@@ -175,7 +174,6 @@ const VMs: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || t('vm.startFailed')
       message.error(errorMessage)
-    } finally {
       setLockingVms(prev => {
         const next = new Set(prev)
         next.delete(id)
@@ -193,7 +191,6 @@ const VMs: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || t('vm.stopFailed')
       message.error(errorMessage)
-    } finally {
       setLockingVms(prev => {
         const next = new Set(prev)
         next.delete(id)
