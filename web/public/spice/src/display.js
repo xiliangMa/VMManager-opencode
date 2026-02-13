@@ -900,12 +900,12 @@ function handle_draw_jpeg_onload()
     var context;
 
     // Add null check to prevent error
-    if (!this.o || !this.o.sc)
+    if (!this || !this.o || !this.o.sc || !this.o.sc.surfaces)
     {
         return;
     }
 
-    if (this.o.sc.streams[this.o.id])
+    if (this.o.sc.streams && this.o.sc.streams[this.o.id])
         this.o.sc.streams[this.o.id].frames_loading--;
 
     /*------------------------------------------------------------
