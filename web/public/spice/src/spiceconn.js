@@ -296,6 +296,12 @@ SpiceConn.prototype =
                 }
                 this.state = "ready";
                 console.log("Channel " + this.channel_type() + " state is now: ready");
+                
+                // Update parent reference for inputs channel
+                if (this.channel_type() === "inputs" && this.parent) {
+                    console.log("Inputs channel ready, parent.inputs:", this.parent.inputs);
+                }
+                
                 this.wire_reader.request(SpiceMiniData.prototype.buffer_size());
                 if (this.timeout)
                 {

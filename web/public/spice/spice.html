@@ -72,6 +72,13 @@
                 window.spice_connection = sc;
                 SpiceHtml5.resize_helper(sc);
                 
+                // Monitor channel states
+                setInterval(function() {
+                    if (sc) {
+                        console.log("Channels state - main:", sc.state, ", display:", sc.display ? sc.display.state : "none", ", inputs:", sc.inputs ? sc.inputs.state : "none", ", cursor:", sc.cursor ? sc.cursor.state : "none");
+                    }
+                }, 3000);
+                
                 // Force focus on spice-screen and add global keyboard handlers
                 var spiceArea = document.getElementById('spice-area');
                 var spiceScreen = document.getElementById('spice-screen');
@@ -99,18 +106,6 @@
                     // Also try to focus immediately
                     spiceScreen.focus();
                 }
-                
-                // Global keyboard event handlers as fallback
-                window.addEventListener('keydown', function(e) {
-                    console.log("Window keydown:", e.keyCode);
-                    if (sc && sc.inputs && sc.inputs.state === "ready") {
-                        // Handled by canvas, but we log it here
-                    }
-                }, true);
-                
-                window.addEventListener('keyup', function(e) {
-                    console.log("Window keyup:", e.keyCode);
-                }, true);
             }
 
             // Auto-connect on load
