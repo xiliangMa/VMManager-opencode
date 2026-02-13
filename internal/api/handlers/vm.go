@@ -665,11 +665,19 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
       <source network='default'/>
       <model type='virtio'/>
     </interface>
-    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
+    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
+      <listen type='address' address='0.0.0.0'/>
+    </graphics>
     <video>
       <model type='virtio' heads='1'/>
     </video>
     <controller type='usb' model='qemu-xhci'/>
+    <input type='tablet' bus='usb'>
+      <address type='usb' bus='0' port='1'/>
+    </input>
+    <input type='mouse' bus='usb'>
+      <address type='usb' bus='0' port='2'/>
+    </input>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
 	default:
@@ -715,10 +723,19 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
       <source network='default'/>
       <model type='virtio'/>
     </interface>
-    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
+    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
+      <listen type='address' address='0.0.0.0'/>
+    </graphics>
     <video>
       <model type='vga' vram='16384' heads='1'/>
     </video>
+    <controller type='usb' model='qemu-xhci'/>
+    <input type='tablet' bus='usb'>
+      <address type='usb' bus='0' port='1'/>
+    </input>
+    <input type='mouse' bus='usb'>
+      <address type='usb' bus='0' port='2'/>
+    </input>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
 	}
@@ -827,10 +844,17 @@ func (h *VMHandler) StopVM(c *gin.Context) {
 		log.Printf("[VM] Shutdown timeout, using destroy: %s", id)
 		if err := domain.Destroy(); err != nil {
 			log.Printf("[VM] Failed to destroy VM after timeout: %v", err)
-			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), err.Error()))
-			return
+			state, _, _ := domain.GetState()
+			domain.Free()
+			if state == 5 {
+				log.Printf("[VM] VM already stopped (state=%d), considering shutdown successful", state)
+			} else {
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_stop_vm"), err.Error()))
+				return
+			}
+		} else {
+			domain.Free()
 		}
-		domain.Free()
 	}
 
 	if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
@@ -979,7 +1003,12 @@ func (h *VMHandler) RebootVM(c *gin.Context) {
 			domain, err = h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
 			if err == nil {
 				if err := domain.Destroy(); err != nil {
-					log.Printf("[VM] Failed to destroy VM after timeout: %v", err)
+					state, _, _ := domain.GetState()
+					if state == 5 {
+						log.Printf("[VM] VM already stopped (state=%d), considering shutdown successful", state)
+					} else {
+						log.Printf("[VM] Failed to destroy VM after timeout: %v", err)
+					}
 				} else {
 					log.Printf("[VM] VM destroyed after timeout: %s", id)
 				}
