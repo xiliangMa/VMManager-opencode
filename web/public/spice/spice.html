@@ -72,6 +72,13 @@
                 window.spice_connection = sc;
                 SpiceHtml5.resize_helper(sc);
                 
+                // Debug: monitor channels
+                setInterval(function() {
+                    if (sc && sc.inputs) {
+                        console.log("inputs.state:", sc.inputs.state, "this.sc:", sc.inputs.sc ? "exists" : "undefined");
+                    }
+                }, 2000);
+                
                 // Force focus on spice-screen
                 var spiceArea = document.getElementById('spice-area');
                 var spiceScreen = document.getElementById('spice-screen');
@@ -79,7 +86,6 @@
                 if (spiceScreen) {
                     spiceScreen.tabIndex = 0;
                     
-                    // Ensure focus when clicking anywhere in spice area
                     if (spiceArea) {
                         spiceArea.addEventListener('click', function(e) {
                             e.preventDefault();
@@ -91,7 +97,6 @@
                         });
                     }
                     
-                    // Try to focus after connection
                     setTimeout(function() {
                         spiceScreen.focus();
                     }, 500);
