@@ -701,6 +701,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
     </interface>
     <graphics type='spice' port='-1' autoport='yes' listen='0.0.0.0'>
       <listen type='address' address='0.0.0.0'/>
+      <mouse mode='server'/>
     </graphics>
     <video>
       <model type='qxl' ram='65536' vram='65536'/>
@@ -760,6 +761,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
     </interface>
     <graphics type='spice' port='-1' autoport='yes' listen='0.0.0.0'>
       <listen type='address' address='0.0.0.0'/>
+      <mouse mode='server'/>
     </graphics>
     <video>
       <model type='qxl' ram='65536' vram='65536'/>
