@@ -98,9 +98,11 @@ const VMConsole: React.FC = () => {
     ? consoleInfo.websocket_url.replace(/^(wss?|ws):\/\/[^\/]+\//, '')
     : `ws/vnc/${id}`
   
-  const vncUrl = consoleInfo
-    ? `/novnc/vnc_lite.html?host=${window.location.hostname}&port=${window.location.port || ''}&path=${wsPath}&password=${consoleInfo.password || ''}`
-    : ''
+  const consoleType = consoleInfo?.type || 'vnc'
+  
+  const consoleUrl = consoleType === 'spice'
+    ? `/spice/spice.html?path=${wsPath}&password=${consoleInfo?.password || ''}`
+    : `/novnc/vnc_lite.html?path=${wsPath}&password=${consoleInfo?.password || ''}`
 
   return (
     <div>
@@ -151,13 +153,13 @@ const VMConsole: React.FC = () => {
             >
               <iframe
                 ref={iframeRef}
-                src={vncUrl}
+                src={consoleUrl}
                 style={{
                   width: '100%',
                   height: '100%',
                   border: 'none'
                 }}
-                title={t('console.vncConsole')}
+                title={consoleType === 'spice' ? 'SPICE Console' : t('console.vncConsole')}
               />
             </div>
           )}

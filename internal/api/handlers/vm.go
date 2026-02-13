@@ -575,6 +575,40 @@ func extractVNCPasswordFromXML(xmlDesc string) string {
 	return ""
 }
 
+// extractSPICEPort extracts the SPICE port from domain XML
+func extractSPICEPort(xmlDesc string) int {
+	for _, line := range strings.Split(xmlDesc, "\n") {
+		if strings.Contains(line, "<graphics") && strings.Contains(line, "type='spice'") {
+			for _, part := range strings.Fields(line) {
+				if strings.HasPrefix(part, "port='") {
+					portStr := strings.TrimPrefix(part, "port='")
+					portStr = strings.TrimSuffix(portStr, "'")
+					var port int
+					fmt.Sscanf(portStr, "%d", &port)
+					return port
+				}
+			}
+		}
+	}
+	return 0
+}
+
+// extractSPICEPasswordFromXML extracts the SPICE password from domain XML
+func extractSPICEPasswordFromXML(xmlDesc string) string {
+	for _, line := range strings.Split(xmlDesc, "\n") {
+		if strings.Contains(line, "<graphics") && strings.Contains(line, "type='spice'") {
+			for _, part := range strings.Fields(line) {
+				if strings.HasPrefix(part, "passwd='") {
+					passwd := strings.TrimPrefix(part, "passwd='")
+					passwd = strings.TrimSuffix(passwd, "'")
+					return passwd
+				}
+			}
+		}
+	}
+	return ""
+}
+
 // generateBootOrder generates boot elements based on boot order string
 // Format: "hd,cdrom,network" or "cdrom,hd,network" etc.
 func generateBootOrder(bootOrder string) string {
@@ -665,11 +699,11 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
       <source network='default'/>
       <model type='virtio'/>
     </interface>
-    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
+    <graphics type='spice' port='-1' autoport='yes' listen='0.0.0.0'>
       <listen type='address' address='0.0.0.0'/>
     </graphics>
     <video>
-      <model type='virtio' heads='1'/>
+      <model type='qxl' ram='65536' vram='65536'/>
     </video>
     <controller type='usb' model='qemu-xhci'/>
     <controller type='virtio-serial'/>
@@ -722,11 +756,11 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
       <source network='default'/>
       <model type='virtio'/>
     </interface>
-    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
+    <graphics type='spice' port='-1' autoport='yes' listen='0.0.0.0'>
       <listen type='address' address='0.0.0.0'/>
     </graphics>
     <video>
-      <model type='vga' vram='16384' heads='1'/>
+      <model type='qxl' ram='65536' vram='65536'/>
     </video>
     <controller type='usb' model='qemu-xhci'/>
     <controller type='virtio-serial'/>
@@ -1199,25 +1233,27 @@ func (h *VMHandler) GetConsole(c *gin.Context) {
 		return
 	}
 
-	// Get VNC password from libvirt domain XML (if set)
-	// This ensures we return the actual password the VNC server expects
+	// Get SPICE port from libvirt domain XML
+	spicePort := 0
+	spicePassword := ""
 	if domain, err := h.libvirt.LookupByUUID(vm.ID.String()); err == nil {
 		if xmlDesc, err := domain.GetXMLDesc(); err == nil {
-			vm.VNCPassword = extractVNCPasswordFromXML(xmlDesc)
+			spicePort = extractSPICEPort(xmlDesc)
+			spicePassword = extractSPICEPasswordFromXML(xmlDesc)
 		}
 	}
 
 	scheme := "ws"
-	if c.Request.TLS != nil || c.Request.URL.Scheme == "https" {
+	if c.Request.TLS != nil || c.Request.URL.Scheme == "https" || c.Request.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "wss"
 	}
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
-		"type":          "vnc",
-		"host":          c.Request.Host,
-		"port":          vm.VNCPort,
-		"password":      vm.VNCPassword,
-		"websocket_url": fmt.Sprintf("%s://%s/ws/vnc/%s", scheme, c.Request.Host, vm.ID),
+		"type":          "spice",
+		"host":          "127.0.0.1",
+		"port":          spicePort,
+		"password":      spicePassword,
+		"websocket_url": fmt.Sprintf("%s://%s/ws/spice/%s", scheme, c.Request.Host, vm.ID),
 		"expires_at":    time.Now().Add(30 * time.Minute).Format(time.RFC3339),
 	}))
 }

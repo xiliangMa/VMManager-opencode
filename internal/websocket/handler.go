@@ -27,6 +27,7 @@ type Handler struct {
 type VNCClient struct {
 	conn       *websocket.Conn
 	vmID       string
+	connType   string // "vnc" or "spice"
 	send       chan []byte
 	recv       chan []byte
 	closed     bool
@@ -63,6 +64,7 @@ func NewHandler(libvirtClient *libvirt.Client) *Handler {
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
+			Subprotocols: []string{"binary"},
 		},
 		clients: make(map[string]*VNCClient),
 		libvirt: libvirtClient,
@@ -70,24 +72,42 @@ func NewHandler(libvirtClient *libvirt.Client) *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("[VNC] WebSocket request: path=%s", r.URL.Path)
+	log.Printf("[WebSocket] WebSocket request: path=%s, method=%s", r.URL.Path, r.Method)
 
 	vmID := r.URL.Query().Get("vm_id")
+	connType := "vnc"
+	
 	if vmID == "" {
 		path := strings.TrimPrefix(r.URL.Path, "/")
+		log.Printf("[WebSocket] Full path: %s", r.URL.Path)
+		log.Printf("[WebSocket] Path after prefix: %s", path)
 		if strings.HasPrefix(path, "ws/vnc/") {
 			vmID = strings.TrimPrefix(path, "ws/vnc/")
+			connType = "vnc"
+		} else if strings.HasPrefix(path, "ws/spice/") {
+			vmID = strings.TrimPrefix(path, "ws/spice/")
+			connType = "spice"
 		} else if strings.HasPrefix(path, "api/v1/ws/vnc/") {
 			vmID = strings.TrimPrefix(path, "api/v1/ws/vnc/")
+			connType = "vnc"
+		} else if strings.HasPrefix(path, "api/v1/ws/spice/") {
+			vmID = strings.TrimPrefix(path, "api/v1/ws/spice/")
+			connType = "spice"
 		} else if strings.HasPrefix(path, "ws/") {
 			vmID = strings.TrimPrefix(path, "ws/")
 		}
 	}
 
-	log.Printf("[VNC] VM ID: %s", vmID)
+	log.Printf("[WebSocket] VM ID: %s, Type: %s", vmID, connType)
 
 	if vmID == "" {
-		log.Printf("[VNC] VM ID is empty")
+		log.Printf("[WebSocket] VM ID is empty, returning 400")
+		http.Error(w, "vm_id is required", http.StatusBadRequest)
+		return
+	}
+
+	if vmID == "" {
+		log.Printf("[WebSocket] VM ID is empty, returning 400")
 		http.Error(w, "vm_id is required", http.StatusBadRequest)
 		return
 	}
@@ -99,15 +119,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &VNCClient{
-		conn: conn,
-		vmID: vmID,
-		send: make(chan []byte, 1024),
-		recv: make(chan []byte, 1024),
+		conn:     conn,
+		vmID:     vmID,
+		connType: connType,
+		send:     make(chan []byte, 1024),
+		recv:     make(chan []byte, 1024),
 	}
 
 	h.clients[vmID] = client
 
-	log.Printf("[VNC] Starting VNC proxy for: %s", vmID)
+	log.Printf("[WebSocket] Starting %s proxy for: %s", connType, vmID)
 
 	go client.proxyVNC(h)
 	go client.writePump()
@@ -116,76 +137,137 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func extractVNCPort(xmlDesc string) (int, error) {
 	for _, line := range strings.Split(xmlDesc, "\n") {
-		if strings.Contains(line, "<graphics") && strings.Contains(line, "type='vnc'") {
-			for _, part := range strings.Fields(line) {
-				if strings.HasPrefix(part, "port='") {
-					portStr := strings.TrimPrefix(part, "port='")
-					portStr = strings.TrimSuffix(portStr, "'")
-					var port int
-					if _, err := fmt.Sscanf(portStr, "%d", &port); err == nil {
-						return port, nil
+		if strings.Contains(line, "<graphics") {
+			isVnc := strings.Contains(line, "type='vnc'") || strings.Contains(line, "type=\"vnc\"")
+			if isVnc {
+				for _, part := range strings.Fields(line) {
+					if strings.HasPrefix(part, "port='") {
+						portStr := strings.TrimPrefix(part, "port='")
+						portStr = strings.TrimSuffix(portStr, "'")
+						var port int
+						if _, err := fmt.Sscanf(portStr, "%d", &port); err == nil {
+							return port, nil
+						}
+					}
+					if strings.HasPrefix(part, "port=\"") {
+						portStr := strings.TrimPrefix(part, "port=\"")
+						portStr = strings.TrimSuffix(portStr, "\"")
+						var port int
+						if _, err := fmt.Sscanf(portStr, "%d", &port); err == nil {
+							return port, nil
+						}
 					}
 				}
 			}
 		}
 	}
-	return 5900, nil
+	return 0, fmt.Errorf("VNC port not found in domain XML")
+}
+
+func extractSPICEPort(xmlDesc string) (int, error) {
+	for _, line := range strings.Split(xmlDesc, "\n") {
+		if strings.Contains(line, "<graphics") {
+			isSpice := strings.Contains(line, "type='spice'") || strings.Contains(line, "type=\"spice\"")
+			log.Printf("[DEBUG] Found graphics line: %s, isSpice: %v", line, isSpice)
+			if isSpice {
+				for _, part := range strings.Fields(line) {
+					log.Printf("[DEBUG] Part: %s", part)
+					if strings.HasPrefix(part, "port='") {
+						portStr := strings.TrimPrefix(part, "port='")
+						portStr = strings.TrimSuffix(portStr, "'")
+						var port int
+						if _, err := fmt.Sscanf(portStr, "%d", &port); err == nil {
+							return port, nil
+						}
+					}
+					if strings.HasPrefix(part, "port=\"") {
+						portStr := strings.TrimPrefix(part, "port=\"")
+						portStr = strings.TrimSuffix(portStr, "\"")
+						var port int
+						if _, err := fmt.Sscanf(portStr, "%d", &port); err == nil {
+							return port, nil
+						}
+					}
+				}
+			}
+		}
+	}
+	return 0, fmt.Errorf("SPICE port not found in domain XML")
+}
+
+func (c *VNCClient) logPrefix() string {
+	return "[" + strings.ToUpper(c.connType) + "][" + c.vmID + "]"
 }
 
 func (c *VNCClient) proxyVNC(h *Handler) {
-	log.Printf("[VNC][%s] Starting proxy", c.vmID)
+	log.Printf("%s Starting proxy", c.logPrefix())
 
 	if h.libvirt == nil {
-		log.Printf("[VNC][%s] libvirt is nil", c.vmID)
+		log.Printf("%s libvirt is nil", c.logPrefix())
 		return
 	}
 
 	if !h.libvirt.IsConnected() {
-		log.Printf("[VNC][%s] libvirt not connected", c.vmID)
+		log.Printf("%s libvirt not connected", c.logPrefix())
 		return
 	}
 
-	log.Printf("[VNC][%s] Looking up domain", c.vmID)
+	log.Printf("[%s][%s] Looking up domain", strings.ToUpper(c.connType), c.vmID)
 	domain, err := h.libvirt.LookupByUUID(c.vmID)
 	if err != nil {
-		log.Printf("[VNC][%s] Domain not found: %v", c.vmID, err)
+		log.Printf("[%s][%s] Domain not found: %v", strings.ToUpper(c.connType), c.vmID, err)
 		return
 	}
 
 	state, _, err := domain.GetState()
 	if err != nil {
-		log.Printf("[VNC][%s] Failed to get domain state: %v", c.vmID, err)
+		log.Printf("[%s][%s] Failed to get domain state: %v", strings.ToUpper(c.connType), c.vmID, err)
 		return
 	}
 
-	log.Printf("[VNC][%s] Domain state: %d", c.vmID, state)
+	log.Printf("[%s][%s] Domain state: %d", strings.ToUpper(c.connType), c.vmID, state)
 	if state != 1 {
-		log.Printf("[VNC][%s] Domain not running", c.vmID)
+		log.Printf("[%s][%s] Domain not running", strings.ToUpper(c.connType), c.vmID, err)
 		return
 	}
 
 	xmlDesc, err := domain.GetXMLDesc()
 	if err != nil {
-		log.Printf("[VNC][%s] Failed to get domain XML: %v", c.vmID, err)
+		log.Printf("[%s][%s] Failed to get domain XML: %v", strings.ToUpper(c.connType), c.vmID, err)
 		return
 	}
 
-	vncPort, err := extractVNCPort(xmlDesc)
-	if err != nil {
-		log.Printf("[VNC][%s] Failed to extract VNC port: %v", c.vmID, err)
-		return
+	var targetPort int
+	if c.connType == "spice" {
+		targetPort, err = extractSPICEPort(xmlDesc)
+		log.Printf("[DEBUG] XML contains spice: %v", strings.Contains(xmlDesc, "type='spice'"))
+		log.Printf("[DEBUG] XML contains vnc: %v", strings.Contains(xmlDesc, "type='vnc'"))
+		if err != nil {
+			log.Printf("[SPICE][%s] Failed to extract SPICE port: %v", c.vmID, err)
+			c.conn.Close()
+			return
+		}
+		log.Printf("[SPICE][%s] SPICE port: %d", c.vmID, targetPort)
+	} else {
+		targetPort, err = extractVNCPort(xmlDesc)
+		if err != nil {
+			log.Printf("c.logPrefix()%s] Failed to extract VNC port: %v", c.vmID, err)
+			c.conn.Close()
+			return
+		}
+		log.Printf("c.logPrefix()%s] VNC port: %d", c.vmID, targetPort)
 	}
 
-	log.Printf("[VNC][%s] VNC port: %d, connecting...", c.vmID, vncPort)
+	log.Printf("[%s][%s] %s port: %d, connecting...", strings.ToUpper(c.connType), c.vmID, strings.ToUpper(c.connType), targetPort)
 
-	addr := fmt.Sprintf("127.0.0.1:%d", vncPort)
+	addr := fmt.Sprintf("127.0.0.1:%d", targetPort)
 	c.targetConn, err = net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {
-		log.Printf("[VNC][%s] Failed to connect to VNC: %v", c.vmID, err)
+		log.Printf("[%s][%s] Failed to connect to %s: %v", strings.ToUpper(c.connType), c.vmID, strings.ToUpper(c.connType), err)
 		return
 	}
 
-	log.Printf("[VNC][%s] Connected to QEMU VNC, starting transparent proxy", c.vmID)
+	log.Printf("[%s][%s] Connected to QEMU %s, starting transparent proxy", strings.ToUpper(c.connType), c.vmID, strings.ToUpper(c.connType))
 
 	// Note: We don't perform VNC handshake here.
 	// The WebSocket proxy should be transparent, forwarding raw bytes between
@@ -203,7 +285,7 @@ func (c *VNCClient) performVNCHandshake(h *Handler) error {
 	if _, err := io.ReadFull(c.targetConn, buf); err != nil {
 		return fmt.Errorf("failed to read server version: %w", err)
 	}
-	log.Printf("[VNC][%s] Server version: %s", c.vmID, string(buf))
+	log.Printf("c.logPrefix()%s] Server version: %s", c.vmID, string(buf))
 
 	// Send client version (RFB 003.008)
 	if _, err := c.targetConn.Write([]byte("RFB 003.008\n")); err != nil {
@@ -215,7 +297,7 @@ func (c *VNCClient) performVNCHandshake(h *Handler) error {
 	if err := binary.Read(c.targetConn, binary.BigEndian, &nSecTypes); err != nil {
 		return fmt.Errorf("failed to read security types count: %w", err)
 	}
-	log.Printf("[VNC][%s] Security types count: %d", c.vmID, nSecTypes)
+	log.Printf("c.logPrefix()%s] Security types count: %d", c.vmID, nSecTypes)
 
 	if nSecTypes == 0 {
 		return fmt.Errorf("no security types offered")
@@ -226,7 +308,7 @@ func (c *VNCClient) performVNCHandshake(h *Handler) error {
 	if _, err := io.ReadFull(c.targetConn, secTypes); err != nil {
 		return fmt.Errorf("failed to read security types: %w", err)
 	}
-	log.Printf("[VNC][%s] Security types: %v", c.vmID, secTypes)
+	log.Printf("c.logPrefix()%s] Security types: %v", c.vmID, secTypes)
 
 	// Select security type (prefer None=1, otherwise VNC auth=2)
 	var selectedType uint8 = 0xFF
@@ -247,7 +329,7 @@ func (c *VNCClient) performVNCHandshake(h *Handler) error {
 	if err := binary.Write(c.targetConn, binary.BigEndian, selectedType); err != nil {
 		return fmt.Errorf("failed to send security type: %w", err)
 	}
-	log.Printf("[VNC][%s] Selected security type: %d", c.vmID, selectedType)
+	log.Printf("c.logPrefix()%s] Selected security type: %d", c.vmID, selectedType)
 
 	// Handle VNC authentication (type 2)
 	if selectedType == 2 {
@@ -264,7 +346,7 @@ func (c *VNCClient) performVNCHandshake(h *Handler) error {
 		if _, err := c.targetConn.Write(response); err != nil {
 			return fmt.Errorf("failed to send auth response: %w", err)
 		}
-		log.Printf("[VNC][%s] Sent password response (password length: %d)", c.vmID, len(password))
+		log.Printf("c.logPrefix()%s] Sent password response (password length: %d)", c.vmID, len(password))
 	}
 
 	// Read security result
@@ -272,7 +354,7 @@ func (c *VNCClient) performVNCHandshake(h *Handler) error {
 	if err := binary.Read(c.targetConn, binary.BigEndian, &secResult); err != nil {
 		return fmt.Errorf("failed to read security result: %w", err)
 	}
-	log.Printf("[VNC][%s] Security result: %d", c.vmID, secResult)
+	log.Printf("c.logPrefix()%s] Security result: %d", c.vmID, secResult)
 
 	if secResult != 0 {
 		return fmt.Errorf("authentication failed: %d", secResult)
@@ -310,7 +392,7 @@ func (c *VNCClient) performVNCHandshake(h *Handler) error {
 		return fmt.Errorf("failed to read desktop name: %w", err)
 	}
 
-	log.Printf("[VNC][%s] Handshake complete: %dx%d - %s", c.vmID, width, height, string(desktopName))
+	log.Printf("c.logPrefix()%s] Handshake complete: %dx%d - %s", c.vmID, width, height, string(desktopName))
 	return nil
 }
 
@@ -391,11 +473,11 @@ func (c *VNCClient) vncToWS() {
 
 		n, err := c.targetConn.Read(buf)
 		if err != nil {
-			log.Printf("[VNC][%s] VNC read error: %v", c.vmID, err)
+			log.Printf("c.logPrefix()%s] VNC read error: %v", c.vmID, err)
 			return
 		}
 
-		log.Printf("[VNC][%s] Read %d bytes from VNC", c.vmID, n)
+		log.Printf("c.logPrefix()%s] Read %d bytes from VNC", c.vmID, n)
 
 		c.connMu.Lock()
 		if c.closed {
@@ -404,11 +486,11 @@ func (c *VNCClient) vncToWS() {
 		}
 		c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 		if err := c.conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-			log.Printf("[VNC][%s] WS write error: %v", c.vmID, err)
+			log.Printf("c.logPrefix()%s] WS write error: %v", c.vmID, err)
 			c.connMu.Unlock()
 			return
 		}
-		log.Printf("[VNC][%s] Wrote %d bytes to WS", c.vmID, n)
+		log.Printf("c.logPrefix()%s] Wrote %d bytes to WS", c.vmID, n)
 		c.connMu.Unlock()
 	}
 }
@@ -423,7 +505,7 @@ func (c *VNCClient) wsToVNC() {
 		c.connMu.Unlock()
 
 		if _, err := c.targetConn.Write(msg); err != nil {
-			log.Printf("[VNC][%s] VNC write error: %v", c.vmID, err)
+			log.Printf("c.logPrefix()%s] VNC write error: %v", c.vmID, err)
 			return
 		}
 	}
@@ -452,17 +534,17 @@ func (c *VNCClient) readPump() {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
-			log.Printf("[VNC][%s] WebSocket read error: %v", c.vmID, err)
+			log.Printf("c.logPrefix()%s] WebSocket read error: %v", c.vmID, err)
 			break
 		}
 
-		log.Printf("[VNC][%s] Received %d bytes, type: %d", c.vmID, len(message), message[0])
+		log.Printf("c.logPrefix()%s] Received %d bytes, type: %d", c.vmID, len(message), message[0])
 
 		// Try to parse as JSON message (for mouse/keyboard/resize events)
 		var msg VNCMessage
 		if err := json.Unmarshal(message, &msg); err == nil {
 			// JSON message - handle control commands
-			log.Printf("[VNC][%s] Received JSON message type: %s", c.vmID, msg.Type)
+			log.Printf("c.logPrefix()%s] Received JSON message type: %s", c.vmID, msg.Type)
 			switch msg.Type {
 			case "mouse":
 				c.handleMouse(msg.Payload)
@@ -482,10 +564,10 @@ func (c *VNCClient) readPump() {
 			c.connMu.Unlock()
 
 			if _, err := c.targetConn.Write(message); err != nil {
-				log.Printf("[VNC][%s] VNC write error: %v", c.vmID, err)
+				log.Printf("c.logPrefix()%s] VNC write error: %v", c.vmID, err)
 				return
 			}
-			log.Printf("[VNC][%s] Forwarded %d bytes to VNC", c.vmID, len(message))
+			log.Printf("c.logPrefix()%s] Forwarded %d bytes to VNC", c.vmID, len(message))
 		}
 	}
 }

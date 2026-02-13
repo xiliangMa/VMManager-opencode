@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+    <head>
+        <title>SPICE Console</title>
+        <link rel="stylesheet" type="text/css" href="/spice/spice.css" />
+        
+        <script type="module">
+            window._spice_has_module_support = true;
+        </script>
+        
+        <script type="module">
+            import * as SpiceHtml5 from '/spice/src/main.js';
+
+            var sc;
+
+            function spice_query_var(name, defvalue) {
+                var match = RegExp('[?&]' + name + '=([^&]*)')
+                                  .exec(window.location.search);
+                return match ?
+                    decodeURIComponent(match[1].replace(/\+/g, ' '))
+                    : defvalue;
+            }
+
+            function spice_error(e) {
+                console.error("SPICE Error:", e);
+                disconnect();
+            }
+
+            function connect() {
+                var password = spice_query_var('password', '');
+                var path = spice_query_var('path', 'ws/spice');
+                
+                // For dev mode, use proxy path
+                var uri = '/' + path;
+                
+                // Check if we should use direct backend connection
+                var useDirect = spice_query_var('direct', 'false') === 'true';
+                if (useDirect) {
+                    var host = spice_query_var('host', window.location.hostname);
+                    var port = spice_query_var('port', '8081');
+                    var scheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                    uri = scheme + host + ':' + port + '/' + path;
+                }
+
+                console.log("Connecting to SPICE:", uri);
+
+                try {
+                    sc = new SpiceHtml5.SpiceMainConn({
+                        uri: uri, 
+                        screen_id: "spice-screen", 
+                        dump_id: "debug-div",
+                        message_id: "message-div", 
+                        password: password, 
+                        onerror: spice_error, 
+                        onagent: agent_connected 
+                    });
+                } catch (e) {
+                    console.error("Failed to create SPICE connection:", e);
+                }
+            }
+
+            function disconnect() {
+                console.log("Disconnecting SPICE...");
+                if (sc) {
+                    sc.stop();
+                }
+            }
+
+            function agent_connected(sc) {
+                console.log("SPICE agent connected");
+                window.addEventListener('resize', SpiceHtml5.handle_resize);
+                window.spice_connection = this;
+                SpiceHtml5.resize_helper(this);
+            }
+
+            // Auto-connect on load
+            window.addEventListener('load', connect);
+        </script>
+    </head>
+
+    <body>
+        <div id="spice-area" style="width:100%;height:100vh;background:#000;">
+            <div id="spice-screen" class="spice-screen" style="width:100%;height:100%;"></div>
+        </div>
+        <div id="message-div" class="spice-message"></div>
+        <div id="debug-div"></div>
+    </body>
+</html>

@@ -18,18 +18,15 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    https: {
-      key: './key.pem',
-      cert: './cert.pem',
-    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:8081',
+        target: 'http://localhost:8081',
         ws: true,
+        changeOrigin: false,
       },
     },
   },

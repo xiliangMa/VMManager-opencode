@@ -104,7 +104,15 @@ func main() {
 
 	router.GET("/ws/vnc/:vm_id", func(c *gin.Context) {
 		vmID := c.Param("vm_id")
+		log.Printf("[Main] VNC WebSocket request for VM: %s", vmID)
 		c.Request.URL.Path = "/ws/vnc/" + vmID
+		wsHandler.ServeHTTP(c.Writer, c.Request)
+	})
+
+	router.GET("/ws/spice/:vm_id", func(c *gin.Context) {
+		vmID := c.Param("vm_id")
+		log.Printf("[Main] SPICE WebSocket request for VM: %s", vmID)
+		c.Request.URL.Path = "/ws/spice/" + vmID
 		wsHandler.ServeHTTP(c.Writer, c.Request)
 	})
 
