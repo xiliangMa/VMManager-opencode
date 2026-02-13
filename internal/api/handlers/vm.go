@@ -437,6 +437,7 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		}
 
 		templatePath := ""
+		isoPath := ""
 		if vm.TemplateID != nil {
 			template, err := h.templateRepo.FindByID(ctx, vm.TemplateID.String())
 			if err == nil && template.TemplatePath != "" {
@@ -445,6 +446,12 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 					templatePath = "./" + templatePath
 				}
 				log.Printf("[VM] Template path: %s", templatePath)
+
+				if strings.HasSuffix(strings.ToLower(templatePath), ".iso") {
+					isoPath = templatePath
+					log.Printf("[VM] Detected ISO file: %s", isoPath)
+					templatePath = ""
+				}
 			}
 		}
 
@@ -468,7 +475,31 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 
 		log.Printf("[VM] Disk prepared: %s", diskPath)
 
-		domainXML := generateDomainXML(*vm, diskPath)
+		nvramPath := fmt.Sprintf("/var/lib/libvirt/qemu/nvram/%s_VARS.fd", vm.Name)
+		arch := vm.Architecture
+		if arch == "" {
+			arch = "x86_64"
+		}
+		var nvramTemplate string
+		switch arch {
+		case "arm64", "aarch64":
+			nvramTemplate = "/usr/share/AAVMF/AAVMF_VARS.fd"
+		default:
+			nvramTemplate = "/usr/share/OVMF/OVMF_VARS.fd"
+		}
+
+		if exists(nvramTemplate) {
+			cmd := exec.Command("cp", nvramTemplate, nvramPath)
+			if err := cmd.Run(); err != nil {
+				log.Printf("[VM] Failed to create nvram file: %v", err)
+			} else {
+				log.Printf("[VM] NVRAM file created: %s", nvramPath)
+			}
+		} else {
+			log.Printf("[VM] NVRAM template not found: %s", nvramTemplate)
+		}
+
+		domainXML := generateDomainXML(*vm, diskPath, isoPath)
 		log.Printf("[VM] Generated domain XML:\n%s", domainXML)
 
 		domain, err = h.libvirt.DefineXML(domainXML)
@@ -544,7 +575,43 @@ func extractVNCPasswordFromXML(xmlDesc string) string {
 	return ""
 }
 
-func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
+// generateBootOrder generates boot elements based on boot order string
+// Format: "hd,cdrom,network" or "cdrom,hd,network" etc.
+func generateBootOrder(bootOrder string) string {
+	if bootOrder == "" {
+		bootOrder = "hd,cdrom,network"
+	}
+
+	parts := strings.Split(bootOrder, ",")
+	var bootXML string
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		switch part {
+		case "hd":
+			bootXML += "    <boot dev='hd'/>\n"
+		case "cdrom":
+			bootXML += "    <boot dev='cdrom'/>\n"
+		case "network":
+			bootXML += "    <boot dev='network'/>\n"
+		}
+	}
+	return bootXML
+}
+
+// generateISOConfig generates CD-ROM device configuration for ISO file
+func generateISOConfig(isoPath string) string {
+	if isoPath == "" || !exists(isoPath) {
+		return ""
+	}
+	return fmt.Sprintf(`    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='%s'/>
+      <target dev='sda' bus='sata'/>
+      <readonly/>
+    </disk>`, isoPath)
+}
+
+func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) string {
 	// Note: VNC password is disabled for WebSocket proxy compatibility
 	// The proxy forwards raw bytes and doesn't handle VNC auth protocol
 
@@ -566,8 +633,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
     <type arch='aarch64' machine='virt'>hvm</type>
     <loader readonly='yes' type='pflash'>/usr/share/AAVMF/AAVMF_CODE.fd</loader>
     <nvram template='/usr/share/AAVMF/AAVMF_VARS.fd'>/var/lib/libvirt/qemu/nvram/%s_VARS.fd</nvram>
-    <boot dev='hd'/>
-  </os>
+%s  </os>
   <serial type='pty'>
     <target port='0'/>
   </serial>
@@ -595,18 +661,17 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
       <source file='%s'/>
       <target dev='vda' bus='virtio'/>
     </disk>
-    <interface type='network'>
+%s    <interface type='network'>
       <source network='default'/>
       <model type='virtio'/>
     </interface>
     <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
     <video>
-      <model type='none'/>
+      <model type='virtio' heads='1'/>
     </video>
     <controller type='usb' model='qemu-xhci'/>
-    <controller type='pci' model='pcie-root'/>
   </devices>
-</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), diskPath)
+</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
 	default:
 		// x86_64 架构配置
 		archConfig = fmt.Sprintf(`<domain type='qemu'>
@@ -618,8 +683,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
     <type arch='x86_64' machine='q35'>hvm</type>
     <loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE.fd</loader>
     <nvram template='/usr/share/OVMF/OVMF_VARS.fd'>/var/lib/libvirt/qemu/nvram/%s_VARS.fd</nvram>
-    <boot dev='hd'/>
-  </os>
+%s  </os>
   <serial type='pty'>
     <target port='0'/>
   </serial>
@@ -647,7 +711,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
       <source file='%s'/>
       <target dev='vda' bus='virtio'/>
     </disk>
-    <interface type='network'>
+%s    <interface type='network'>
       <source network='default'/>
       <model type='virtio'/>
     </interface>
@@ -656,7 +720,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath string) string {
       <model type='vga' vram='16384' heads='1'/>
     </video>
   </devices>
-</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), diskPath)
+</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
 	}
 
 	return archConfig

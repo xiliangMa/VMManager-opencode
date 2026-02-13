@@ -18,6 +18,8 @@ const TemplateUpload: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadId, setUploadId] = useState<string | null>(null)
+  const [selectedArch, setSelectedArch] = useState<string>('aarch64')
+  const [selectedFormat, setSelectedFormat] = useState<string>('qcow2')
 
   const osOptions = [
     { label: 'Ubuntu', value: 'Ubuntu' },
@@ -29,8 +31,7 @@ const TemplateUpload: React.FC = () => {
 
   const archOptions = [
     { label: 'x86_64', value: 'x86_64' },
-    { label: 'aarch64', value: 'aarch64' },
-    { label: 'arm64', value: 'arm64' }
+    { label: 'aarch64 (ARM 64-bit)', value: 'aarch64' }
   ]
 
   const formatOptions = [
@@ -50,6 +51,7 @@ const TemplateUpload: React.FC = () => {
 
   const handleStartUpload = async () => {
     const values = form.getFieldsValue()
+    console.log('All form values:', values)
     
     if (!values.name) {
       message.error(t('validation.pleaseEnterName'))
@@ -63,14 +65,16 @@ const TemplateUpload: React.FC = () => {
 
     setLoading(true)
     try {
+      console.log('Submitting with arch:', selectedArch, 'format:', selectedFormat)
+      
       // 直接初始化上传，模板信息在完成时一起保存
       const initResponse = await templatesApi.initUpload({
         name: values.name,
         description: values.description || '',
         file_name: selectedFile.name,
         file_size: selectedFile.size,
-        format: values.format || 'qcow2',
-        architecture: values.architecture || 'x86_64',
+        format: selectedFormat,
+        architecture: selectedArch,
         chunk_size: CHUNK_SIZE
       })
 
@@ -116,8 +120,8 @@ const TemplateUpload: React.FC = () => {
         description: values.description || '',
         os_type: values.os_type || 'Linux',
         os_version: values.os_version || '',
-        architecture: values.architecture || 'x86_64',
-        format: values.format || 'qcow2',
+        architecture: selectedArch,
+        format: selectedFormat,
         cpu_min: values.cpu_min || 1,
         cpu_max: values.cpu_max || 4,
         memory_min: values.memory_min || 1024,
@@ -200,12 +204,23 @@ const TemplateUpload: React.FC = () => {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="architecture" label={t('template.architecture')}>
-                <Select options={archOptions} />
+                <Select 
+                  options={archOptions}
+                  value={selectedArch}
+                  onChange={(value) => {
+                    console.log('Architecture selected:', value)
+                    setSelectedArch(value)
+                  }}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="format" label={t('template.format')}>
-                <Select options={formatOptions} />
+                <Select 
+                  options={formatOptions}
+                  value={selectedFormat}
+                  onChange={(value) => setSelectedFormat(value)}
+                />
               </Form.Item>
             </Col>
           </Row>

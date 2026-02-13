@@ -80,6 +80,9 @@
     "suspended": "Suspended",
     "creating": "Creating",
     "pending": "Pending",
+    "starting": "Starting",
+    "stopping": "Stopping",
+    "error": "Error",
     "all": "All",
     "startSuccess": "VM started successfully",
     "startFailed": "VM start failed",
@@ -97,6 +100,7 @@
     "selectTemplate": "Select Template",
     "configureResources": "Configure Resources",
     "confirmCreate": "Confirm Creation",
+    "operationInProgress": "Operation in progress",
     "monitor": {
       "loading": "Loading VM statistics...",
       "cpuUsage": "CPU Usage",

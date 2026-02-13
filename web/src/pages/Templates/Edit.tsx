@@ -68,8 +68,7 @@ const TemplateEdit: React.FC = () => {
 
   const archOptions = [
     { label: 'x86_64', value: 'x86_64' },
-    { label: 'aarch64', value: 'aarch64' },
-    { label: 'arm64', value: 'arm64' }
+    { label: 'aarch64 (ARM 64-bit)', value: 'aarch64' }
   ]
 
   const formatOptions = [

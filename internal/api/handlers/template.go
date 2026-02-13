@@ -491,12 +491,18 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 		templateName = upload.Name
 	}
 
+	// Use architecture from request, or fall back to upload record
+	architecture := req.Architecture
+	if architecture == "" {
+		architecture = upload.Architecture
+	}
+
 	template := &models.VMTemplate{
 		Name:         templateName,
 		Description:  req.Description,
 		OSType:       req.OSType,
 		OSVersion:    req.OSVersion,
-		Architecture: req.Architecture,
+		Architecture: architecture,
 		Format:       req.Format,
 		CPUMin:       req.CPUMin,
 		CPUMax:       req.CPUMax,

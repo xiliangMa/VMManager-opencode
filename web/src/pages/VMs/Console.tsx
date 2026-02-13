@@ -85,7 +85,12 @@ const VMConsole: React.FC = () => {
   const statusColors: Record<string, string> = {
     running: 'green',
     stopped: 'red',
-    creating: 'processing'
+    suspended: 'orange',
+    pending: 'blue',
+    creating: 'processing',
+    error: 'error',
+    starting: 'processing',
+    stopping: 'processing'
   }
 
   // Use relative WebSocket path to work with both direct backend and nginx proxy

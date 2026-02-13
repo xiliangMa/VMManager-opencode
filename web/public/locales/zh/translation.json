@@ -80,6 +80,9 @@
     "suspended": "已暂停",
     "creating": "创建中",
     "pending": "等待中",
+    "starting": "启动中",
+    "stopping": "停止中",
+    "error": "错误",
     "all": "全部",
     "startSuccess": "虚拟机启动成功",
     "startFailed": "虚拟机启动失败",
@@ -97,6 +100,7 @@
     "selectTemplate": "选择模板",
     "configureResources": "配置资源",
     "confirmCreate": "确认创建",
+    "operationInProgress": "操作进行中",
     "monitor": {
       "loading": "正在加载虚拟机监控数据...",
       "cpuUsage": "CPU 使用率",

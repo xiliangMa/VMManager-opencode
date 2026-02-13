@@ -44,7 +44,7 @@ const Templates: React.FC = () => {
       title: t('template.architecture'),
       dataIndex: 'architecture',
       key: 'architecture',
-      render: (arch: string) => arch || 'x86_64'
+      render: (arch: string) => arch?.toUpperCase() || '-'
     },
     {
       title: t('template.format'),
