@@ -71,6 +71,28 @@
                 window.addEventListener('resize', SpiceHtml5.handle_resize);
                 window.spice_connection = this;
                 SpiceHtml5.resize_helper(this);
+                
+                // Debug: Check inputs channel state
+                setTimeout(function() {
+                    console.log("Inputs channel state:", sc.inputs ? sc.inputs.state : "not found");
+                    console.log("Display channel state:", sc.display ? sc.display.state : "not found");
+                }, 2000);
+                
+                // Add keyboard event listeners to ensure keyboard works
+                var spiceScreen = document.getElementById('spice-screen');
+                if (spiceScreen) {
+                    spiceScreen.tabIndex = 0;
+                    
+                    // Auto focus when clicking anywhere in spice area
+                    spiceScreen.addEventListener('click', function() {
+                        spiceScreen.focus();
+                    });
+                    
+                    // Try to focus after a short delay
+                    setTimeout(function() {
+                        spiceScreen.focus();
+                    }, 500);
+                }
             }
 
             // Auto-connect on load
