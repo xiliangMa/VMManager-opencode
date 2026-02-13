@@ -96,10 +96,32 @@
 
         UI.start({ settings: { defaults: defaults,
                                mandatory: mandatory } });
+        
+        console.log("noVNC UI starting...");
+        
+        // Debug: Check if RFB is available
+        setTimeout(function() {
+            console.log("Checking RFB after 2s...");
+            if (typeof RFB !== 'undefined') {
+                console.log("RFB is available");
+            } else {
+                console.log("RFB is NOT available - checking UI object...");
+                if (window.UI && window.UI.rfb) {
+                    console.log("UI.rfb is available:", window.UI.rfb);
+                }
+            }
+        }, 2000);
+        
+        // Test button
+        document.getElementById('testBtn').addEventListener('click', function() {
+            alert('JavaScript is working! RFB: ' + (typeof RFB !== 'undefined' ? 'YES' : 'NO'));
+        });
     </script>
 </head>
 
 <body>
+
+    <button id="testBtn" style="position:fixed;top:50px;right:10px;z-index:9999;">TEST BUTTON</button>
 
     <div id="noVNC_fallback_error" class="noVNC_center">
         <div>

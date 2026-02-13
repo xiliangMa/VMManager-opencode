@@ -1,1 +1,6 @@
-{}
+{
+  "view_only": false,
+  "local_cursor": true,
+  "shared": true,
+  "focus_on_click": true
+}

@@ -154,27 +154,62 @@
 
         // Creating a new RFB object will start a new connection
         rfb = new RFB(document.getElementById('screen'), url,
-                      { credentials: { password: password } });
+                      { 
+                        credentials: { password: password },
+                        ws: true,
+                        allowFocus: true
+                      });
 
         // Add listeners to important events from the RFB module
         rfb.addEventListener("connect",  connectedToServer);
         rfb.addEventListener("disconnect", disconnectedFromServer);
         rfb.addEventListener("credentialsrequired", credentialsAreRequired);
         rfb.addEventListener("desktopname", updateDesktopName);
+        
+        // Debug: track all events
+        rfb.addEventListener("securityresult", function(e) { console.log("Security result:", e.detail); });
+        rfb.addEventListener("serverinit", function(e) { console.log("Server init:", e.detail); });
+        
+        // Ensure proper focus
+        document.getElementById('screen').focus();
 
         // Set parameters that can be changed on an active connection
-        rfb.viewOnly = readQueryVariable('view_only', false);
-        rfb.scaleViewport = readQueryVariable('scale', false);
+        rfb.viewOnly = false;
+        rfb.scaleViewport = false;
+        
+        console.log("RFB created, viewOnly:", rfb.viewOnly);
+        console.log("RFB keyboard:", rfb.keyboard);
+        console.log("RFB mouse:", rfb.mouse);
+
+        // Force enable input
+        window.rfbInstance = rfb;
+        
+        // Global keydown listener
+        window.addEventListener('keydown', function(e) {
+            console.log("GLOBAL KEY DOWN:", e.key);
+        });
+        
+        window.addEventListener('mousedown', function(e) {
+            console.log("GLOBAL MOUSE DOWN:", e.button);
+        });
     </script>
 </head>
 
 <body>
     <div id="top_bar">
         <div id="status">Loading</div>
+        <button id="testBtn" style="margin-left:10px;">TEST BUTTON</button>
         <div id="sendCtrlAltDelButton">Send CtrlAltDel</div>
     </div>
     <div id="screen">
         <!-- This is where the remote screen will appear -->
     </div>
+    
+    <script>
+        // Simple test to verify JavaScript is working
+        document.getElementById('testBtn').addEventListener('click', function() {
+            alert('JavaScript is working!');
+        });
+    </script>
 </body>
 </html>

@@ -452,13 +452,17 @@ func (c *VNCClient) readPump() {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
+			log.Printf("[VNC][%s] WebSocket read error: %v", c.vmID, err)
 			break
 		}
+
+		log.Printf("[VNC][%s] Received %d bytes, type: %d", c.vmID, len(message), message[0])
 
 		// Try to parse as JSON message (for mouse/keyboard/resize events)
 		var msg VNCMessage
 		if err := json.Unmarshal(message, &msg); err == nil {
 			// JSON message - handle control commands
+			log.Printf("[VNC][%s] Received JSON message type: %s", c.vmID, msg.Type)
 			switch msg.Type {
 			case "mouse":
 				c.handleMouse(msg.Payload)

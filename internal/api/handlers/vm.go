@@ -672,11 +672,10 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
       <model type='virtio' heads='1'/>
     </video>
     <controller type='usb' model='qemu-xhci'/>
+    <controller type='virtio-serial'/>
     <input type='tablet' bus='usb'>
-      <address type='usb' bus='0' port='1'/>
     </input>
     <input type='mouse' bus='usb'>
-      <address type='usb' bus='0' port='2'/>
     </input>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
@@ -730,11 +729,10 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
       <model type='vga' vram='16384' heads='1'/>
     </video>
     <controller type='usb' model='qemu-xhci'/>
+    <controller type='virtio-serial'/>
     <input type='tablet' bus='usb'>
-      <address type='usb' bus='0' port='1'/>
     </input>
     <input type='mouse' bus='usb'>
-      <address type='usb' bus='0' port='2'/>
     </input>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
