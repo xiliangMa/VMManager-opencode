@@ -483,8 +483,6 @@ func (c *VNCClient) vncToWS() {
 			return
 		}
 
-		log.Printf("c.logPrefix()%s] Read %d bytes from VNC", c.vmID, n)
-
 		c.connMu.Lock()
 		if c.closed {
 			c.connMu.Unlock()
@@ -496,7 +494,6 @@ func (c *VNCClient) vncToWS() {
 			c.connMu.Unlock()
 			return
 		}
-		log.Printf("c.logPrefix()%s] Wrote %d bytes to WS", c.vmID, n)
 		c.connMu.Unlock()
 	}
 }
@@ -514,7 +511,6 @@ func (c *VNCClient) wsToVNC() {
 			log.Printf("%s VNC/SPICE write error: %v", c.logPrefix(), err)
 			return
 		}
-		log.Printf("%s Forwarded %d bytes from WS to target", c.logPrefix(), len(msg))
 	}
 }
 
@@ -539,13 +535,11 @@ func (c *VNCClient) readPump() {
 	})
 
 	for {
-		messageType, message, err := c.conn.ReadMessage()
+		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			log.Printf("%s WebSocket read error: %v", c.logPrefix(), err)
 			break
 		}
-
-		log.Printf("%s Received %d bytes, WS message type: %d", c.logPrefix(), len(message), messageType)
 
 		// For SPICE connections, forward all binary messages directly
 		// SPICE protocol doesn't use JSON messages like VNC
@@ -557,12 +551,11 @@ func (c *VNCClient) readPump() {
 			}
 			c.connMu.Unlock()
 
-			n, err := c.targetConn.Write(message)
+			_, err := c.targetConn.Write(message)
 			if err != nil {
 				log.Printf("%s SPICE write error: %v", c.logPrefix(), err)
 				return
 			}
-			log.Printf("%s Forwarded %d bytes to SPICE", c.logPrefix(), n)
 			continue
 		}
 
