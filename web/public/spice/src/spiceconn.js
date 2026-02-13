@@ -280,19 +280,36 @@ SpiceConn.prototype =
         else if (this.state == "ticket")
         {
             this.auth_reply = new SpiceLinkAuthReply(mb);
-            console.log("Auth reply for channel " + this.channel_type() + ":", this.auth_reply.auth_code);
             if (this.auth_reply.auth_code == Constants.SPICE_LINK_ERR_OK)
             {
                 DEBUG > 0 && console.log(this.type + ': Connected');
 
                 if (this.type == Constants.SPICE_CHANNEL_DISPLAY)
                 {
-                    // FIXME - pixmap and glz dictionary config info?
                     var dinit = new SpiceMsgcDisplayInit();
                     var reply = new SpiceMiniData();
                     reply.build_msg(Constants.SPICE_MSGC_DISPLAY_INIT, dinit);
                     DEBUG > 0 && console.log("Request display init");
                     this.send_msg(reply);
+                }
+                this.state = "ready";
+                this.wire_reader.request(SpiceMiniData.prototype.buffer_size());
+                if (this.timeout)
+                {
+                    window.clearTimeout(this.timeout);
+                    delete this.timeout;
+                }
+            }
+            else
+            {
+                this.state = "error";
+                if (this.auth_reply.auth_code == Constants.SPICE_LINK_ERR_PERMISSION_DENIED)
+                {
+                    var e = new Error("Permission denied.");
+                }
+                else
+                {
+                    var e = new Error("Unexpected link error " + this.auth_reply.auth_code);
                 }
                 this.state = "ready";
                 console.log("Channel " + this.channel_type() + " state is now: ready");

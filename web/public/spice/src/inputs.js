@@ -168,21 +168,13 @@ function handle_mousewheel(e)
 
 function handle_keydown(e)
 {
-    // Debug: log key press
-    console.log("Keydown:", e.keyCode, "this.sc:", this.sc ? "exists" : "undefined");
-    
     var key = new Messages.SpiceMsgcKeyDown(e)
     var msg = new Messages.SpiceMiniData();
     check_and_update_modifiers(e, key.code, this.sc);
     msg.build_msg(Constants.SPICE_MSGC_INPUTS_KEY_DOWN, key);
     if (this.sc && this.sc.inputs && this.sc.inputs.state === "ready")
     {
-        console.log("Sending keydown to SPICE, code:", key.code);
         this.sc.inputs.send_msg(msg);
-    }
-    else
-    {
-        console.log("Cannot send keydown - inputs not ready, state:", this.sc && this.sc.inputs ? this.sc.inputs.state : "no inputs");
     }
 
     e.preventDefault();

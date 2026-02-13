@@ -72,14 +72,7 @@
                 window.spice_connection = sc;
                 SpiceHtml5.resize_helper(sc);
                 
-                // Monitor channel states
-                setInterval(function() {
-                    if (sc) {
-                        console.log("Channels state - main:", sc.state, ", display:", sc.display ? sc.display.state : "none", ", inputs:", sc.inputs ? sc.inputs.state : "none", ", cursor:", sc.cursor ? sc.cursor.state : "none");
-                    }
-                }, 3000);
-                
-                // Force focus on spice-screen and add global keyboard handlers
+                // Force focus on spice-screen
                 var spiceArea = document.getElementById('spice-area');
                 var spiceScreen = document.getElementById('spice-screen');
                 
@@ -103,7 +96,6 @@
                         spiceScreen.focus();
                     }, 500);
                     
-                    // Also try to focus immediately
                     spiceScreen.focus();
                 }
             }
