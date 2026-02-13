@@ -707,14 +707,16 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
     </video>
     <controller type='usb' model='qemu-xhci'/>
     <controller type='virtio-serial'/>
-    <input type='tablet' bus='usb'>
+    <channel type='spicevmc'>
+      <target type='virtio' name='com.redhat.spice.0'/>
+    </channel>
+    <input type='tablet' bus='virtio'>
     </input>
-    <input type='mouse' bus='usb'>
+    <input type='mouse' bus='virtio'>
     </input>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
-	default:
-		// x86_64 架构配置
+	case "x86_64":
 		archConfig = fmt.Sprintf(`<domain type='qemu'>
   <name>%s</name>
   <uuid>%s</uuid>
@@ -764,9 +766,12 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
     </video>
     <controller type='usb' model='qemu-xhci'/>
     <controller type='virtio-serial'/>
-    <input type='tablet' bus='usb'>
+    <channel type='spicevmc'>
+      <target type='virtio' name='com.redhat.spice.0'/>
+    </channel>
+    <input type='tablet' bus='virtio'>
     </input>
-    <input type='mouse' bus='usb'>
+    <input type='mouse' bus='virtio'>
     </input>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
