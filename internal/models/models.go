@@ -40,29 +40,32 @@ func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type VMTemplate struct {
-	ID             uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	Name           string     `gorm:"size:100;not null" json:"name"`
-	Description    string     `gorm:"type:text" json:"description"`
-	OSType         string     `gorm:"size:50;not null" json:"osType"`
-	OSVersion      string     `gorm:"size:50" json:"osVersion"`
-	Architecture   string     `gorm:"size:20;default:'arm64'" json:"architecture"`
-	Format         string     `gorm:"size:20;default:'qcow2'" json:"format"`
-	CPUMin         int        `gorm:"default:1" json:"cpuMin"`
-	CPUMax         int        `gorm:"default:4" json:"cpuMax"`
-	MemoryMin      int        `gorm:"default:1024" json:"memoryMin"`
-	MemoryMax      int        `gorm:"default:8192" json:"memoryMax"`
-	DiskMin        int        `gorm:"default:20" json:"diskMin"`
-	DiskMax        int        `gorm:"default:500" json:"diskMax"`
-	TemplatePath   string     `gorm:"size:500;not null" json:"templatePath"`
-	IconURL        string     `gorm:"size:500" json:"iconUrl"`
-	ScreenshotURLs []string   `gorm:"type:text[]" json:"screenshotUrls"`
-	DiskSize       int64      `gorm:"not null" json:"diskSize"`
-	IsPublic       bool       `gorm:"default:true" json:"isPublic"`
-	IsActive       bool       `gorm:"default:true" json:"isActive"`
-	Downloads      int        `gorm:"default:0" json:"downloads"`
-	CreatedBy      *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	UpdatedAt      time.Time  `json:"updatedAt"`
+	ID               uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name             string     `gorm:"size:100;not null" json:"name"`
+	Description      string     `gorm:"type:text" json:"description"`
+	OSType           string     `gorm:"size:50;not null" json:"osType"`
+	OSVersion        string     `gorm:"size:50" json:"osVersion"`
+	Architecture     string     `gorm:"size:20;default:'arm64'" json:"architecture"`
+	Format           string     `gorm:"size:20;default:'qcow2'" json:"format"`
+	CPUMin           int        `gorm:"default:1" json:"cpuMin"`
+	CPUMax           int        `gorm:"default:4" json:"cpuMax"`
+	MemoryMin        int        `gorm:"default:1024" json:"memoryMin"`
+	MemoryMax        int        `gorm:"default:8192" json:"memoryMax"`
+	DiskMin          int        `gorm:"default:20" json:"diskMin"`
+	DiskMax          int        `gorm:"default:500" json:"diskMax"`
+	TemplatePath     string     `gorm:"size:500;not null" json:"templatePath"`
+	IconURL          string     `gorm:"size:500" json:"iconUrl"`
+	ScreenshotURLs   []string   `gorm:"type:text[]" json:"screenshotUrls"`
+	DiskSize         int64      `gorm:"not null" json:"diskSize"`
+	IsPublic         bool       `gorm:"default:true" json:"isPublic"`
+	IsActive         bool       `gorm:"default:true" json:"isActive"`
+	Downloads        int        `gorm:"default:0" json:"downloads"`
+	CreatedBy        *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
+	ISOPath          string     `gorm:"size:500" json:"isoPath"`
+	InstallScript    string     `gorm:"type:text" json:"installScript"`
+	PostInstallScript string    `gorm:"type:text" json:"postInstallScript"`
 }
 
 type VirtualMachine struct {
@@ -92,6 +95,10 @@ type VirtualMachine struct {
 	Autostart         bool        `gorm:"default:false" json:"autostart"`
 	Notes             string      `gorm:"type:text" json:"notes"`
 	Tags              []string    `gorm:"type:text[]" json:"tags"`
+	IsInstalled       bool        `gorm:"default:false" json:"isInstalled"`
+	InstallStatus     string      `gorm:"size:50;default:''" json:"installStatus"`
+	InstallProgress   int         `gorm:"default:0" json:"installProgress"`
+	AgentInstalled    bool        `gorm:"default:false" json:"agentInstalled"`
 	Owner             *User       `gorm:"foreignKey:OwnerID" json:"owner"`
 	Template          *VMTemplate `gorm:"foreignKey:TemplateID" json:"template"`
 	CreatedAt         time.Time   `json:"createdAt"`

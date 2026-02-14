@@ -1288,3 +1288,266 @@ func (h *VMHandler) GetVMStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, errors.Success(stats))
 }
+
+func (h *VMHandler) StartInstallation(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.Status == "running" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_already_running"), ""))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized"))
+		return
+	}
+
+	template, err := h.templateRepo.FindByID(ctx, vm.TemplateID.String())
+	if err != nil || template.ISOPath == "" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "no_iso_attached"), "template has no ISO path"))
+		return
+	}
+
+	vm.InstallStatus = "installing"
+	vm.InstallProgress = 0
+	vm.BootOrder = "cdrom,hd,network"
+	if err := h.vmRepo.Update(ctx, vm); err != nil {
+		log.Printf("[Installation] Failed to update VM status: %v", err)
+	}
+
+	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err == nil {
+		domain.Destroy()
+		domain.Free()
+	}
+
+	diskPath := vm.DiskPath
+	if diskPath == "" {
+		diskPath = fmt.Sprintf("%s/%s.qcow2", h.storagePath, vm.ID.String())
+	}
+
+	log.Printf("[Installation] Starting VM %s in installation mode with ISO: %s", vm.Name, template.ISOPath)
+
+	domainXML := generateDomainXML(*vm, diskPath, template.ISOPath)
+	log.Printf("[Installation] Domain XML:\n%s", domainXML)
+
+	domain, err = h.libvirt.DefineXML(domainXML)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "failed_to_define_domain"), err.Error()))
+		return
+	}
+	defer domain.Free()
+
+	if err := domain.Create(); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "failed_to_start_vm"), err.Error()))
+		return
+	}
+
+	vmUUIDStr, _ := domain.GetUUIDString()
+	vm.LibvirtDomainUUID = vmUUIDStr
+	vm.Status = "running"
+	vm.InstallStatus = "installing"
+
+	if err := h.vmRepo.Update(ctx, vm); err != nil {
+		log.Printf("[Installation] Failed to update VM: %v", err)
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"message":        "VM started in installation mode",
+		"status":         "running",
+		"install_status": "installing",
+		"boot_order":     vm.BootOrder,
+	}))
+}
+
+func (h *VMHandler) FinishInstallation(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.Status != "running" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_not_running"), "VM is not running"))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized"))
+		return
+	}
+
+	domain, err := h.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "domain_not_found"), err.Error()))
+		return
+	}
+	defer domain.Free()
+
+	if err := domain.Destroy(); err != nil {
+		log.Printf("[Installation] Warning: failed to destroy domain: %v", err)
+	}
+
+	vm.BootOrder = "hd,cdrom,network"
+	vm.IsInstalled = true
+	vm.InstallStatus = "completed"
+	vm.InstallProgress = 100
+
+	domainXML := generateDomainXML(*vm, vm.DiskPath, "")
+	log.Printf("[Installation] Domain XML after install:\n%s", domainXML)
+
+	domain, err = h.libvirt.DefineXML(domainXML)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "failed_to_define_domain"), err.Error()))
+		return
+	}
+	defer domain.Free()
+
+	if err := domain.Create(); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "failed_to_start_vm"), err.Error()))
+		return
+	}
+
+	vmUUIDStr, _ := domain.GetUUIDString()
+	vm.LibvirtDomainUUID = vmUUIDStr
+	vm.Status = "running"
+
+	if err := h.vmRepo.Update(ctx, vm); err != nil {
+		log.Printf("[Installation] Failed to update VM: %v", err)
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"message":       "Installation completed, VM started from hard disk",
+		"status":        "running",
+		"is_installed":  true,
+		"boot_order":    vm.BootOrder,
+	}))
+}
+
+func (h *VMHandler) InstallAgent(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	var req struct {
+		AgentType string `json:"agent_type"`
+		Script    string `json:"script"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		req.AgentType = "spice-vdagent"
+	}
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.Status != "running" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_not_running"), "VM is not running"))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized"))
+		return
+	}
+
+	var script string
+	if req.Script != "" {
+		script = req.Script
+	} else {
+		switch req.AgentType {
+		case "spice-vdagent":
+			script = `#!/bin/bash
+apt-get update && apt-get install -y spice-vdagent 2>/dev/null || \
+yum install -y spice-vdagent 2>/dev/null || \
+zypper install -y spice-vdagent 2>/dev/null
+systemctl enable spice-vdagent 2>/dev/null || true
+systemctl start spice-vdagent 2>/dev/null || true
+echo "SPICE vdagent installation completed"
+`
+		default:
+			script = req.Script
+		}
+	}
+
+	scriptPath := fmt.Sprintf("/tmp/install_agent_%s.sh", vm.ID.String())
+	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_write_script"), err.Error()))
+		return
+	}
+	defer os.Remove(scriptPath)
+
+	cmd := exec.Command("bash", scriptPath)
+	cmd.Run()
+
+	vm.AgentInstalled = true
+	if err := h.vmRepo.Update(ctx, vm); err != nil {
+		log.Printf("[Agent] Failed to update VM: %v", err)
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"message":       "Agent installation script prepared",
+		"agent_type":    req.AgentType,
+		"script":        script,
+		"note":          "Please run the script inside the VM manually via console",
+	}))
+}
+
+func (h *VMHandler) GetInstallationStatus(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"is_installed":      vm.IsInstalled,
+		"install_status":    vm.InstallStatus,
+		"install_progress":   vm.InstallProgress,
+		"agent_installed":   vm.AgentInstalled,
+		"boot_order":        vm.BootOrder,
+		"current_status":    vm.Status,
+	}))
+}

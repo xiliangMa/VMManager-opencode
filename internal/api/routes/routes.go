@@ -55,6 +55,10 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			vms.GET("/:id/console", vmHandler.GetConsole)
 			vms.GET("/:id/stats", statsHandler.GetVMStats)
 			vms.GET("/:id/history", statsHandler.GetVMHistory)
+			vms.POST("/:id/start-installation", vmHandler.StartInstallation)
+			vms.POST("/:id/finish-installation", vmHandler.FinishInstallation)
+			vms.POST("/:id/install-agent", vmHandler.InstallAgent)
+			vms.GET("/:id/installation-status", vmHandler.GetInstallationStatus)
 
 			snapshots := vms.Group("/:id/snapshots")
 			{

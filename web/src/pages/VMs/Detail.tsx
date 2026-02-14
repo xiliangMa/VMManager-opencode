@@ -2,15 +2,16 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined } from '@ant-design/icons'
-import { vmsApi, VM } from '../../api/client'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined } from '@ant-design/icons'
+import { vmsApi } from '../../api/client'
+import type { VMDetail } from '../../api/client'
 import dayjs from 'dayjs'
 
 const VMDetail: React.FC = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const [vm, setVm] = useState<VM | null>(null)
+  const [vm, setVm] = useState<VMDetail | null>(null)
   const [locked, setLocked] = useState(false)
 
   const fetchVm = async () => {
@@ -217,9 +218,35 @@ const VMDetail: React.FC = () => {
               <Button onClick={handleStop}>{t('vm.stop')}</Button>
               <Button onClick={handleRestart}>{t('vm.restart')}</Button>
               <Button onClick={() => navigate(`/vms/${id}/console`)}>{t('vm.console')}</Button>
+              {(vm.install_status === 'installing') && (
+                <Tag color="processing">{t('installation.installing')}</Tag>
+              )}
             </>
           ) : vm.status === 'stopped' && !locked ? (
-            <Button type="primary" onClick={handleStart}>{t('vm.start')}</Button>
+            <Space>
+              <Button type="primary" onClick={handleStart}>{t('vm.start')}</Button>
+              {(!vm.is_installed || vm.install_status === '') && (
+                <Button 
+                  icon={<SettingOutlined />} 
+                  onClick={() => navigate(`/vms/${id}/installation`)}
+                >
+                  {t('installation.install')}
+                </Button>
+              )}
+              {vm.install_status === 'completed' && !vm.agent_installed && (
+                <Button 
+                  icon={<SettingOutlined />} 
+                  onClick={() => navigate(`/vms/${id}/installation`)}
+                >
+                  {t('installation.installAgent')}
+                </Button>
+              )}
+              {vm.agent_installed && (
+                <Tag color="success" icon={<CloudUploadOutlined />}>
+                  {t('installation.agentInstalled')}
+                </Tag>
+              )}
+            </Space>
           ) : locked || ['starting', 'stopping', 'creating', 'pending'].includes(vm.status) ? (
             <Tag color="processing" icon={<SyncOutlined spin />}>
               {t('vm.operationInProgress')}

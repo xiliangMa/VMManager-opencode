@@ -11,6 +11,7 @@ import VMEdit from './pages/VMs/Edit'
 import VMConsole from './pages/VMs/Console'
 import Monitor from './pages/VMs/Monitor'
 import VMSnapshots from './pages/VMs/Snapshots'
+import VMInstallation from './pages/VMs/Installation'
 import Templates from './pages/Templates/List'
 import TemplateUpload from './pages/Templates/Upload'
 import TemplateEdit from './pages/Templates/Edit'
@@ -53,6 +54,7 @@ const App: React.FC = () => {
         <Route path="vms/:id/console" element={<VMConsole />} />
         <Route path="vms/:id/monitor" element={<Monitor />} />
         <Route path="vms/:id/snapshots" element={<VMSnapshots />} />
+        <Route path="vms/:id/installation" element={<VMInstallation />} />
         <Route path="vms/:id" element={<VMDetail />} />
         <Route path="templates" element={<Templates />} />
         <Route path="templates/upload" element={<TemplateUpload />} />

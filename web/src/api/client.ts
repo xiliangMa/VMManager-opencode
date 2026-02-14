@@ -42,6 +42,10 @@ export interface VMDetail extends VM {
   owner_id?: string
   vnc_port?: number
   mac_address?: string
+  is_installed?: boolean
+  install_status?: string
+  install_progress?: number
+  agent_installed?: boolean
 }
 
 export interface CreateVMRequest {
@@ -177,7 +181,19 @@ export const vmsApi = {
     client.get(`/vms/${id}/console`).then(res => res.data),
 
   getStats: (id: string) =>
-    client.get(`/vms/${id}/stats`).then(res => res.data)
+    client.get(`/vms/${id}/stats`).then(res => res.data),
+
+  startInstallation: (id: string) =>
+    client.post(`/vms/${id}/start-installation`).then(res => res.data),
+
+  finishInstallation: (id: string) =>
+    client.post(`/vms/${id}/finish-installation`).then(res => res.data),
+
+  installAgent: (id: string, data?: { agent_type?: string; script?: string }) =>
+    client.post(`/vms/${id}/install-agent`, data || {}).then(res => res.data),
+
+  getInstallationStatus: (id: string) =>
+    client.get(`/vms/${id}/installation-status`).then(res => res.data)
 }
 
 export const snapshotsApi = {
