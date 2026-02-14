@@ -266,6 +266,17 @@ func Migrate(db *gorm.DB) error {
 
 	-- Migration: Add architecture column to existing virtual_machines table
 	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS architecture VARCHAR(20) DEFAULT 'x86_64';
+
+	-- Migration: Add installation columns
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS is_installed BOOLEAN DEFAULT FALSE;
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS install_status VARCHAR(50) DEFAULT '';
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS install_progress INTEGER DEFAULT 0;
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS agent_installed BOOLEAN DEFAULT FALSE;
+
+	-- Migration: Add installation columns to templates
+	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS iso_path VARCHAR(500);
+	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS install_script TEXT;
+	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS post_install_script TEXT;
 	`
 	return db.Exec(sql).Error
 }
