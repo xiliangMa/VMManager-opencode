@@ -80,9 +80,10 @@ SpiceInputsConn.prototype.process_channel_message = function(msg)
 
 function handle_mousemove(e)
 {
+    console.log("handle_mousemove called, this.sc =", this.sc);
     var msg = new Messages.SpiceMiniData();
     var move;
-    if (this.sc.mouse_mode == Constants.SPICE_MOUSE_MODE_CLIENT)
+    if (this.sc && this.sc.mouse_mode == Constants.SPICE_MOUSE_MODE_CLIENT)
     {
         move = new Messages.SpiceMsgcMousePosition(this.sc, e)
         msg.build_msg(Constants.SPICE_MSGC_INPUTS_MOUSE_POSITION, move);
@@ -98,10 +99,6 @@ function handle_mousemove(e)
         {
             this.sc.inputs.send_msg(msg);
             this.sc.inputs.waiting_for_ack++;
-        }
-        else
-        {
-            DEBUG > 0 && this.sc.log_info("Discarding mouse motion");
         }
     }
 

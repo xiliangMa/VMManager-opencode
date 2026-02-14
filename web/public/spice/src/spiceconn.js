@@ -292,6 +292,10 @@ SpiceConn.prototype =
                     DEBUG > 0 && console.log("Request display init");
                     this.send_msg(reply);
                 }
+                if (this.type == Constants.SPICE_CHANNEL_INPUTS)
+                {
+                    DEBUG > 0 && console.log("Inputs channel connected");
+                }
                 this.state = "ready";
                 this.wire_reader.request(SpiceMiniData.prototype.buffer_size());
                 if (this.timeout)
@@ -313,6 +317,10 @@ SpiceConn.prototype =
                         reply.build_msg(Constants.SPICE_MSGC_DISPLAY_INIT, dinit);
                         DEBUG > 0 && console.log("Request display init");
                         this.send_msg(reply);
+                    }
+                    if (this.type == Constants.SPICE_CHANNEL_INPUTS)
+                    {
+                        DEBUG > 0 && console.log("Inputs channel connected");
                     }
                     this.state = "ready";
                     this.wire_reader.request(SpiceMiniData.prototype.buffer_size());

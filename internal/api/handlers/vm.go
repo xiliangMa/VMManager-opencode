@@ -701,20 +701,25 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
     </interface>
     <graphics type='spice' port='-1' autoport='yes' listen='0.0.0.0'>
       <listen type='address' address='0.0.0.0'/>
-      <mouse mode='server'/>
     </graphics>
     <video>
       <model type='qxl' ram='65536' vram='65536'/>
     </video>
-    <controller type='usb' model='qemu-xhci'/>
-    <controller type='virtio-serial'/>
+    <controller type='usb' model='ehci'>
+    </controller>
+    <controller type='virtio-serial'>
+    </controller>
     <channel type='spicevmc'>
       <target type='virtio' name='com.redhat.spice.0'/>
     </channel>
-    <input type='tablet' bus='virtio'>
+    <input type='tablet' bus='usb'>
     </input>
-    <input type='mouse' bus='virtio'>
+    <input type='mouse' bus='usb'>
     </input>
+    <redirdev type='spice' bus='usb'>
+    </redirdev>
+    <redirdev type='spice' bus='usb'>
+    </redirdev>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
 	case "x86_64":

@@ -100,8 +100,6 @@ SpiceDisplayConn.prototype.process_channel_message = function(msg)
 
         if (! draw_copy.base.box.is_same_size(draw_copy.data.src_area))
             this.log_warn("FIXME: DrawCopy src_area is a different size than base.box; we do not handle that yet.");
-        if (draw_copy.base.clip.type != Constants.SPICE_CLIP_TYPE_NONE)
-            this.log_warn("FIXME: DrawCopy we don't handle clipping yet");
         if (draw_copy.data.rop_descriptor != Constants.SPICE_ROPD_OP_PUT)
             this.log_warn("FIXME: DrawCopy we don't handle ropd type: " + draw_copy.data.rop_descriptor);
         if (draw_copy.data.mask.flags)
@@ -713,6 +711,25 @@ SpiceDisplayConn.prototype.draw_copy_helper = function(o)
 {
 
     var canvas = this.surfaces[o.base.surface_id].canvas;
+    var ctx = canvas.context;
+    var clipped = false;
+
+    if (o.base.clip && o.base.clip.type != Constants.SPICE_CLIP_TYPE_NONE)
+    {
+        if (o.base.clip.type == Constants.SPICE_CLIP_TYPE_RECTS && o.base.clip.rects)
+        {
+            ctx.save();
+            clipped = true;
+            ctx.beginPath();
+            for (var i = 0; i < o.base.clip.rects.rects.length; i++)
+            {
+                var r = o.base.clip.rects.rects[i];
+                ctx.rect(r.left, r.top, r.right - r.left, r.bottom - r.top);
+            }
+            ctx.clip();
+        }
+    }
+
     if (o.has_alpha)
     {
         /* FIXME - This is based on trial + error, not a serious thoughtful
@@ -751,6 +768,11 @@ SpiceDisplayConn.prototype.draw_copy_helper = function(o)
             o.base.surface_id + "@" + o.base.box.left + "x" +  o.base.box.top);
         debug_canvas.getContext("2d").putImageData(o.image_data, 0, 0);
         document.getElementById(this.parent.dump_id).appendChild(debug_canvas);
+    }
+
+    if (clipped)
+    {
+        ctx.restore();
     }
 
     this.surfaces[o.base.surface_id].draw_count++;
@@ -839,16 +861,33 @@ SpiceDisplayConn.prototype.hook_events = function()
     if (this.primary_surface !== undefined)
     {
         var canvas = this.surfaces[this.primary_surface].canvas;
+        var screen = document.getElementById(this.parent.screen_id);
+        
+        console.log("hook_events: this.parent =", this.parent);
+        console.log("hook_events: this.parent.inputs =", this.parent.inputs);
+        
         canvas.sc = this.parent;
-        canvas.addEventListener('mousemove', Inputs.handle_mousemove);
-        canvas.addEventListener('mousedown', Inputs.handle_mousedown);
+        
+        // Bind input handlers with correct context
+        var handleMouseMove = Inputs.handle_mousemove.bind({sc: this.parent});
+        var handleMouseDown = Inputs.handle_mousedown.bind({sc: this.parent});
+        var handleMouseUp = Inputs.handle_mouseup.bind({sc: this.parent});
+        var handleKeyDown = Inputs.handle_keydown.bind({sc: this.parent});
+        var handleKeyUp = Inputs.handle_keyup.bind({sc: this.parent});
+        
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mousedown', handleMouseDown);
         canvas.addEventListener('contextmenu', Inputs.handle_contextmenu);
-        canvas.addEventListener('mouseup', Inputs.handle_mouseup);
-        canvas.addEventListener('keydown', Inputs.handle_keydown);
-        canvas.addEventListener('keyup', Inputs.handle_keyup);
+        canvas.addEventListener('mouseup', handleMouseUp);
+        
+        // Keyboard events on screen container
+        screen.addEventListener('keydown', handleKeyDown, true);
+        screen.addEventListener('keyup', handleKeyUp, true);
+        
         canvas.addEventListener('mouseout', handle_mouseout);
         canvas.addEventListener('mouseover', handle_mouseover);
         canvas.addEventListener('wheel', Inputs.handle_mousewheel);
+        
         canvas.focus();
     }
 }

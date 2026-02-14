@@ -21,6 +21,7 @@
 import { create_rgba_png } from './png.js';
 import { Constants } from './enums.js';
 import { DEBUG } from './utils.js';
+import { SpiceDataView } from './spicedataview.js';
 import {
   SpiceMsgCursorInit,
   SpiceMsgCursorSet,
@@ -84,7 +85,19 @@ SpiceCursorConn.prototype.process_channel_message = function(msg)
 
     if (msg.type == Constants.SPICE_MSG_CURSOR_MOVE)
     {
-        this.known_unimplemented(msg.type, "Cursor Move");
+        DEBUG > 1 && console.log("SpiceMsgCursorMove");
+        var cursor_move = new SpiceDataView(msg.data);
+        var x = cursor_move.getUint16(0, true);
+        var y = cursor_move.getUint16(2, true);
+        if (x > 32767) x -= 65536;
+        if (y > 32767) y -= 65536;
+        this.parent.inputs.mousex = x;
+        this.parent.inputs.mousey = y;
+        if (this.spice_simulated_cursor)
+        {
+            this.spice_simulated_cursor.style.left = (x - this.spice_simulated_cursor.spice_hot_x) + 'px';
+            this.spice_simulated_cursor.style.top = (y - this.spice_simulated_cursor.spice_hot_y) + 'px';
+        }
         return true;
     }
 
