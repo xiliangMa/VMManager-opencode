@@ -716,10 +716,6 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
     </input>
     <input type='mouse' bus='usb'>
     </input>
-    <redirdev type='spice' bus='usb'>
-    </redirdev>
-    <redirdev type='spice' bus='usb'>
-    </redirdev>
   </devices>
 </domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
 	case "x86_64":
