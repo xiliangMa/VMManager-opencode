@@ -224,14 +224,7 @@
     "uploadSpeed": "上传速度",
     "uploaded": "已上传",
     "remainingTime": "剩余时间",
-    "retrying": "正在重试 ({{count}}/3)...",
-    "mount": "挂载 ISO",
-    "unmount": "卸载 ISO",
-    "mountSuccess": "ISO 挂载成功",
-    "unmountSuccess": "ISO 卸载成功",
-    "selectISO": "请选择 ISO 镜像",
-    "selectISOHint": "选择要挂载到虚拟机的 ISO 镜像文件",
-    "unmountConfirm": "确定要卸载当前挂载的 ISO 吗？"
+    "retrying": "正在重试 ({{count}}/3)..."
   },
   "iso": {
     "isoList": "ISO 镜像",
@@ -276,7 +269,14 @@
     "uploadSpeed": "上传速度",
     "uploaded": "已上传",
     "remainingTime": "剩余时间",
-    "retrying": "正在重试 ({{count}}/3)..."
+    "retrying": "正在重试 ({{count}}/3)...",
+    "mount": "挂载 ISO",
+    "unmount": "卸载 ISO",
+    "mountSuccess": "ISO 挂载成功",
+    "unmountSuccess": "ISO 卸载成功",
+    "selectISO": "请选择 ISO 镜像",
+    "selectISOHint": "选择要挂载到虚拟机的 ISO 镜像文件",
+    "unmountConfirm": "确定要卸载当前挂载的 ISO 吗？"
   },
   "admin": {
     "userManagement": "用户管理",
