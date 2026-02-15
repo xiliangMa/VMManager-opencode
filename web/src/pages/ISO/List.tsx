@@ -1,25 +1,17 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Table, Card, Button, Space, Tag, Modal, Form, Input, Select, message, Popconfirm, Progress, Row, Col, Statistic } from 'antd'
-import { DeleteOutlined, UploadOutlined, SearchOutlined, FileOutlined, CloudUploadOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { Table, Card, Button, Space, Tag, Select, message, Popconfirm, Input, Row, Col, Statistic } from 'antd'
+import { DeleteOutlined, UploadOutlined, SearchOutlined, FileOutlined } from '@ant-design/icons'
 import { isosApi, ISO } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import { useAuthStore } from '../../stores/authStore'
 import dayjs from 'dayjs'
 
-const CHUNK_SIZE = 100 * 1024 * 1024
-
 const ISOList: React.FC = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { user } = useAuthStore()
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
-  const [uploadStep, setUploadStep] = useState(0)
-  const [uploadForm] = Form.useForm()
-  const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadId, setUploadId] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [architectureFilter, setArchitectureFilter] = useState('')
 
@@ -31,112 +23,10 @@ const ISOList: React.FC = () => {
     })
   })
 
-  const osTypeOptions = [
-    { label: 'Ubuntu', value: 'Ubuntu' },
-    { label: 'CentOS', value: 'CentOS' },
-    { label: 'Debian', value: 'Debian' },
-    { label: 'Windows', value: 'Windows' },
-    { label: 'Rocky Linux', value: 'RockyLinux' },
-    { label: 'AlmaLinux', value: 'AlmaLinux' },
-    { label: 'Other', value: 'Other' }
-  ]
-
   const archOptions = [
     { label: 'x86_64', value: 'x86_64' },
     { label: 'aarch64 (ARM 64-bit)', value: 'aarch64' }
   ]
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const ext = file.name.toLowerCase().split('.').pop()
-      if (ext !== 'iso') {
-        message.error(t('iso.onlyIsoAllowed'))
-        return
-      }
-      setSelectedFile(file)
-      message.success(`${t('iso.fileSelected')}: ${file.name} (${formatSize(file.size)})`)
-    }
-  }
-
-  const handleStartUpload = async () => {
-    const values = uploadForm.getFieldsValue()
-    
-    if (!values.name) {
-      message.error(t('validation.pleaseEnterName'))
-      return
-    }
-    
-    if (!selectedFile) {
-      message.error(t('iso.pleaseSelectFile'))
-      return
-    }
-
-    setUploading(true)
-    try {
-      const initResponse = await isosApi.initUpload({
-        name: values.name,
-        description: values.description || '',
-        file_name: selectedFile.name,
-        file_size: selectedFile.size,
-        architecture: values.architecture || 'x86_64',
-        os_type: values.os_type,
-        os_version: values.os_version,
-        chunk_size: CHUNK_SIZE
-      })
-
-      setUploadId(initResponse.data.upload_id)
-      setUploadStep(1)
-      message.success(t('iso.uploadInitialized'))
-    } catch (error: any) {
-      message.error(error.response?.data?.message || t('iso.failedToInitUpload'))
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleFileUpload = async () => {
-    if (!selectedFile || !uploadId) return
-
-    const values = uploadForm.getFieldsValue()
-
-    setUploading(true)
-    setUploadProgress(0)
-
-    try {
-      const totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE)
-
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * CHUNK_SIZE
-        const end = Math.min(start + CHUNK_SIZE, selectedFile.size)
-        const chunk = selectedFile.slice(start, end)
-
-        const formData = new FormData()
-        formData.append('file', chunk)
-
-        await isosApi.uploadPart(uploadId, i, totalChunks, formData)
-
-        const progress = Math.round(((i + 1) / totalChunks) * 100)
-        setUploadProgress(progress)
-      }
-
-      await isosApi.completeUpload(uploadId, {
-        total_chunks: totalChunks,
-        name: values.name,
-        description: values.description,
-        os_type: values.os_type,
-        os_version: values.os_version
-      })
-
-      message.success(t('iso.uploadCompleted'))
-      setUploadStep(2)
-      refresh()
-    } catch (error: any) {
-      message.error(error.response?.data?.message || t('iso.failedToUpload'))
-    } finally {
-      setUploading(false)
-    }
-  }
 
   const handleDelete = async (id: string) => {
     try {
@@ -146,15 +36,6 @@ const ISOList: React.FC = () => {
     } catch (error) {
       message.error(t('iso.failedToDelete'))
     }
-  }
-
-  const handleUploadModalClose = () => {
-    setIsUploadModalOpen(false)
-    setUploadStep(0)
-    setSelectedFile(null)
-    setUploadId(null)
-    setUploadProgress(0)
-    uploadForm.resetFields()
   }
 
   const formatSize = (bytes: number) => {
@@ -308,7 +189,7 @@ const ISOList: React.FC = () => {
             <Button
               type="primary"
               icon={<UploadOutlined />}
-              onClick={() => setIsUploadModalOpen(true)}
+              onClick={() => navigate('/isos/upload')}
             >
               {t('iso.uploadISO')}
             </Button>
@@ -332,106 +213,6 @@ const ISOList: React.FC = () => {
           }}
         />
       </Card>
-
-      <Modal
-        title={t('iso.uploadISO')}
-        open={isUploadModalOpen}
-        onCancel={handleUploadModalClose}
-        footer={null}
-        width={600}
-      >
-        {uploadStep === 0 && (
-          <>
-            <Form form={uploadForm} layout="vertical">
-              <Form.Item
-                name="name"
-                label={t('iso.name')}
-                rules={[{ required: true, message: t('validation.pleaseEnterName') }]}
-              >
-                <Input placeholder={t('iso.namePlaceholder')} />
-              </Form.Item>
-
-              <Form.Item name="description" label={t('common.description')}>
-                <Input.TextArea rows={2} placeholder={t('iso.descriptionPlaceholder')} />
-              </Form.Item>
-
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item name="os_type" label={t('iso.osType')}>
-                    <Select placeholder={t('iso.selectOSType')} options={osTypeOptions} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="os_version" label={t('iso.osVersion')}>
-                    <Input placeholder="e.g., 22.04, 9" />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Form.Item name="architecture" label={t('iso.architecture')} initialValue="x86_64">
-                <Select options={archOptions} />
-              </Form.Item>
-
-              <Form.Item label={t('iso.file')}>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  accept=".iso"
-                  onChange={handleFileSelect}
-                />
-                <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>
-                  {t('iso.selectFile')}
-                </Button>
-                {selectedFile && (
-                  <span style={{ marginLeft: 8 }}>
-                    {selectedFile.name} ({formatSize(selectedFile.size)})
-                  </span>
-                )}
-              </Form.Item>
-            </Form>
-
-            <div style={{ textAlign: 'right', marginTop: 16 }}>
-              <Space>
-                <Button onClick={handleUploadModalClose}>{t('common.cancel')}</Button>
-                <Button type="primary" loading={uploading} onClick={handleStartUpload}>
-                  {t('common.next')}
-                </Button>
-              </Space>
-            </div>
-          </>
-        )}
-
-        {uploadStep === 1 && (
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <CloudUploadOutlined style={{ fontSize: 48, color: '#1890ff', marginBottom: 16 }} />
-            <div style={{ marginBottom: 16 }}>
-              {t('iso.uploading')}...
-            </div>
-            <Progress percent={uploadProgress} status="active" />
-            <div style={{ marginTop: 16, color: '#888' }}>
-              {selectedFile?.name}
-            </div>
-            <div style={{ marginTop: 24 }}>
-              <Button type="primary" loading={uploading} onClick={handleFileUpload}>
-                {t('iso.startUpload')}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {uploadStep === 2 && (
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <CheckCircleOutlined style={{ fontSize: 48, color: '#52c41a', marginBottom: 16 }} />
-            <div style={{ marginBottom: 16, fontSize: 18 }}>
-              {t('iso.uploadSuccess')}
-            </div>
-            <Button type="primary" onClick={handleUploadModalClose}>
-              {t('common.close')}
-            </Button>
-          </div>
-        )}
-      </Modal>
     </div>
   )
 }

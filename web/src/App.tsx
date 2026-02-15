@@ -16,6 +16,7 @@ import Templates from './pages/Templates/List'
 import TemplateUpload from './pages/Templates/Upload'
 import TemplateEdit from './pages/Templates/Edit'
 import ISOs from './pages/ISO/List'
+import ISOUpload from './pages/ISO/Upload'
 import UserManagement from './pages/Admin/Users'
 import AuditLogs from './pages/Admin/AuditLogs'
 import AlertRules from './pages/Admin/AlertRules'
@@ -59,6 +60,7 @@ const App: React.FC = () => {
         <Route path="templates/upload" element={<TemplateUpload />} />
         <Route path="templates/:id/edit" element={<TemplateEdit />} />
         <Route path="isos" element={<ISOs />} />
+        <Route path="isos/upload" element={<ISOUpload />} />
         <Route path="admin/users" element={<UserManagement />} />
         <Route path="admin/audit-logs" element={<AuditLogs />} />
         <Route path="admin/alerts" element={<AlertRules />} />
