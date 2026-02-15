@@ -180,6 +180,7 @@
     "public": "公共模板",
     "private": "私有模板",
     "osType": "操作系统类型",
+    "osVersion": "系统版本",
     "architecture": "架构",
     "format": "格式",
     "templateList": "模板",
@@ -197,7 +198,19 @@
     "minDisk": "最小磁盘 (GB)",
     "maxDisk": "最大磁盘 (GB)",
     "totalTemplates": "模板总数",
-    "items": "项"
+    "items": "项",
+    "fileSelected": "已选择文件",
+    "uploadInitialized": "上传初始化成功",
+    "failedToInitUpload": "上传初始化失败",
+    "uploading": "正在上传",
+    "startUpload": "开始上传",
+    "uploadCompleted": "上传完成",
+    "failedToUpload": "上传失败",
+    "namePlaceholder": "请输入模板名称",
+    "descriptionPlaceholder": "请输入描述信息",
+    "selectOSType": "选择操作系统类型",
+    "file": "文件",
+    "selectFile": "选择文件"
   },
   "iso": {
     "isoList": "ISO 镜像",

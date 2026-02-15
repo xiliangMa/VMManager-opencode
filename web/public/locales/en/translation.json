@@ -181,6 +181,7 @@
     "public": "Public Template",
     "private": "Private Template",
     "osType": "Operating System",
+    "osVersion": "OS Version",
     "architecture": "Architecture",
     "format": "Format",
     "createTemplate": "Create Template",
@@ -197,7 +198,19 @@
     "minDisk": "Min Disk (GB)",
     "maxDisk": "Max Disk (GB)",
     "totalTemplates": "Total Templates",
-    "items": "items"
+    "items": "items",
+    "fileSelected": "File selected",
+    "uploadInitialized": "Upload initialized successfully",
+    "failedToInitUpload": "Failed to initialize upload",
+    "uploading": "Uploading",
+    "startUpload": "Start Upload",
+    "uploadCompleted": "Upload completed",
+    "failedToUpload": "Failed to upload",
+    "namePlaceholder": "Please enter template name",
+    "descriptionPlaceholder": "Please enter description",
+    "selectOSType": "Select OS type",
+    "file": "File",
+    "selectFile": "Select File"
   },
   "iso": {
     "isoList": "ISO Images",
