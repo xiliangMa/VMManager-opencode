@@ -28,7 +28,7 @@ const AlertHistoryPage: React.FC = () => {
           total: response.meta?.total || 0
         })
       }
-    } catch (error) {
+    } catch (_error) {
       message.error(t('alert.loadingHistory'))
     } finally {
       setLoading(false)
@@ -41,8 +41,8 @@ const AlertHistoryPage: React.FC = () => {
       if (response.code === 0) {
         setStats(response.data || { total: 0, critical: 0, warning: 0, info: 0 })
       }
-    } catch (error) {
-      console.error('Failed to fetch alert stats:', error)
+    } catch (_error) {
+      console.error('Failed to fetch alert stats:', _error)
     }
   }, [])
 

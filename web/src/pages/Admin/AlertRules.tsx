@@ -25,7 +25,7 @@ const AlertRules: React.FC = () => {
           total: response.meta?.total || 0
         })
       }
-    } catch (error) {
+    } catch (_error) {
       message.error(t('alert.loadingRules'))
     } finally {
       setLoading(false)
@@ -84,7 +84,7 @@ const AlertRules: React.FC = () => {
       await alertRulesApi.delete(id)
       message.success(t('alert.ruleDeleted'))
       fetchRules(pagination.current, pagination.pageSize)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('alert.failedToDeleteRule'))
     }
   }
@@ -100,7 +100,7 @@ const AlertRules: React.FC = () => {
       }
       setIsModalOpen(false)
       fetchRules(pagination.current, pagination.pageSize)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('alert.failedToSaveRule'))
     }
   }
@@ -110,7 +110,7 @@ const AlertRules: React.FC = () => {
       await alertRulesApi.toggle(id)
       message.success(t('alert.ruleStatusUpdated'))
       fetchRules(pagination.current, pagination.pageSize)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('alert.failedToUpdateRuleStatus'))
     }
   }

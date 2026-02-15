@@ -236,7 +236,7 @@ func (c *VNCClient) proxyVNC(h *Handler) {
 
 	log.Printf("[%s][%s] Domain state: %d", strings.ToUpper(c.connType), c.vmID, state)
 	if state != 1 {
-		log.Printf("[%s][%s] Domain not running", strings.ToUpper(c.connType), c.vmID, err)
+		log.Printf("[%s][%s] Domain not running", strings.ToUpper(c.connType), c.vmID)
 		return
 	}
 

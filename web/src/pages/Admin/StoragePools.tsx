@@ -40,7 +40,7 @@ const StoragePools: React.FC = () => {
           total: response.meta?.total || 0
         })
       }
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToListPools'))
     } finally {
       setLoading(false)
@@ -78,7 +78,7 @@ const StoragePools: React.FC = () => {
       await storageApi.deletePool(id)
       message.success(t('storage.deletePoolSuccess'))
       fetchPools(pagination.current, pagination.pageSize)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToDeletePool'))
     }
   }
@@ -94,7 +94,7 @@ const StoragePools: React.FC = () => {
       }
       setIsModalOpen(false)
       fetchPools(pagination.current, pagination.pageSize)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToCreatePool'))
     }
   }
@@ -104,7 +104,7 @@ const StoragePools: React.FC = () => {
       await storageApi.startPool(id)
       message.success(t('storage.startPoolSuccess'))
       fetchPools(pagination.current, pagination.pageSize)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToStartPool'))
     }
   }
@@ -114,7 +114,7 @@ const StoragePools: React.FC = () => {
       await storageApi.stopPool(id)
       message.success(t('storage.stopPoolSuccess'))
       fetchPools(pagination.current, pagination.pageSize)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToStopPool'))
     }
   }
@@ -124,7 +124,7 @@ const StoragePools: React.FC = () => {
       await storageApi.refreshPool(id)
       message.success(t('storage.refreshPoolSuccess'))
       fetchPools(pagination.current, pagination.pageSize)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToRefreshPool'))
     }
   }
@@ -140,7 +140,7 @@ const StoragePools: React.FC = () => {
       if (response.code === 0) {
         setVolumes(response.data || [])
       }
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToListVolumes'))
     } finally {
       setVolumeLoading(false)
@@ -161,7 +161,7 @@ const StoragePools: React.FC = () => {
       setVolumeModalOpen(false)
       volumeForm.resetFields()
       fetchVolumes(selectedPool.id)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToCreateVolume'))
     }
   }
@@ -172,7 +172,7 @@ const StoragePools: React.FC = () => {
       await storageApi.deleteVolume(selectedPool.id, volumeId)
       message.success(t('storage.deleteVolumeSuccess'))
       fetchVolumes(selectedPool.id)
-    } catch (error) {
+    } catch (_error) {
       message.error(t('storage.failedToDeleteVolume'))
     }
   }
