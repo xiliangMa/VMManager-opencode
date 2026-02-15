@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -12,13 +13,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
-	userRepo     *repository.UserRepository
-	jwtCfg       config.JWTConfig
-	auditService *services.AuditService
+	userRepo         *repository.UserRepository
+	jwtCfg           config.JWTConfig
+	auditService     *services.AuditService
+	loginHistoryRepo *repository.LoginHistoryRepository
 }
 
 func NewAuthHandler(userRepo *repository.UserRepository, jwtCfg config.JWTConfig) *AuthHandler {
@@ -30,6 +33,10 @@ func NewAuthHandler(userRepo *repository.UserRepository, jwtCfg config.JWTConfig
 
 func (h *AuthHandler) SetAuditService(auditService *services.AuditService) {
 	h.auditService = auditService
+}
+
+func (h *AuthHandler) SetLoginHistoryRepo(repo *repository.LoginHistoryRepository) {
+	h.loginHistoryRepo = repo
 }
 
 type TokenClaims struct {
@@ -144,19 +151,24 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
+	ipAddress := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
 
 	user, err := h.userRepo.FindByUsername(ctx, req.Username)
 	if err != nil {
+		h.recordLoginHistory(nil, "password", ipAddress, userAgent, "failed", "user not found")
 		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, t(c, "invalid_request"), "user not found"))
 		return
 	}
 
 	if !user.IsActive {
+		h.recordLoginHistory(&user.ID, "password", ipAddress, userAgent, "failed", "account is disabled")
 		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "account_is_disabled"), "user is not active"))
 		return
 	}
 
 	if !verifyPassword(user.PasswordHash, req.Password) {
+		h.recordLoginHistory(&user.ID, "password", ipAddress, userAgent, "failed", "wrong password")
 		c.JSON(http.StatusUnauthorized, errors.FailWithDetails(errors.ErrCodeInvalidCredentials, t(c, "invalid_request"), t(c, "wrong_password")))
 		return
 	}
@@ -165,6 +177,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, _ := generateToken(user.ID.String(), user.Role, h.jwtCfg)
 	refreshToken, _ := generateRefreshToken(user.ID.String(), h.jwtCfg)
+
+	h.recordLoginHistory(&user.ID, "password", ipAddress, userAgent, "success", "")
 
 	if h.auditService != nil {
 		h.auditService.LogSuccess(c, "auth.login", "user", &user.ID, map[string]interface{}{
@@ -188,7 +202,39 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}))
 }
 
+func (h *AuthHandler) recordLoginHistory(userID *uuid.UUID, loginType, ipAddress, userAgent, status, failureReason string) {
+	if h.loginHistoryRepo == nil {
+		return
+	}
+
+	history := &models.LoginHistory{
+		LoginType:     loginType,
+		IPAddress:     ipAddress,
+		UserAgent:     userAgent,
+		Status:        status,
+		FailureReason: failureReason,
+	}
+	if userID != nil {
+		history.UserID = *userID
+	}
+
+	ctx := context.Background()
+	h.loginHistoryRepo.Create(ctx, history)
+}
+
 func (h *AuthHandler) Logout(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+
+	if h.loginHistoryRepo != nil && userID != nil {
+		ctx := context.Background()
+		latestLogin, err := h.loginHistoryRepo.GetLatestByUser(ctx, userID.(string))
+		if err == nil && latestLogin != nil && latestLogin.LogoutAt == nil {
+			now := time.Now()
+			sessionDuration := int(now.Sub(latestLogin.CreatedAt).Seconds())
+			h.loginHistoryRepo.UpdateLogout(ctx, latestLogin.ID.String(), now, sessionDuration)
+		}
+	}
+
 	c.JSON(http.StatusOK, errors.Success(nil))
 }
 

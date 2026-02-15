@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,15 +21,16 @@ import (
 )
 
 type VMHandler struct {
-	vmRepo       *repository.VMRepository
-	userRepo     *repository.UserRepository
-	templateRepo *repository.TemplateRepository
-	statsRepo    *repository.VMStatsRepository
-	isoRepo      *repository.ISORepository
-	libvirt      *libvirt.Client
-	storagePath  string
-	auditService *services.AuditService
-	syncService  *services.VMSyncService
+	vmRepo                 *repository.VMRepository
+	userRepo               *repository.UserRepository
+	templateRepo           *repository.TemplateRepository
+	statsRepo              *repository.VMStatsRepository
+	isoRepo                *repository.ISORepository
+	libvirt                *libvirt.Client
+	storagePath            string
+	auditService           *services.AuditService
+	syncService            *services.VMSyncService
+	vmOperationHistoryRepo *repository.VMOperationHistoryRepository
 }
 
 func NewVMHandler(
@@ -55,6 +57,30 @@ func NewVMHandler(
 
 func (h *VMHandler) SetSyncService(syncService *services.VMSyncService) {
 	h.syncService = syncService
+}
+
+func (h *VMHandler) SetVMOperationHistoryRepo(repo *repository.VMOperationHistoryRepository) {
+	h.vmOperationHistoryRepo = repo
+}
+
+func (h *VMHandler) recordVMOperation(vmID uuid.UUID, operation, status string, triggeredBy *uuid.UUID, ipAddress, userAgent, requestParams, responseData, errorMessage string) {
+	if h.vmOperationHistoryRepo == nil {
+		return
+	}
+
+	ctx := context.Background()
+	history := &models.VMOperationHistory{
+		VMID:          vmID,
+		Operation:     operation,
+		Status:        status,
+		TriggeredBy:   triggeredBy,
+		IPAddress:     ipAddress,
+		UserAgent:     userAgent,
+		RequestParams: requestParams,
+		ResponseData:  responseData,
+		ErrorMessage:  errorMessage,
+	}
+	h.vmOperationHistoryRepo.Create(ctx, history)
 }
 
 func (h *VMHandler) SyncVMStatus(c *gin.Context) {
@@ -574,6 +600,8 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
+	ipAddress := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
@@ -715,6 +743,7 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 
 	if err := domain.Create(); err != nil {
 		log.Printf("[VM] Failed to start domain: %v", err)
+		h.recordVMOperation(vm.ID, "start", "failed", &userUUID, ipAddress, userAgent, "", "", err.Error())
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_start_vm"), err.Error()))
 		return
 	}
@@ -725,6 +754,8 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
 		return
 	}
+
+	h.recordVMOperation(vm.ID, "start", "success", &userUUID, ipAddress, userAgent, "", "", "")
 
 	if h.auditService != nil {
 		h.auditService.LogSuccess(c, "vm.start", "virtual_machine", &vm.ID, map[string]interface{}{
@@ -983,6 +1014,8 @@ func (h *VMHandler) StopVM(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
+	ipAddress := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
@@ -1095,6 +1128,8 @@ func (h *VMHandler) StopVM(c *gin.Context) {
 		return
 	}
 
+	h.recordVMOperation(vm.ID, "stop", "success", &userUUID, ipAddress, userAgent, "", "", "")
+
 	if h.auditService != nil {
 		h.auditService.LogSuccess(c, "vm.stop", "virtual_machine", &vm.ID, map[string]interface{}{
 			"name": vm.Name,
@@ -1114,6 +1149,8 @@ func (h *VMHandler) ForceStopVM(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
+	ipAddress := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
@@ -1141,6 +1178,7 @@ func (h *VMHandler) ForceStopVM(c *gin.Context) {
 
 	if err := domain.Destroy(); err != nil {
 		log.Printf("[VM] Failed to destroy domain: %v", err)
+		h.recordVMOperation(vm.ID, "force_stop", "failed", &userUUID, ipAddress, userAgent, "", "", err.Error())
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_force_stop_vm"), err.Error()))
 		return
 	}
@@ -1149,6 +1187,8 @@ func (h *VMHandler) ForceStopVM(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
 		return
 	}
+
+	h.recordVMOperation(vm.ID, "force_stop", "success", &userUUID, ipAddress, userAgent, "", "", "")
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
 		"id":     vm.ID,
@@ -1163,6 +1203,8 @@ func (h *VMHandler) RebootVM(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 	userUUID, _ := uuid.Parse(userID.(string))
+	ipAddress := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
 
 	vm, err := h.vmRepo.FindByID(ctx, id)
 	if err != nil {
@@ -1277,6 +1319,8 @@ func (h *VMHandler) RebootVM(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
 		return
 	}
+
+	h.recordVMOperation(vm.ID, "reboot", "success", &userUUID, ipAddress, userAgent, "", "", "")
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
 		"id":     vm.ID,

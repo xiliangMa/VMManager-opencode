@@ -19,7 +19,9 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 
 	authHandler := handlers.NewAuthHandler(repos.User, cfg.JWT)
 	authHandler.SetAuditService(auditService)
+	authHandler.SetLoginHistoryRepo(repos.LoginHistory)
 	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats, repos.ISO, libvirtClient, cfg.Storage.Path, auditService)
+	vmHandler.SetVMOperationHistoryRepo(repos.VMOperationHistory)
 	templateHandler := handlers.NewTemplateHandler(repos.Template, repos.TemplateUpload, repos.VM)
 	templateHandler.SetAuditService(auditService)
 	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
