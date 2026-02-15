@@ -560,3 +560,136 @@ export const networksApi = {
   stop: (id: string) =>
     client.post(`/admin/networks/${id}/stop`).then(res => res.data)
 }
+
+export interface StoragePool {
+  id: string
+  name: string
+  description?: string
+  poolType: string
+  targetPath?: string
+  sourcePath?: string
+  capacity: number
+  available: number
+  used: number
+  active: boolean
+  autostart: boolean
+  xmlDef?: string
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StorageVolume {
+  id: string
+  poolId: string
+  name: string
+  volumeType?: string
+  capacity: number
+  allocation: number
+  format?: string
+  path?: string
+  vmId?: string
+  createdAt: string
+}
+
+export const storageApi = {
+  listPools: (params?: { page?: number; page_size?: number }) =>
+    client.get('/admin/storage/pools', { params }).then(res => res.data),
+
+  getPool: (id: string) =>
+    client.get(`/admin/storage/pools/${id}`).then(res => res.data),
+
+  createPool: (data: Partial<StoragePool>) =>
+    client.post('/admin/storage/pools', data).then(res => res.data),
+
+  updatePool: (id: string, data: Partial<StoragePool>) =>
+    client.put(`/admin/storage/pools/${id}`, data).then(res => res.data),
+
+  deletePool: (id: string) =>
+    client.delete(`/admin/storage/pools/${id}`).then(res => res.data),
+
+  startPool: (id: string) =>
+    client.post(`/admin/storage/pools/${id}/start`).then(res => res.data),
+
+  stopPool: (id: string) =>
+    client.post(`/admin/storage/pools/${id}/stop`).then(res => res.data),
+
+  refreshPool: (id: string) =>
+    client.post(`/admin/storage/pools/${id}/refresh`).then(res => res.data),
+
+  listVolumes: (poolId: string, params?: { page?: number; page_size?: number }) =>
+    client.get(`/admin/storage/pools/${poolId}/volumes`, { params }).then(res => res.data),
+
+  createVolume: (poolId: string, data: Partial<StorageVolume>) =>
+    client.post(`/admin/storage/pools/${poolId}/volumes`, data).then(res => res.data),
+
+  deleteVolume: (poolId: string, volumeId: string) =>
+    client.delete(`/admin/storage/pools/${poolId}/volumes/${volumeId}`).then(res => res.data)
+}
+
+export interface VMBackup {
+  id: string
+  vmId: string
+  name: string
+  description?: string
+  backupType: string
+  status: string
+  filePath?: string
+  fileSize: number
+  progress: number
+  scheduledAt?: string
+  startedAt?: string
+  completedAt?: string
+  expiresAt?: string
+  errorMsg?: string
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BackupSchedule {
+  id: string
+  vmId: string
+  name: string
+  cronExpr: string
+  backupType: string
+  retention: number
+  enabled: boolean
+  lastRunAt?: string
+  nextRunAt?: string
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export const backupApi = {
+  listBackups: (vmId: string, params?: { page?: number; page_size?: number }) =>
+    client.get(`/vms/${vmId}/backups`, { params }).then(res => res.data),
+
+  createBackup: (vmId: string, data: Partial<VMBackup>) =>
+    client.post(`/vms/${vmId}/backups`, data).then(res => res.data),
+
+  getBackup: (vmId: string, backupId: string) =>
+    client.get(`/vms/${vmId}/backups/${backupId}`).then(res => res.data),
+
+  deleteBackup: (vmId: string, backupId: string) =>
+    client.delete(`/vms/${vmId}/backups/${backupId}`).then(res => res.data),
+
+  restoreBackup: (vmId: string, backupId: string) =>
+    client.post(`/vms/${vmId}/backups/${backupId}/restore`).then(res => res.data),
+
+  listSchedules: (vmId: string) =>
+    client.get(`/vms/${vmId}/backups/schedules`).then(res => res.data),
+
+  createSchedule: (vmId: string, data: Partial<BackupSchedule>) =>
+    client.post(`/vms/${vmId}/backups/schedules`, data).then(res => res.data),
+
+  updateSchedule: (vmId: string, scheduleId: string, data: Partial<BackupSchedule>) =>
+    client.put(`/vms/${vmId}/backups/schedules/${scheduleId}`, data).then(res => res.data),
+
+  deleteSchedule: (vmId: string, scheduleId: string) =>
+    client.delete(`/vms/${vmId}/backups/schedules/${scheduleId}`).then(res => res.data),
+
+  toggleSchedule: (vmId: string, scheduleId: string) =>
+    client.post(`/vms/${vmId}/backups/schedules/${scheduleId}/toggle`).then(res => res.data)
+}

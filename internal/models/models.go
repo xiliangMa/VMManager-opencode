@@ -312,3 +312,97 @@ func (n *VirtualNetwork) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type StoragePool struct {
+	ID          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name        string     `gorm:"size:100;not null;uniqueIndex" json:"name"`
+	Description string     `gorm:"type:text" json:"description"`
+	PoolType    string     `gorm:"size:20;not null;default:'dir'" json:"poolType"`
+	TargetPath  string     `gorm:"size:500" json:"targetPath"`
+	SourcePath  string     `gorm:"size:500" json:"sourcePath"`
+	Capacity    int64      `gorm:"default:0" json:"capacity"`
+	Available   int64      `gorm:"default:0" json:"available"`
+	Used        int64      `gorm:"default:0" json:"used"`
+	Active      bool       `gorm:"default:false" json:"active"`
+	Autostart   bool       `gorm:"default:true" json:"autostart"`
+	XMLDef      string     `gorm:"type:text" json:"xmlDef"`
+	CreatedBy   *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+}
+
+func (s *StoragePool) BeforeCreate(tx *gorm.DB) (err error) {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return
+}
+
+type StorageVolume struct {
+	ID         uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	PoolID     uuid.UUID  `gorm:"type:uuid;not null;index" json:"poolId"`
+	Name       string     `gorm:"size:255;not null" json:"name"`
+	VolumeType string     `gorm:"size:20" json:"volumeType"`
+	Capacity   int64      `gorm:"default:0" json:"capacity"`
+	Allocation int64      `gorm:"default:0" json:"allocation"`
+	Format     string     `gorm:"size:20" json:"format"`
+	Path       string     `gorm:"size:500" json:"path"`
+	VMID       *uuid.UUID `gorm:"type:uuid;index" json:"vmId"`
+	CreatedAt  time.Time  `json:"createdAt"`
+}
+
+func (v *StorageVolume) BeforeCreate(tx *gorm.DB) (err error) {
+	if v.ID == uuid.Nil {
+		v.ID = uuid.New()
+	}
+	return
+}
+
+type VMBackup struct {
+	ID          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	VMID        uuid.UUID  `gorm:"type:uuid;not null;index" json:"vmId"`
+	Name        string     `gorm:"size:255;not null" json:"name"`
+	Description string     `gorm:"type:text" json:"description"`
+	BackupType  string     `gorm:"size:20;not null;default:'full'" json:"backupType"`
+	Status      string     `gorm:"size:20;not null;default:'pending'" json:"status"`
+	FilePath    string     `gorm:"size:500" json:"filePath"`
+	FileSize    int64      `gorm:"default:0" json:"fileSize"`
+	Progress    int        `gorm:"default:0" json:"progress"`
+	ScheduledAt *time.Time `json:"scheduledAt"`
+	StartedAt   *time.Time `json:"startedAt"`
+	CompletedAt *time.Time `json:"completedAt"`
+	ExpiresAt   *time.Time `json:"expiresAt"`
+	ErrorMsg    string     `gorm:"type:text" json:"errorMsg"`
+	CreatedBy   *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+}
+
+func (b *VMBackup) BeforeCreate(tx *gorm.DB) (err error) {
+	if b.ID == uuid.Nil {
+		b.ID = uuid.New()
+	}
+	return
+}
+
+type BackupSchedule struct {
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	VMID         uuid.UUID  `gorm:"type:uuid;not null;index" json:"vmId"`
+	Name         string     `gorm:"size:255;not null" json:"name"`
+	CronExpr     string     `gorm:"size:100;not null" json:"cronExpr"`
+	BackupType   string     `gorm:"size:20;not null;default:'full'" json:"backupType"`
+	Retention    int        `gorm:"default:7" json:"retention"`
+	Enabled      bool       `gorm:"default:true" json:"enabled"`
+	LastRunAt    *time.Time `json:"lastRunAt"`
+	NextRunAt    *time.Time `json:"nextRunAt"`
+	CreatedBy    *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
+}
+
+func (s *BackupSchedule) BeforeCreate(tx *gorm.DB) (err error) {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return
+}

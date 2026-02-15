@@ -512,9 +512,268 @@ func (c *Client) NetworkGetInfo(name string) (map[string]interface{}, error) {
 	}
 
 	return map[string]interface{}{
-		"name":       name,
-		"active":     active,
-		"autostart":  autostart,
-		"xml":        xmlDesc,
+		"name":      name,
+		"active":    active,
+		"autostart": autostart,
+		"xml":       xmlDesc,
 	}, nil
+}
+
+type StoragePoolInfo struct {
+	Name      string
+	Type      string
+	Target    string
+	Source    string
+	Capacity  uint64
+	Available uint64
+	Used      uint64
+	Active    bool
+	Autostart bool
+}
+
+func (c *Client) StoragePoolDefineXML(xmlDef string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+	_, err := c.conn.StoragePoolDefineXML(xmlDef, 0)
+	return err
+}
+
+func (c *Client) StoragePoolCreate(name string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	return pool.Create(0)
+}
+
+func (c *Client) StoragePoolDestroy(name string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	return pool.Destroy()
+}
+
+func (c *Client) StoragePoolUndefine(name string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	return pool.Undefine()
+}
+
+func (c *Client) StoragePoolSetAutostart(name string, autostart bool) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	return pool.SetAutostart(autostart)
+}
+
+func (c *Client) StoragePoolGetInfo(name string) (*StoragePoolInfo, error) {
+	if c.conn == nil {
+		return nil, fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	info, err := pool.GetInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	active, err := pool.IsActive()
+	if err != nil {
+		return nil, err
+	}
+
+	autostart, err := pool.GetAutostart()
+	if err != nil {
+		return nil, err
+	}
+
+	xmlDesc, err := pool.GetXMLDesc(0)
+	if err != nil {
+		return nil, err
+	}
+
+	poolType := ""
+	target := ""
+	source := ""
+	if xmlDesc != "" {
+		typeMatch := regexp.MustCompile(`type=['"]([^'"]+)['"]`).FindStringSubmatch(xmlDesc)
+		if len(typeMatch) > 1 {
+			poolType = typeMatch[1]
+		}
+		targetMatch := regexp.MustCompile(`<path>([^<]+)</path>`).FindStringSubmatch(xmlDesc)
+		if len(targetMatch) > 1 {
+			target = targetMatch[1]
+		}
+		sourceMatch := regexp.MustCompile(`<dir\s+path=['"]([^'"]+)['"]`).FindStringSubmatch(xmlDesc)
+		if len(sourceMatch) > 1 {
+			source = sourceMatch[1]
+		}
+	}
+
+	return &StoragePoolInfo{
+		Name:      name,
+		Type:      poolType,
+		Target:    target,
+		Source:    source,
+		Capacity:  info.Capacity,
+		Available: info.Available,
+		Used:      info.Capacity - info.Available,
+		Active:    active,
+		Autostart: autostart,
+	}, nil
+}
+
+func (c *Client) StoragePoolList() ([]string, error) {
+	if c.conn == nil {
+		return nil, fmt.Errorf("libvirt connection is nil")
+	}
+	pools, err := c.conn.ListDefinedStoragePools()
+	if err != nil {
+		return nil, err
+	}
+
+	activePools, err := c.conn.ListStoragePools()
+	if err != nil {
+		return nil, err
+	}
+
+	return append(pools, activePools...), nil
+}
+
+func (c *Client) StoragePoolRefresh(name string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	return pool.Refresh(0)
+}
+
+type StorageVolumeInfo struct {
+	Name       string
+	Type       string
+	Capacity   uint64
+	Allocation uint64
+	Path       string
+}
+
+func (c *Client) StorageVolumeList(poolName string) ([]StorageVolumeInfo, error) {
+	if c.conn == nil {
+		return nil, fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return nil, fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	volumes, err := pool.ListAllStorageVolumes(0)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []StorageVolumeInfo
+	for _, vol := range volumes {
+		name, err := vol.GetName()
+		if err != nil {
+			vol.Free()
+			continue
+		}
+
+		info, err := vol.GetInfo()
+		if err != nil {
+			vol.Free()
+			continue
+		}
+
+		path, err := vol.GetPath()
+		if err != nil {
+			path = ""
+		}
+
+		result = append(result, StorageVolumeInfo{
+			Name:       name,
+			Capacity:   info.Capacity,
+			Allocation: info.Allocation,
+			Path:       path,
+		})
+
+		vol.Free()
+	}
+
+	return result, nil
+}
+
+func (c *Client) StorageVolumeCreate(poolName, name string, capacity int64, format string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	xml := fmt.Sprintf(`<volume>
+  <name>%s</name>
+  <capacity unit="bytes">%d</capacity>
+  <target>
+    <format type="%s"/>
+  </target>
+</volume>`, name, capacity, format)
+
+	_, err = pool.StorageVolCreateXML(xml, 0)
+	return err
+}
+
+func (c *Client) StorageVolumeDelete(poolName, volumeName string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+	pool, err := c.conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	vol, err := pool.LookupStorageVolByName(volumeName)
+	if err != nil {
+		return fmt.Errorf("volume not found: %w", err)
+	}
+	defer vol.Free()
+
+	return vol.Delete(0)
 }

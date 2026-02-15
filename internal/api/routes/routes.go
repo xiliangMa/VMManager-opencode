@@ -31,6 +31,8 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	alertHistoryHandler := handlers.NewAlertHistoryHandler(repos.AlertHistory)
 	isoHandler := handlers.NewISOHandler(repos.ISO, repos.ISOUpload)
 	networkHandler := handlers.NewVirtualNetworkHandler(repos.VirtualNetwork, libvirtClient)
+	storageHandler := handlers.NewStorageHandler(repos, libvirtClient)
+	backupHandler := handlers.NewBackupHandler(repos)
 
 	api := router.Group("/api/v1")
 	{
@@ -87,6 +89,24 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 				batch.POST("/force-stop", batchHandler.BatchStop)
 				batch.DELETE("", batchHandler.BatchDelete)
 				batch.POST("/:operation", batchHandler.BatchOperation)
+			}
+
+			backups := vms.Group("/:id/backups")
+			{
+				backups.GET("", backupHandler.ListBackups)
+				backups.POST("", backupHandler.CreateBackup)
+				backups.GET("/:backup_id", backupHandler.GetBackup)
+				backups.DELETE("/:backup_id", backupHandler.DeleteBackup)
+				backups.POST("/:backup_id/restore", backupHandler.RestoreBackup)
+
+				schedules := backups.Group("/schedules")
+				{
+					schedules.GET("", backupHandler.ListSchedules)
+					schedules.POST("", backupHandler.CreateSchedule)
+					schedules.PUT("/:schedule_id", backupHandler.UpdateSchedule)
+					schedules.DELETE("/:schedule_id", backupHandler.DeleteSchedule)
+					schedules.POST("/:schedule_id/toggle", backupHandler.ToggleSchedule)
+				}
 			}
 		}
 
@@ -180,6 +200,21 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 				networks.DELETE("/:id", networkHandler.Delete)
 				networks.POST("/:id/start", networkHandler.Start)
 				networks.POST("/:id/stop", networkHandler.Stop)
+			}
+
+			storage := admin.Group("/storage")
+			{
+				storage.GET("/pools", storageHandler.ListPools)
+				storage.GET("/pools/:id", storageHandler.GetPool)
+				storage.POST("/pools", storageHandler.CreatePool)
+				storage.PUT("/pools/:id", storageHandler.UpdatePool)
+				storage.DELETE("/pools/:id", storageHandler.DeletePool)
+				storage.POST("/pools/:id/start", storageHandler.StartPool)
+				storage.POST("/pools/:id/stop", storageHandler.StopPool)
+				storage.POST("/pools/:id/refresh", storageHandler.RefreshPool)
+				storage.GET("/pools/:id/volumes", storageHandler.ListVolumes)
+				storage.POST("/pools/:id/volumes", storageHandler.CreateVolume)
+				storage.DELETE("/pools/:id/volumes/:volume_id", storageHandler.DeleteVolume)
 			}
 		}
 	}

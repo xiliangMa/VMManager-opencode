@@ -283,6 +283,81 @@ func Migrate(db *gorm.DB) error {
 		updated_at TIMESTAMPTZ
 	);
 
+	CREATE TABLE IF NOT EXISTS storage_pools (
+		id UUID PRIMARY KEY,
+		name VARCHAR(100) NOT NULL UNIQUE,
+		description TEXT,
+		pool_type VARCHAR(20) NOT NULL DEFAULT 'dir',
+		target_path VARCHAR(500),
+		source_path VARCHAR(500),
+		capacity BIGINT DEFAULT 0,
+		available BIGINT DEFAULT 0,
+		used BIGINT DEFAULT 0,
+		active BOOLEAN DEFAULT false,
+		autostart BOOLEAN DEFAULT true,
+		xml_def TEXT,
+		created_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ
+	);
+
+	CREATE TABLE IF NOT EXISTS storage_volumes (
+		id UUID PRIMARY KEY,
+		pool_id UUID NOT NULL REFERENCES storage_pools(id),
+		name VARCHAR(255) NOT NULL,
+		volume_type VARCHAR(20),
+		capacity BIGINT DEFAULT 0,
+		allocation BIGINT DEFAULT 0,
+		format VARCHAR(20),
+		path VARCHAR(500),
+		vm_id UUID REFERENCES virtual_machines(id),
+		created_at TIMESTAMPTZ
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_storage_volumes_pool ON storage_volumes(pool_id);
+	CREATE INDEX IF NOT EXISTS idx_storage_volumes_vm ON storage_volumes(vm_id);
+
+	CREATE TABLE IF NOT EXISTS vm_backups (
+		id UUID PRIMARY KEY,
+		vm_id UUID NOT NULL REFERENCES virtual_machines(id),
+		name VARCHAR(255) NOT NULL,
+		description TEXT,
+		backup_type VARCHAR(20) NOT NULL DEFAULT 'full',
+		status VARCHAR(20) NOT NULL DEFAULT 'pending',
+		file_path VARCHAR(500),
+		file_size BIGINT DEFAULT 0,
+		progress INTEGER DEFAULT 0,
+		scheduled_at TIMESTAMPTZ,
+		started_at TIMESTAMPTZ,
+		completed_at TIMESTAMPTZ,
+		expires_at TIMESTAMPTZ,
+		error_msg TEXT,
+		created_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_vm_backups_vm ON vm_backups(vm_id);
+	CREATE INDEX IF NOT EXISTS idx_vm_backups_status ON vm_backups(status);
+
+	CREATE TABLE IF NOT EXISTS backup_schedules (
+		id UUID PRIMARY KEY,
+		vm_id UUID NOT NULL REFERENCES virtual_machines(id),
+		name VARCHAR(255) NOT NULL,
+		cron_expr VARCHAR(100) NOT NULL,
+		backup_type VARCHAR(20) NOT NULL DEFAULT 'full',
+		retention INTEGER DEFAULT 7,
+		enabled BOOLEAN DEFAULT true,
+		last_run_at TIMESTAMPTZ,
+		next_run_at TIMESTAMPTZ,
+		created_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_schedules_vm ON backup_schedules(vm_id);
+	CREATE INDEX IF NOT EXISTS idx_backup_schedules_enabled ON backup_schedules(enabled);
+
 	-- Migration: Add architecture column to existing virtual_machines table
 	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS architecture VARCHAR(20) DEFAULT 'x86_64';
 

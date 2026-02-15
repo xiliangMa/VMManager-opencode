@@ -22,6 +22,7 @@ import AuditLogs from './pages/Admin/AuditLogs'
 import AlertRules from './pages/Admin/AlertRules'
 import AlertHistory from './pages/Admin/AlertHistory'
 import VirtualNetworks from './pages/Admin/VirtualNetworks'
+import StoragePools from './pages/Admin/StoragePools'
 import Profile from './pages/Settings'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -67,6 +68,7 @@ const App: React.FC = () => {
         <Route path="admin/alerts" element={<AlertRules />} />
         <Route path="admin/alert-history" element={<AlertHistory />} />
         <Route path="admin/networks" element={<VirtualNetworks />} />
+        <Route path="admin/storage" element={<StoragePools />} />
         <Route path="settings/profile" element={<Profile />} />
       </Route>
 

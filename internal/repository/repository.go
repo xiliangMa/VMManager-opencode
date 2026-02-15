@@ -17,6 +17,10 @@ type Repositories struct {
 	ISO            *ISORepository
 	ISOUpload      *ISOUploadRepository
 	VirtualNetwork *VirtualNetworkRepository
+	StoragePool    *StoragePoolRepository
+	StorageVolume  *StorageVolumeRepository
+	VMBackup       *VMBackupRepository
+	BackupSchedule *BackupScheduleRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -33,6 +37,10 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		ISO:            NewISORepository(db),
 		ISOUpload:      NewISOUploadRepository(db),
 		VirtualNetwork: NewVirtualNetworkRepository(db),
+		StoragePool:    NewStoragePoolRepository(db),
+		StorageVolume:  NewStorageVolumeRepository(db),
+		VMBackup:       NewVMBackupRepository(db),
+		BackupSchedule: NewBackupScheduleRepository(db),
 	}
 }
 

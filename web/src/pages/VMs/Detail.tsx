@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm, Modal, Select, Spin, Input } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined, CopyOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined, CopyOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import { vmsApi, isosApi, ISO } from '../../api/client'
 import type { VMDetail } from '../../api/client'
+import VMBackups from './Backups'
 import dayjs from 'dayjs'
 
 const VMDetail: React.FC = () => {
@@ -249,6 +250,16 @@ const VMDetail: React.FC = () => {
           </Space>
         </Card>
       )
+    },
+    {
+      key: 'backups',
+      label: (
+        <span>
+          <ClockCircleOutlined />
+          {t('backup.backups')}
+        </span>
+      ),
+      children: vm?.id ? <VMBackups vmId={vm.id} /> : <div>{t('common.loading')}</div>
     },
     {
       key: 'logs',
