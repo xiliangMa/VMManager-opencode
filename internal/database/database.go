@@ -158,7 +158,7 @@ func Migrate(db *gorm.DB) error {
 		description TEXT,
 		template_id UUID REFERENCES vm_templates(id),
 		owner_id UUID NOT NULL REFERENCES users(id),
-		status VARCHAR(20) DEFAULT 'pending',
+		status VARCHAR(20) DEFAULT 'stopped',
 		architecture VARCHAR(20) DEFAULT 'x86_64',
 		vnc_port BIGINT,
 		vnc_password VARCHAR(20),

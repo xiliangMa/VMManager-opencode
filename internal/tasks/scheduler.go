@@ -116,7 +116,7 @@ func (s *Scheduler) Stop() {
 // isTransitionalStatus 检查状态是否为中间状态
 // 中间状态表示 VM 正在执行操作中，不应被调度器覆盖
 func isTransitionalStatus(status string) bool {
-	return status == "starting" || status == "stopping" || status == "creating" || status == "pending"
+	return status == "starting" || status == "stopping" || status == "creating"
 }
 
 func (s *Scheduler) collectStats() {

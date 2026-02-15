@@ -76,7 +76,7 @@ type VirtualMachine struct {
 	Description       string      `gorm:"type:text" json:"description"`
 	TemplateID        *uuid.UUID  `gorm:"type:uuid" json:"templateId"`
 	OwnerID           uuid.UUID   `gorm:"type:uuid;not null" json:"ownerId"`
-	Status            string      `gorm:"size:20;default:'pending'" json:"status"`
+	Status            string      `gorm:"size:20;default:'stopped'" json:"status"`
 	Architecture      string      `gorm:"size:20;default:'x86_64'" json:"architecture"`
 	VNCPort           int         `json:"vncPort"`
 	VNCPassword       string      `gorm:"size:20" json:"-"`

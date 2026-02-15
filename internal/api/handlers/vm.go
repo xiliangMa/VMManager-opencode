@@ -172,7 +172,7 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 		Name:            req.Name,
 		Description:     req.Description,
 		OwnerID:         userUUID,
-		Status:          "pending",
+		Status:          "stopped",
 		MACAddress:      macAddress,
 		VNCPassword:     vncPassword,
 		CPUAllocated:    req.CPUAllocated,
