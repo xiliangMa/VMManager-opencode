@@ -22,8 +22,6 @@ import (
 	"vmmanager/internal/tasks"
 	"vmmanager/internal/websocket"
 
-	apimiddleware "vmmanager/internal/api/middleware"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -101,7 +99,7 @@ func main() {
 	router.Use(middleware.RequestID())
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())
-	router.Use(apimiddleware.I18n())
+	router.Use(middleware.I18n())
 	router.Use(middleware.MetricsMiddleware())
 	router.Use(errors.Recovery())
 	router.Use(errors.ErrorHandler())

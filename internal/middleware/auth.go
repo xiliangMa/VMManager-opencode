@@ -8,12 +8,18 @@ import (
 	"sync"
 	"time"
 
+	"vmmanager/internal/i18n"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
-const RequestIDKey = "request_id"
+const (
+	RequestIDKey     = "request_id"
+	LocaleContextKey = "locale"
+	DefaultLocale    = i18n.EnUS
+)
 
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -276,4 +282,49 @@ func GenerateToken(claims *Claims, secret string, expiration time.Duration) (str
 
 func RefreshToken(claims *Claims, secret string, expiration time.Duration) (string, error) {
 	return GenerateToken(claims, secret, expiration)
+}
+
+func I18n() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		acceptLanguage := c.GetHeader("Accept-Language")
+		locale := parseLocale(acceptLanguage)
+
+		c.Set(LocaleContextKey, locale)
+		c.Next()
+	}
+}
+
+func GetLocale(c *gin.Context) i18n.Locale {
+	if locale, exists := c.Get(LocaleContextKey); exists {
+		if l, ok := locale.(i18n.Locale); ok {
+			return l
+		}
+	}
+	return DefaultLocale
+}
+
+func parseLocale(acceptLanguage string) i18n.Locale {
+	if acceptLanguage == "" {
+		return DefaultLocale
+	}
+
+	parts := strings.Split(acceptLanguage, ",")
+	if len(parts) == 0 {
+		return DefaultLocale
+	}
+
+	firstLocale := strings.TrimSpace(parts[0])
+	if strings.Contains(firstLocale, ";") {
+		firstLocale = strings.Split(firstLocale, ";")[0]
+	}
+
+	firstLocale = strings.ToLower(firstLocale)
+
+	if strings.HasPrefix(firstLocale, "zh") {
+		return i18n.ZhCN
+	} else if strings.HasPrefix(firstLocale, "en") {
+		return i18n.EnUS
+	}
+
+	return DefaultLocale
 }

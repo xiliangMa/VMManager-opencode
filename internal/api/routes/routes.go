@@ -3,8 +3,8 @@ package routes
 import (
 	"vmmanager/config"
 	"vmmanager/internal/api/handlers"
-	"vmmanager/internal/api/middleware"
 	"vmmanager/internal/libvirt"
+	"vmmanager/internal/middleware"
 	"vmmanager/internal/repository"
 	"vmmanager/internal/services"
 	"vmmanager/internal/websocket"

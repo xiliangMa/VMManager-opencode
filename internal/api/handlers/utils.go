@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"vmmanager/internal/api/middleware"
 	"vmmanager/internal/i18n"
+	"vmmanager/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )

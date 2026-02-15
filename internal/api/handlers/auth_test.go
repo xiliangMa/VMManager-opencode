@@ -10,7 +10,7 @@ import (
 
 	"vmmanager/config"
 	"vmmanager/internal/api/handlers"
-	"vmmanager/internal/api/middleware"
+	"vmmanager/internal/middleware"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
 
