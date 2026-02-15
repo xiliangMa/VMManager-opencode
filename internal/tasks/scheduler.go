@@ -3,34 +3,46 @@ package tasks
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
 
-	"gorm.io/gorm"
 	"vmmanager/internal/libvirt"
+
+	"gorm.io/gorm"
+)
+
+const (
+	UploadCleanupInterval = 1 * time.Hour
+	UploadExpireDuration  = 24 * time.Hour
 )
 
 type Scheduler struct {
-	db        *gorm.DB
-	vmRepo    *repository.VMRepository
-	statsRepo *repository.VMStatsRepository
-	libvirt   *libvirt.Client
-	stopChan  chan struct{}
+	db                 *gorm.DB
+	vmRepo             *repository.VMRepository
+	statsRepo          *repository.VMStatsRepository
+	isoUploadRepo      *repository.ISOUploadRepository
+	templateUploadRepo *repository.TemplateUploadRepository
+	libvirt            *libvirt.Client
+	stopChan           chan struct{}
 }
 
 func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client) *Scheduler {
 	return &Scheduler{
-		db:        db,
-		vmRepo:    repository.NewVMRepository(db),
-		statsRepo: repository.NewVMStatsRepository(db),
-		libvirt:   libvirtClient,
-		stopChan:  make(chan struct{}),
+		db:                 db,
+		vmRepo:             repository.NewVMRepository(db),
+		statsRepo:          repository.NewVMStatsRepository(db),
+		isoUploadRepo:      repository.NewISOUploadRepository(db),
+		templateUploadRepo: repository.NewTemplateUploadRepository(db),
+		libvirt:            libvirtClient,
+		stopChan:           make(chan struct{}),
 	}
 }
 
 func (s *Scheduler) Start() {
 	ticker := time.NewTicker(30 * time.Second)
+	cleanupTicker := time.NewTicker(UploadCleanupInterval)
 
 	go func() {
 		for {
@@ -38,8 +50,11 @@ func (s *Scheduler) Start() {
 			case <-ticker.C:
 				s.collectStats()
 				s.syncVMStatus()
+			case <-cleanupTicker.C:
+				s.cleanupExpiredUploads()
 			case <-s.stopChan:
 				ticker.Stop()
+				cleanupTicker.Stop()
 				return
 			}
 		}
@@ -134,6 +149,64 @@ func (s *Scheduler) collectStats() {
 
 		if err := s.statsRepo.Create(ctx, &stats); err != nil {
 			log.Printf("Error creating VM stats: %v", err)
+		}
+	}
+}
+
+func (s *Scheduler) cleanupExpiredUploads() {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	expireTime := time.Now().Add(-UploadExpireDuration)
+
+	s.cleanupExpiredISOUploads(ctx, expireTime)
+	s.cleanupExpiredTemplateUploads(ctx, expireTime)
+}
+
+func (s *Scheduler) cleanupExpiredISOUploads(ctx context.Context, expireTime time.Time) {
+	var expiredUploads []models.ISOUpload
+	if err := s.db.WithContext(ctx).
+		Where("status = ? AND created_at < ?", "uploading", expireTime).
+		Find(&expiredUploads).Error; err != nil {
+		log.Printf("[CLEANUP] Error finding expired ISO uploads: %v", err)
+		return
+	}
+
+	for _, upload := range expiredUploads {
+		if upload.TempPath != "" {
+			if err := os.Remove(upload.TempPath); err != nil && !os.IsNotExist(err) {
+				log.Printf("[CLEANUP] Error removing temp file %s: %v", upload.TempPath, err)
+			}
+		}
+
+		if err := s.isoUploadRepo.Delete(ctx, upload.ID.String()); err != nil {
+			log.Printf("[CLEANUP] Error deleting ISO upload record %s: %v", upload.ID, err)
+		} else {
+			log.Printf("[CLEANUP] Cleaned up expired ISO upload: %s (%s)", upload.FileName, upload.ID)
+		}
+	}
+}
+
+func (s *Scheduler) cleanupExpiredTemplateUploads(ctx context.Context, expireTime time.Time) {
+	var expiredUploads []models.TemplateUpload
+	if err := s.db.WithContext(ctx).
+		Where("status = ? AND created_at < ?", "uploading", expireTime).
+		Find(&expiredUploads).Error; err != nil {
+		log.Printf("[CLEANUP] Error finding expired template uploads: %v", err)
+		return
+	}
+
+	for _, upload := range expiredUploads {
+		if upload.TempPath != "" {
+			if err := os.Remove(upload.TempPath); err != nil && !os.IsNotExist(err) {
+				log.Printf("[CLEANUP] Error removing temp file %s: %v", upload.TempPath, err)
+			}
+		}
+
+		if err := s.templateUploadRepo.Delete(ctx, upload.ID.String()); err != nil {
+			log.Printf("[CLEANUP] Error deleting template upload record %s: %v", upload.ID, err)
+		} else {
+			log.Printf("[CLEANUP] Cleaned up expired template upload: %s (%s)", upload.FileName, upload.ID)
 		}
 	}
 }

@@ -8,10 +8,24 @@ import (
 	"vmmanager/internal/repository"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+type StorageStats struct {
+	ISOStorage      StorageDetail `json:"isoStorage"`
+	TemplateStorage StorageDetail `json:"templateStorage"`
+	TotalUsed       int64         `json:"totalUsed"`
+}
+
+type StorageDetail struct {
+	TotalSize  int64 `json:"totalSize"`
+	FileCount  int64 `json:"fileCount"`
+	ActiveSize int64 `json:"activeSize"`
+}
 
 type VMStatsHandler struct {
 	vmStatsRepo *repository.VMStatsRepository
+	db          *gorm.DB
 	mu          sync.RWMutex
 	cache       map[string]*VMStatsCache
 }
@@ -55,9 +69,10 @@ type SystemResourceStats struct {
 	ActiveUsers    int     `json:"activeUsers"`
 }
 
-func NewVMStatsHandler(vmStatsRepo *repository.VMStatsRepository) *VMStatsHandler {
+func NewVMStatsHandler(vmStatsRepo *repository.VMStatsRepository, db *gorm.DB) *VMStatsHandler {
 	return &VMStatsHandler{
 		vmStatsRepo: vmStatsRepo,
+		db:          db,
 		cache:       make(map[string]*VMStatsCache),
 	}
 }
@@ -181,5 +196,37 @@ func (h *VMStatsHandler) GetVMHistory(c *gin.Context) {
 			"memoryHistory": cache.memoryHistory,
 			"diskHistory":   cache.diskHistory,
 		},
+	})
+}
+
+func (h *VMStatsHandler) GetStorageStats(c *gin.Context) {
+	var isoTotalSize, isoActiveSize, isoCount int64
+	var templateTotalSize, templateActiveSize, templateCount int64
+
+	h.db.Table("isos").Where("status = ?", "active").Select("COALESCE(SUM(file_size), 0)").Scan(&isoActiveSize)
+	h.db.Table("isos").Where("status = ?", "active").Count(&isoCount)
+	isoTotalSize = isoActiveSize
+
+	h.db.Table("templates").Where("status = ?", "active").Select("COALESCE(SUM(file_size), 0)").Scan(&templateActiveSize)
+	h.db.Table("templates").Where("status = ?", "active").Count(&templateCount)
+	templateTotalSize = templateActiveSize
+
+	stats := StorageStats{
+		ISOStorage: StorageDetail{
+			TotalSize:  isoTotalSize,
+			FileCount:  isoCount,
+			ActiveSize: isoActiveSize,
+		},
+		TemplateStorage: StorageDetail{
+			TotalSize:  templateTotalSize,
+			FileCount:  templateCount,
+			ActiveSize: templateActiveSize,
+		},
+		TotalUsed: isoTotalSize + templateTotalSize,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": stats,
 	})
 }

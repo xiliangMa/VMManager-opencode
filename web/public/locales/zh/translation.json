@@ -217,7 +217,13 @@
     "startNewUpload": "开始新上传",
     "fileReselected": "文件已重新选择，可以继续上传",
     "fileMismatch": "文件不匹配，请选择相同的文件",
-    "allChunksUploaded": "所有分片已上传完成"
+    "allChunksUploaded": "所有分片已上传完成",
+    "uploadPaused": "上传已暂停",
+    "pause": "暂停",
+    "uploadSpeed": "上传速度",
+    "uploaded": "已上传",
+    "remainingTime": "剩余时间",
+    "retrying": "正在重试 ({{count}}/3)..."
   },
   "iso": {
     "isoList": "ISO 镜像",
@@ -256,7 +262,13 @@
     "startNewUpload": "开始新上传",
     "fileReselected": "文件已重新选择，可以继续上传",
     "fileMismatch": "文件不匹配，请选择相同的文件",
-    "allChunksUploaded": "所有分片已上传完成"
+    "allChunksUploaded": "所有分片已上传完成",
+    "uploadPaused": "上传已暂停",
+    "pause": "暂停",
+    "uploadSpeed": "上传速度",
+    "uploaded": "已上传",
+    "remainingTime": "剩余时间",
+    "retrying": "正在重试 ({{count}}/3)..."
   },
   "admin": {
     "userManagement": "用户管理",

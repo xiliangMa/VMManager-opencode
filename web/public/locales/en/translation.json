@@ -217,7 +217,13 @@
     "startNewUpload": "Start New Upload",
     "fileReselected": "File reselected, you can continue uploading",
     "fileMismatch": "File mismatch, please select the same file",
-    "allChunksUploaded": "All chunks have been uploaded"
+    "allChunksUploaded": "All chunks have been uploaded",
+    "uploadPaused": "Upload Paused",
+    "pause": "Pause",
+    "uploadSpeed": "Upload Speed",
+    "uploaded": "Uploaded",
+    "remainingTime": "Remaining Time",
+    "retrying": "Retrying ({{count}}/3)..."
   },
   "iso": {
     "isoList": "ISO Images",
@@ -256,7 +262,13 @@
     "startNewUpload": "Start New Upload",
     "fileReselected": "File reselected, you can continue uploading",
     "fileMismatch": "File mismatch, please select the same file",
-    "allChunksUploaded": "All chunks have been uploaded"
+    "allChunksUploaded": "All chunks have been uploaded",
+    "uploadPaused": "Upload Paused",
+    "pause": "Pause",
+    "uploadSpeed": "Upload Speed",
+    "uploaded": "Uploaded",
+    "remainingTime": "Remaining Time",
+    "retrying": "Retrying ({{count}}/3)..."
   },
   "admin": {
     "userManagement": "User Management",

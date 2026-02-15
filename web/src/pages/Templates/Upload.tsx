@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Form, Input, Select, InputNumber, Button, Card, message, Space, Row, Col, Progress, Modal } from 'antd'
-import { ArrowLeftOutlined, UploadOutlined, CloudUploadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
+import { Form, Input, Select, InputNumber, Button, Card, message, Space, Row, Col, Progress, Modal, Statistic } from 'antd'
+import { ArrowLeftOutlined, UploadOutlined, CloudUploadOutlined, CheckCircleOutlined, ExclamationCircleOutlined, PauseCircleOutlined, PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { templatesApi } from '../../api/client'
 
 const CHUNK_SIZE = 100 * 1024 * 1024
+const MAX_RETRY_COUNT = 3
+const RETRY_DELAY = 2000
 
 interface UploadState {
   uploadId: string
@@ -28,9 +30,11 @@ const TemplateUpload: React.FC = () => {
   const navigate = useNavigate()
   const [form] = Form.useForm()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadAbortRef = useRef<boolean>(false)
   const [uploadStep, setUploadStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [paused, setPaused] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadId, setUploadId] = useState<string | null>(null)
@@ -38,6 +42,13 @@ const TemplateUpload: React.FC = () => {
   const [selectedFormat, setSelectedFormat] = useState<string>('qcow2')
   const [uploadedChunks, setUploadedChunks] = useState<number[]>([])
   const [pendingUpload, setPendingUpload] = useState<UploadState | null>(null)
+  const [uploadSpeed, setUploadSpeed] = useState(0)
+  const [uploadedBytes, setUploadedBytes] = useState(0)
+  const [remainingTime, setRemainingTime] = useState(0)
+  const [retryCount, setRetryCount] = useState(0)
+  const uploadStartTimeRef = useRef<number>(0)
+  const lastUploadedBytesRef = useRef<number>(0)
+  const lastSpeedUpdateTimeRef = useRef<number>(0)
 
   const saveUploadState = useCallback((state: UploadState) => {
     localStorage.setItem('template_upload_state', JSON.stringify(state))
@@ -214,14 +225,88 @@ const TemplateUpload: React.FC = () => {
     }
   }
 
+  const formatSpeed = (bytesPerSecond: number) => {
+    if (bytesPerSecond === 0) return '0 B/s'
+    const k = 1024
+    const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s']
+    const i = Math.floor(Math.log(bytesPerSecond) / Math.log(k))
+    return parseFloat((bytesPerSecond / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const formatTime = (seconds: number) => {
+    if (seconds <= 0) return '--:--'
+    if (seconds < 60) return `${Math.round(seconds)}s`
+    if (seconds < 3600) {
+      const mins = Math.floor(seconds / 60)
+      const secs = Math.round(seconds % 60)
+      return `${mins}m ${secs}s`
+    }
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    return `${hours}h ${mins}m`
+  }
+
+  const updateUploadSpeed = useCallback((currentUploadedBytes: number) => {
+    const now = Date.now()
+    const timeDiff = (now - lastSpeedUpdateTimeRef.current) / 1000
+    
+    if (timeDiff >= 0.5) {
+      const bytesDiff = currentUploadedBytes - lastUploadedBytesRef.current
+      const speed = bytesDiff / timeDiff
+      setUploadSpeed(speed)
+      
+      if (speed > 0 && selectedFile) {
+        const remainingBytes = selectedFile.size - currentUploadedBytes
+        setRemainingTime(remainingBytes / speed)
+      }
+      
+      lastUploadedBytesRef.current = currentUploadedBytes
+      lastSpeedUpdateTimeRef.current = now
+    }
+  }, [selectedFile])
+
+  const uploadChunkWithRetry = async (
+    chunkIndex: number,
+    totalChunks: number,
+    chunk: Blob,
+    fileName: string,
+    currentRetry: number = 0
+  ): Promise<void> => {
+    if (uploadAbortRef.current) {
+      throw new Error('Upload paused')
+    }
+
+    const formData = new FormData()
+    formData.append('file', chunk, fileName)
+
+    try {
+      await templatesApi.uploadPart(uploadId!, chunkIndex, totalChunks, formData)
+    } catch (error: any) {
+      if (currentRetry < MAX_RETRY_COUNT) {
+        setRetryCount(currentRetry + 1)
+        message.warning(t('template.retrying', { count: currentRetry + 1 }))
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
+        return uploadChunkWithRetry(chunkIndex, totalChunks, chunk, fileName, currentRetry + 1)
+      }
+      throw error
+    }
+  }
+
   const handleFileUpload = async () => {
     if (!selectedFile || !uploadId) return
 
     const values = form.getFieldsValue()
 
     setUploading(true)
+    setPaused(false)
+    uploadAbortRef.current = false
+    
     if (uploadedChunks.length === 0) {
       setUploadProgress(0)
+      setUploadedBytes(0)
+      uploadStartTimeRef.current = Date.now()
+      lastSpeedUpdateTimeRef.current = Date.now()
+      lastUploadedBytesRef.current = 0
     }
 
     try {
@@ -237,22 +322,37 @@ const TemplateUpload: React.FC = () => {
       if (chunksToUpload.length === 0) {
         message.info(t('template.allChunksUploaded'))
       } else {
+        let currentUploadedBytes = uploadedChunks.length * CHUNK_SIZE
+        if (currentUploadedBytes > selectedFile.size) {
+          currentUploadedBytes = selectedFile.size
+        }
+        setUploadedBytes(currentUploadedBytes)
+
         for (let idx = 0; idx < chunksToUpload.length; idx++) {
+          if (uploadAbortRef.current) {
+            setPaused(true)
+            setUploading(false)
+            return
+          }
+
           const i = chunksToUpload[idx]
           const start = i * CHUNK_SIZE
           const end = Math.min(start + CHUNK_SIZE, selectedFile.size)
           const chunk = selectedFile.slice(start, end)
-          
-          const formData = new FormData()
-          formData.append('file', chunk, selectedFile.name)
 
-          await templatesApi.uploadPart(uploadId, i, totalChunks, formData)
+          await uploadChunkWithRetry(i, totalChunks, chunk, selectedFile.name)
+          setRetryCount(0)
 
           const newUploadedChunks = [...uploadedChunks, i]
           setUploadedChunks(newUploadedChunks)
           
-          const progress = Math.round(((idx + 1) / chunksToUpload.length) * (100 - uploadProgress) + uploadProgress)
+          currentUploadedBytes += chunk.size
+          setUploadedBytes(currentUploadedBytes)
+          
+          const progress = Math.round((currentUploadedBytes / selectedFile.size) * 100)
           setUploadProgress(progress)
+
+          updateUploadSpeed(currentUploadedBytes)
 
           saveUploadState({
             uploadId,
@@ -293,10 +393,23 @@ const TemplateUpload: React.FC = () => {
       message.success(t('template.uploadCompleted'))
       setUploadStep(2)
     } catch (error: any) {
-      message.error(error.response?.data?.message || t('template.failedToUpload'))
+      if (error.message === 'Upload paused') {
+        message.info(t('template.uploadPaused'))
+      } else {
+        message.error(error.response?.data?.message || t('template.failedToUpload'))
+      }
     } finally {
       setUploading(false)
     }
+  }
+
+  const handlePauseUpload = () => {
+    uploadAbortRef.current = true
+  }
+
+  const handleResumeUpload = () => {
+    setPaused(false)
+    handleFileUpload()
   }
 
   return (
@@ -452,18 +565,83 @@ const TemplateUpload: React.FC = () => {
 
         {uploadStep === 1 && (
           <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <CloudUploadOutlined style={{ fontSize: 48, color: '#1890ff', marginBottom: 16 }} />
+            <CloudUploadOutlined style={{ fontSize: 48, color: paused ? '#faad14' : '#1890ff', marginBottom: 16 }} />
             <div style={{ marginBottom: 16 }}>
-              {t('template.uploading')}...
+              {paused ? t('template.uploadPaused') : t('template.uploading')}...
             </div>
-            <Progress percent={uploadProgress} status="active" />
+            <Progress 
+              percent={uploadProgress} 
+              status={paused ? 'normal' : 'active'}
+              format={(percent) => `${percent}%`}
+            />
             <div style={{ marginTop: 16, color: '#888' }}>
               {selectedFile?.name}
             </div>
+            
+            {uploading && (
+              <Row gutter={24} style={{ marginTop: 24, justifyContent: 'center' }}>
+                <Col>
+                  <Statistic 
+                    title={t('template.uploadSpeed')} 
+                    value={formatSpeed(uploadSpeed)} 
+                    valueStyle={{ fontSize: 16 }}
+                  />
+                </Col>
+                <Col>
+                  <Statistic 
+                    title={t('template.uploaded')} 
+                    value={`${formatSize(uploadedBytes)} / ${formatSize(selectedFile?.size || 0)}`} 
+                    valueStyle={{ fontSize: 16 }}
+                  />
+                </Col>
+                <Col>
+                  <Statistic 
+                    title={t('template.remainingTime')} 
+                    value={formatTime(remainingTime)} 
+                    valueStyle={{ fontSize: 16 }}
+                  />
+                </Col>
+              </Row>
+            )}
+
+            {retryCount > 0 && uploading && (
+              <div style={{ marginTop: 16, color: '#faad14' }}>
+                <ReloadOutlined spin style={{ marginRight: 8 }} />
+                {t('template.retrying', { count: retryCount })}
+              </div>
+            )}
+
             <div style={{ marginTop: 24 }}>
-              <Button type="primary" loading={uploading} onClick={handleFileUpload}>
-                {t('template.startUpload')}
-              </Button>
+              <Space>
+                {!uploading && !paused && (
+                  <Button type="primary" onClick={handleFileUpload}>
+                    {t('template.startUpload')}
+                  </Button>
+                )}
+                {uploading && (
+                  <Button 
+                    icon={<PauseCircleOutlined />} 
+                    onClick={handlePauseUpload}
+                    danger
+                  >
+                    {t('template.pause')}
+                  </Button>
+                )}
+                {paused && (
+                  <>
+                    <Button 
+                      type="primary" 
+                      icon={<PlayCircleOutlined />} 
+                      onClick={handleResumeUpload}
+                    >
+                      {t('template.continueUpload')}
+                    </Button>
+                    <Button onClick={() => navigate('/templates')}>
+                      {t('common.cancel')}
+                    </Button>
+                  </>
+                )}
+              </Space>
             </div>
           </div>
         )}

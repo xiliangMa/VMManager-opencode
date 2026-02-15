@@ -21,7 +21,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	auditHandler := handlers.NewAuditHandler(repos.AuditLog)
 	snapshotHandler := handlers.NewSnapshotHandler(repos.VM)
 	batchHandler := handlers.NewBatchHandler(repos.VM)
-	statsHandler := handlers.NewVMStatsHandler(repos.VMStats)
+	statsHandler := handlers.NewVMStatsHandler(repos.VMStats, repos.DB)
 	alertRuleHandler := handlers.NewAlertRuleHandler(repos.AlertRule)
 	alertHistoryHandler := handlers.NewAlertHistoryHandler(repos.AlertHistory)
 	isoHandler := handlers.NewISOHandler(repos.ISO, repos.ISOUpload)
@@ -156,6 +156,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			admin.GET("/audit-logs/export", auditHandler.ExportAuditLogs)
 			admin.GET("/system/resources", adminHandler.GetSystemResources(libvirtClient))
 			admin.GET("/system/stats", adminHandler.GetSystemStats(libvirtClient))
+			admin.GET("/system/storage", statsHandler.GetStorageStats)
 		}
 	}
 }

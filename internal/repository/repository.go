@@ -5,6 +5,7 @@ import (
 )
 
 type Repositories struct {
+	DB             *gorm.DB
 	User           *UserRepository
 	VM             *VMRepository
 	Template       *TemplateRepository
@@ -19,6 +20,7 @@ type Repositories struct {
 
 func NewRepositories(db *gorm.DB) *Repositories {
 	return &Repositories{
+		DB:             db,
 		User:           NewUserRepository(db),
 		VM:             NewVMRepository(db),
 		Template:       NewTemplateRepository(db),
