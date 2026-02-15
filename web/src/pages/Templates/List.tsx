@@ -20,8 +20,9 @@ const Templates: React.FC = () => {
       await templatesApi.delete(id)
       message.success(t('common.success'))
       refresh()
-    } catch (error) {
-      message.error(t('common.error'))
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMsg)
     }
   }
 

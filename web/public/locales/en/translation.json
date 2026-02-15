@@ -105,6 +105,7 @@
     "operationInProgress": "Operation in progress",
     "openConsole": "Open Console",
     "items": "items",
+    "vmCount": "VMs are using this template",
     "installation": {
       "title": "System Installation Wizard",
       "prepare": "Prepare",

@@ -241,7 +241,8 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 	}
 
 	if vmCount > 0 {
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "template_in_use"), fmt.Sprintf("%d virtual machines are using this template", vmCount)))
+		errMsg := fmt.Sprintf("%s (%d %s)", t(c, "template_in_use"), vmCount, t(c, "vm.vmCount"))
+		c.JSON(http.StatusBadRequest, errors.FailWithCode(errors.ErrCodeBadRequest, errMsg))
 		return
 	}
 

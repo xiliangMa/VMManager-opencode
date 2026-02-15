@@ -105,6 +105,7 @@
     "operationInProgress": "操作进行中",
     "openConsole": "打开控制台",
     "items": "项",
+    "vmCount": "个虚拟机正在使用此模板",
     "installation": {
       "title": "系统安装向导",
       "prepare": "准备安装",
