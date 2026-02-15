@@ -285,24 +285,29 @@ const Dashboard: React.FC = () => {
             }
             style={{ borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', height: '100%', border: '1px solid #91d5ff' }}
           >
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <Text strong style={{ fontSize: 36, color: '#1890ff' }}>
-                {systemResources.cpu_percent.toFixed(1)}%
-              </Text>
-              <br />
+            <div style={{ marginBottom: 16, textAlign: 'center' }}>
+              <Progress
+                type="circle"
+                percent={systemResources.cpu_percent}
+                strokeColor={{
+                  '0%': '#1890ff',
+                  '100%': '#40a9ff'
+                }}
+                trailColor="#d6e4ff"
+                strokeWidth={12}
+                width={120}
+                format={(percent) => (
+                  <span style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff' }}>
+                    {percent?.toFixed(1)}%
+                  </span>
+                )}
+              />
+            </div>
+            <div style={{ textAlign: 'center', marginBottom: 8 }}>
               <Text type="secondary" style={{ fontSize: 14 }}>
                 {systemResources.total_cpu_cores} {t('system.cores')}
               </Text>
             </div>
-            <Progress
-              percent={systemResources.cpu_percent}
-              strokeColor={{
-                '0%': '#1890ff',
-                '100%': '#40a9ff'
-              }}
-              strokeWidth={12}
-              showInfo={false}
-            />
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between' }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {t('system.used')}: {systemResources.cpu_percent.toFixed(1)}%
@@ -323,24 +328,29 @@ const Dashboard: React.FC = () => {
             }
             style={{ borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', height: '100%', border: '1px solid #b37feb' }}
           >
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <Text strong style={{ fontSize: 36, color: '#722ed1' }}>
-                {systemResources.memory_percent.toFixed(1)}%
-              </Text>
-              <br />
+            <div style={{ marginBottom: 16, textAlign: 'center' }}>
+              <Progress
+                type="circle"
+                percent={systemResources.memory_percent}
+                strokeColor={{
+                  '0%': '#722ed1',
+                  '100%': '#b37feb'
+                }}
+                trailColor="#d3adf7"
+                strokeWidth={12}
+                width={120}
+                format={(percent) => (
+                  <span style={{ fontSize: 24, fontWeight: 'bold', color: '#722ed1' }}>
+                    {percent?.toFixed(1)}%
+                  </span>
+                )}
+              />
+            </div>
+            <div style={{ textAlign: 'center', marginBottom: 8 }}>
               <Text type="secondary" style={{ fontSize: 14 }}>
                 {(systemResources.used_memory_mb / 1024).toFixed(1)} GB / {(systemResources.total_memory_mb / 1024).toFixed(1)} GB
               </Text>
             </div>
-            <Progress
-              percent={systemResources.memory_percent}
-              strokeColor={{
-                '0%': '#722ed1',
-                '100%': '#b37feb'
-              }}
-              strokeWidth={12}
-              showInfo={false}
-            />
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between' }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {t('system.used')}: {(systemResources.used_memory_mb / 1024).toFixed(1)} GB
@@ -361,24 +371,29 @@ const Dashboard: React.FC = () => {
             }
             style={{ borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', height: '100%', border: '1px solid #ffc53d' }}
           >
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <Text strong style={{ fontSize: 36, color: '#fa8c16' }}>
-                {systemResources.disk_percent.toFixed(1)}%
-              </Text>
-              <br />
+            <div style={{ marginBottom: 16, textAlign: 'center' }}>
+              <Progress
+                type="circle"
+                percent={systemResources.disk_percent}
+                strokeColor={{
+                  '0%': '#fa8c16',
+                  '100%': '#ffc53d'
+                }}
+                trailColor="#ffd591"
+                strokeWidth={12}
+                width={120}
+                format={(percent) => (
+                  <span style={{ fontSize: 24, fontWeight: 'bold', color: '#fa8c16' }}>
+                    {percent?.toFixed(1)}%
+                  </span>
+                )}
+              />
+            </div>
+            <div style={{ textAlign: 'center', marginBottom: 8 }}>
               <Text type="secondary" style={{ fontSize: 14 }}>
                 {systemResources.used_disk_gb} GB / {systemResources.total_disk_gb} GB
               </Text>
             </div>
-            <Progress
-              percent={systemResources.disk_percent}
-              strokeColor={{
-                '0%': '#fa8c16',
-                '100%': '#ffc53d'
-              }}
-              strokeWidth={12}
-              showInfo={false}
-            />
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between' }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {t('system.used')}: {systemResources.used_disk_gb} GB
