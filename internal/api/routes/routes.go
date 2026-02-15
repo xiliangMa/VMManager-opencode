@@ -33,6 +33,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	networkHandler := handlers.NewVirtualNetworkHandler(repos.VirtualNetwork, libvirtClient)
 	storageHandler := handlers.NewStorageHandler(repos, libvirtClient)
 	backupHandler := handlers.NewBackupHandler(repos, backupService)
+	operationHistoryHandler := handlers.NewOperationHistoryHandler(repos)
 
 	api := router.Group("/api/v1")
 	{
@@ -194,6 +195,16 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			admin.GET("/audit-logs/user/:id", auditHandler.ListByUser)
 			admin.GET("/audit-logs/action/:action", auditHandler.ListByAction)
 			admin.GET("/audit-logs/export", auditHandler.ExportAuditLogsCSV)
+
+			admin.GET("/login-histories", operationHistoryHandler.ListLoginHistories)
+			admin.GET("/login-histories/:id", operationHistoryHandler.GetLoginHistory)
+
+			admin.GET("/resource-changes", operationHistoryHandler.ListResourceChangeHistories)
+			admin.GET("/resource-changes/:id", operationHistoryHandler.GetResourceChangeHistory)
+
+			admin.GET("/vm-operations", operationHistoryHandler.ListVMOperationHistories)
+			admin.GET("/vm-operations/:id", operationHistoryHandler.GetVMOperationHistory)
+
 			admin.GET("/system/resources", adminHandler.GetSystemResources(libvirtClient))
 			admin.GET("/system/stats", adminHandler.GetSystemStats(libvirtClient))
 			admin.GET("/system/storage", statsHandler.GetStorageStats)

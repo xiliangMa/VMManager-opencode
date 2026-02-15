@@ -427,3 +427,70 @@ func (s *VMSnapshot) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type LoginHistory struct {
+	ID              uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID          uuid.UUID  `gorm:"type:uuid;not null;index:idx_login_user" json:"userId"`
+	LoginType       string     `gorm:"size:20;not null;default:'password'" json:"loginType"`
+	IPAddress       string     `gorm:"size:45" json:"ipAddress"`
+	UserAgent       string     `gorm:"type:text" json:"userAgent"`
+	Location        string     `gorm:"size:200" json:"location"`
+	DeviceInfo      string     `gorm:"type:jsonb" json:"deviceInfo"`
+	Status          string     `gorm:"size:20;not null;default:'success'" json:"status"`
+	FailureReason   string     `gorm:"type:text" json:"failureReason"`
+	LogoutAt        *time.Time `json:"logoutAt"`
+	SessionDuration int        `json:"sessionDuration"`
+	CreatedAt       time.Time  `gorm:"index:idx_login_created" json:"createdAt"`
+}
+
+func (l *LoginHistory) BeforeCreate(tx *gorm.DB) (err error) {
+	if l.ID == uuid.Nil {
+		l.ID = uuid.New()
+	}
+	return
+}
+
+type ResourceChangeHistory struct {
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	ResourceType string     `gorm:"size:50;not null;index:idx_resource_change" json:"resourceType"`
+	ResourceID   uuid.UUID  `gorm:"type:uuid;not null;index:idx_resource_change" json:"resourceId"`
+	ResourceName string     `gorm:"size:200" json:"resourceName"`
+	Action       string     `gorm:"size:50;not null;index:idx_change_action" json:"action"`
+	OldValue     string     `gorm:"type:jsonb" json:"oldValue"`
+	NewValue     string     `gorm:"type:jsonb" json:"newValue"`
+	ChangedBy    *uuid.UUID `gorm:"type:uuid;index:idx_change_by" json:"changedBy"`
+	ChangeReason string     `gorm:"type:text" json:"changeReason"`
+	IPAddress    string     `gorm:"size:45" json:"ipAddress"`
+	UserAgent    string     `gorm:"type:text" json:"userAgent"`
+	CreatedAt    time.Time  `gorm:"index:idx_change_created" json:"createdAt"`
+}
+
+func (r *ResourceChangeHistory) BeforeCreate(tx *gorm.DB) (err error) {
+	if r.ID == uuid.Nil {
+		r.ID = uuid.New()
+	}
+	return
+}
+
+type VMOperationHistory struct {
+	ID            uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	VMID          uuid.UUID  `gorm:"type:uuid;not null;index:idx_vm_op_vm" json:"vmId"`
+	Operation     string     `gorm:"size:50;not null;index:idx_vm_op_operation" json:"operation"`
+	Status        string     `gorm:"size:20;not null;default:'pending'" json:"status"`
+	StartedAt     time.Time  `gorm:"index:idx_vm_op_started" json:"startedAt"`
+	CompletedAt   *time.Time `json:"completedAt"`
+	Duration      int        `json:"duration"`
+	TriggeredBy   *uuid.UUID `gorm:"type:uuid;index:idx_vm_op_by" json:"triggeredBy"`
+	IPAddress     string     `gorm:"size:45" json:"ipAddress"`
+	UserAgent     string     `gorm:"type:text" json:"userAgent"`
+	RequestParams string     `gorm:"type:jsonb" json:"requestParams"`
+	ResponseData  string     `gorm:"type:jsonb" json:"responseData"`
+	ErrorMessage  string     `gorm:"type:text" json:"errorMessage"`
+}
+
+func (v *VMOperationHistory) BeforeCreate(tx *gorm.DB) (err error) {
+	if v.ID == uuid.Nil {
+		v.ID = uuid.New()
+	}
+	return
+}
