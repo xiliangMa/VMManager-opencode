@@ -355,6 +355,7 @@
     "failedToCreate": "创建备份失败",
     "failedToGet": "获取备份失败",
     "failedToDelete": "删除备份失败",
+    "failedToRestore": "恢复备份失败",
     "failedToListSchedules": "获取备份计划列表失败",
     "failedToCreateSchedule": "创建备份计划失败",
     "failedToUpdateSchedule": "更新备份计划失败",

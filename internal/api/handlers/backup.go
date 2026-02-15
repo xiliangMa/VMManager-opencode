@@ -8,17 +8,22 @@ import (
 	"vmmanager/internal/api/errors"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
+	"vmmanager/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type BackupHandler struct {
-	repo *repository.Repositories
+	repo    *repository.Repositories
+	service *services.BackupService
 }
 
-func NewBackupHandler(repo *repository.Repositories) *BackupHandler {
-	return &BackupHandler{repo: repo}
+func NewBackupHandler(repo *repository.Repositories, service *services.BackupService) *BackupHandler {
+	return &BackupHandler{
+		repo:    repo,
+		service: service,
+	}
 }
 
 func (h *BackupHandler) ListBackups(c *gin.Context) {
@@ -136,9 +141,16 @@ func (h *BackupHandler) DeleteBackup(c *gin.Context) {
 		return
 	}
 
-	if err := h.repo.VMBackup.Delete(ctx, backupID); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "backup.failedToDelete"), err.Error()))
-		return
+	if h.service != nil {
+		if err := h.service.DeleteBackup(backupID); err != nil {
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "backup.failedToDelete"), err.Error()))
+			return
+		}
+	} else {
+		if err := h.repo.VMBackup.Delete(ctx, backupID); err != nil {
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "backup.failedToDelete"), err.Error()))
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, errors.Success(nil))
@@ -147,6 +159,7 @@ func (h *BackupHandler) DeleteBackup(c *gin.Context) {
 func (h *BackupHandler) RestoreBackup(c *gin.Context) {
 	ctx := c.Request.Context()
 	backupID := c.Param("backup_id")
+	vmID := c.Param("id")
 
 	backup, err := h.repo.VMBackup.FindByID(ctx, backupID)
 	if err != nil {
@@ -163,8 +176,15 @@ func (h *BackupHandler) RestoreBackup(c *gin.Context) {
 		return
 	}
 
+	if h.service != nil {
+		if err := h.service.RestoreBackup(backupID, vmID); err != nil {
+			c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "backup.failedToRestore"), err.Error()))
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, errors.Success(map[string]string{
-		"message": "Restore request submitted",
+		"message":  "Backup restored successfully",
 		"backupId": backupID,
 	}))
 }

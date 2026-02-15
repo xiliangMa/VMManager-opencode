@@ -27,10 +27,11 @@ type Scheduler struct {
 	templateUploadRepo *repository.TemplateUploadRepository
 	libvirt            *libvirt.Client
 	alertService       *services.AlertService
+	backupService      *services.BackupService
 	stopChan           chan struct{}
 }
 
-func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client, alertService *services.AlertService) *Scheduler {
+func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client, alertService *services.AlertService, backupService *services.BackupService) *Scheduler {
 	return &Scheduler{
 		db:                 db,
 		vmRepo:             repository.NewVMRepository(db),
@@ -39,6 +40,7 @@ func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client, alertService *serv
 		templateUploadRepo: repository.NewTemplateUploadRepository(db),
 		libvirt:            libvirtClient,
 		alertService:       alertService,
+		backupService:      backupService,
 		stopChan:           make(chan struct{}),
 	}
 }
@@ -49,6 +51,10 @@ func (s *Scheduler) Start() {
 
 	if s.alertService != nil {
 		s.alertService.Start()
+	}
+
+	if s.backupService != nil {
+		s.backupService.Start()
 	}
 
 	go func() {
@@ -64,6 +70,9 @@ func (s *Scheduler) Start() {
 				cleanupTicker.Stop()
 				if s.alertService != nil {
 					s.alertService.Stop()
+				}
+				if s.backupService != nil {
+					s.backupService.Stop()
 				}
 				return
 			}

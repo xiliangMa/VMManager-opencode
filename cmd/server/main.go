@@ -76,7 +76,15 @@ func main() {
 		repos.VMStats,
 	)
 
-	scheduler := tasks.NewScheduler(db, libvirtClient, alertService)
+	backupService := services.NewBackupService(
+		repos.VMBackup,
+		repos.BackupSchedule,
+		repos.VM,
+		libvirtClient,
+		"./backups",
+	)
+
+	scheduler := tasks.NewScheduler(db, libvirtClient, alertService, backupService)
 	go scheduler.Start()
 
 	if !cfg.App.Debug {
@@ -124,7 +132,7 @@ func main() {
 		wsHandler.ServeHTTP(c.Writer, c.Request)
 	})
 
-	routes.Register(router, cfg, repos, libvirtClient, wsHandler)
+	routes.Register(router, cfg, repos, libvirtClient, wsHandler, backupService)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.HTTPPort),

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Table, Button, Tag, Space, Modal, Form, Input, Select, InputNumber, Switch, message, Popconfirm, Row, Col, Statistic, Progress, Tabs } from 'antd'
-import { PlusOutlined, DeleteOutlined, UndoOutlined, ClockCircleOutlined, ScheduleOutlined, SyncOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Tag, Space, Modal, Form, Input, Select, InputNumber, Switch, message, Popconfirm, Row, Col, Statistic, Progress, Tabs, Tooltip } from 'antd'
+import { PlusOutlined, DeleteOutlined, UndoOutlined, ClockCircleOutlined, ScheduleOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons'
 import { backupApi, VMBackup, BackupSchedule } from '../../api/client'
 import dayjs from 'dayjs'
 
@@ -29,6 +29,7 @@ const VMBackups: React.FC<VMBackupsProps> = ({ vmId }) => {
   const [editingSchedule, setEditingSchedule] = useState<BackupSchedule | null>(null)
   const [backupForm] = Form.useForm()
   const [scheduleForm] = Form.useForm()
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchBackups = useCallback(async (page = 1, pageSize = 10) => {
     setLoading(true)
@@ -67,6 +68,26 @@ const VMBackups: React.FC<VMBackupsProps> = ({ vmId }) => {
     fetchBackups()
     fetchSchedules()
   }, [fetchBackups, fetchSchedules])
+
+  useEffect(() => {
+    const hasRunningBackup = backups.some(b => b.status === 'running')
+    
+    if (hasRunningBackup && !progressIntervalRef.current) {
+      progressIntervalRef.current = setInterval(() => {
+        fetchBackups(pagination.current, pagination.pageSize)
+      }, 3000)
+    } else if (!hasRunningBackup && progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current)
+      progressIntervalRef.current = null
+    }
+
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+    }
+  }, [backups, fetchBackups, pagination.current, pagination.pageSize])
 
   const handleCreateBackup = async (values: any) => {
     try {
@@ -146,13 +167,6 @@ const VMBackups: React.FC<VMBackupsProps> = ({ vmId }) => {
     fetchBackups(paginationInfo.current, paginationInfo.pageSize)
   }
 
-  const statusColors: Record<string, string> = {
-    pending: 'default',
-    running: 'processing',
-    completed: 'success',
-    failed: 'error'
-  }
-
   const backupTypeOptions = [
     { label: t('backup.full'), value: 'full' },
     { label: t('backup.incremental'), value: 'incremental' }
@@ -177,16 +191,40 @@ const VMBackups: React.FC<VMBackupsProps> = ({ vmId }) => {
       title: t('backup.status'),
       dataIndex: 'status',
       key: 'status',
-      render: (status: string, record: VMBackup) => (
-        <Space>
-          <Tag color={statusColors[status] || 'default'}>
-            {t(`backup.${status}`)}
-          </Tag>
-          {status === 'running' && (
-            <Progress percent={record.progress} size="small" style={{ width: 100 }} />
-          )}
-        </Space>
-      )
+      render: (status: string, record: VMBackup) => {
+        const statusConfig: Record<string, { color: string; icon: React.ReactNode }> = {
+          pending: { color: 'default', icon: <ClockCircleOutlined /> },
+          running: { color: 'processing', icon: <LoadingOutlined spin /> },
+          completed: { color: 'success', icon: <CheckCircleOutlined /> },
+          failed: { color: 'error', icon: <CloseCircleOutlined /> }
+        }
+        const config = statusConfig[status] || { color: 'default', icon: null }
+        
+        return (
+          <Space direction="vertical" size={0} style={{ width: '100%' }}>
+            <Space>
+              <Tag color={config.color} icon={config.icon}>
+                {t(`backup.${status}`)}
+              </Tag>
+            </Space>
+            {status === 'running' && (
+              <Progress 
+                percent={record.progress} 
+                size="small" 
+                status="active"
+                style={{ width: 120 }}
+              />
+            )}
+            {status === 'failed' && record.errorMsg && (
+              <Tooltip title={record.errorMsg}>
+                <span style={{ color: '#ff4d4f', fontSize: 12 }}>
+                  {record.errorMsg.length > 30 ? `${record.errorMsg.substring(0, 30)}...` : record.errorMsg}
+                </span>
+              </Tooltip>
+            )}
+          </Space>
+        )
+      }
     },
     {
       title: t('backup.fileSize'),

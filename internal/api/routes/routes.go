@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Register(router *gin.Engine, cfg *config.Config, repos *repository.Repositories, libvirtClient *libvirt.Client, wsHandler *websocket.Handler) {
+func Register(router *gin.Engine, cfg *config.Config, repos *repository.Repositories, libvirtClient *libvirt.Client, wsHandler *websocket.Handler, backupService *services.BackupService) {
 	jwtMiddleware := middleware.JWTRequired(cfg.JWT.Secret)
 
 	auditService := services.NewAuditService(repos.AuditLog)
@@ -32,7 +32,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	isoHandler := handlers.NewISOHandler(repos.ISO, repos.ISOUpload)
 	networkHandler := handlers.NewVirtualNetworkHandler(repos.VirtualNetwork, libvirtClient)
 	storageHandler := handlers.NewStorageHandler(repos, libvirtClient)
-	backupHandler := handlers.NewBackupHandler(repos)
+	backupHandler := handlers.NewBackupHandler(repos, backupService)
 
 	api := router.Group("/api/v1")
 	{

@@ -355,6 +355,7 @@
     "failedToCreate": "Failed to create backup",
     "failedToGet": "Failed to get backup",
     "failedToDelete": "Failed to delete backup",
+    "failedToRestore": "Failed to restore backup",
     "failedToListSchedules": "Failed to list backup schedules",
     "failedToCreateSchedule": "Failed to create backup schedule",
     "failedToUpdateSchedule": "Failed to update backup schedule",
