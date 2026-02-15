@@ -75,7 +75,6 @@ const VMConsole: React.FC = () => {
       setConsoleInfo(response.data)
       setConnectionError(null)
     } catch (err: any) {
-      console.error('Failed to fetch console info:', err)
       setConnectionError(err?.response?.data?.message || t('console.connectionFailed'))
     }
   }, [id, t])

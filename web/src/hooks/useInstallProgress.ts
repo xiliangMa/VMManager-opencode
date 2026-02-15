@@ -35,7 +35,6 @@ export function useInstallProgress(vmId: string | null) {
       ws.onopen = () => {
         setConnected(true)
         setError(null)
-        console.log('[InstallProgress] Connected to WebSocket')
       }
 
       ws.onmessage = (event) => {
@@ -56,7 +55,6 @@ export function useInstallProgress(vmId: string | null) {
 
       ws.onclose = () => {
         setConnected(false)
-        console.log('[InstallProgress] WebSocket closed')
 
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current)
@@ -64,7 +62,6 @@ export function useInstallProgress(vmId: string | null) {
 
         reconnectTimeoutRef.current = setTimeout(() => {
           if (vmId) {
-            console.log('[InstallProgress] Attempting to reconnect...')
             connect()
           }
         }, 3000)

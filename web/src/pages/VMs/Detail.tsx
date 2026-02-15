@@ -48,8 +48,7 @@ const VMDetail: React.FC = () => {
       const response = await vmsApi.getMountedISO(id)
       const data = response.data || response
       setMountedISO(data)
-    } catch (error) {
-      console.error('Failed to fetch mounted ISO:', error)
+    } catch (_error) {
     }
   }
 

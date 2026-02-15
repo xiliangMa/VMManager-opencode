@@ -66,8 +66,7 @@ const Monitor: React.FC = () => {
       const response = await statsApi.getVMStats(id)
       const data = response.data || response
       setStats(data)
-    } catch (error) {
-      console.error('Failed to fetch VM stats:', error)
+    } catch (_error) {
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -80,8 +79,7 @@ const Monitor: React.FC = () => {
       const response = await vmsApi.get(id)
       const vm = response.data || response
       setVmInfo({ name: vm.name, status: vm.status })
-    } catch (error) {
-      console.error('Failed to fetch VM info:', error)
+    } catch (_error) {
     }
   }, [id])
 

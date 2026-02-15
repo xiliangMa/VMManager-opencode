@@ -19,12 +19,12 @@ const Profile: React.FC = () => {
       try {
         const response = await authApi.getProfile()
         updateUser(response.data)
-      } catch (error) {
-        console.error(t('message.failedToLoad') + ' profile:', error)
+      } catch (_error) {
+        message.error(t('message.failedToLoad') + ' profile')
       }
     }
     fetchProfile()
-  }, [updateUser])
+  }, [updateUser, t])
 
   useEffect(() => {
     if (user) {
@@ -38,12 +38,6 @@ const Profile: React.FC = () => {
       })
     }
   }, [user, profileForm, preferencesForm])
-
-  // 监听用户状态变化，输出日志
-  useEffect(() => {
-    console.log('User state changed:', user)
-    console.log('User avatar:', user?.avatar)
-  }, [user])
 
   const handleProfileUpdate = async (values: any) => {
     setLoading(true)
@@ -95,48 +89,28 @@ const Profile: React.FC = () => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    console.log('Avatar upload started:', file.name)
     const formData = new FormData()
     formData.append('avatar', file)
     try {
-      // 使用client实例发送请求，自动处理认证
-      const response = await client.post('/auth/profile/avatar', formData, {
+      await client.post('/auth/profile/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       })
       
-      console.log('Avatar upload response:', response)
-      
       message.success(t('message.updatedSuccessfully') + ' avatar')
       const updatedProfile = await authApi.getProfile()
-      console.log('Updated profile:', updatedProfile)
-      console.log('Updated profile structure:', typeof updatedProfile)
       
-      // 后端API返回的是 {code, message, data} 结构，data 属性才是用户数据对象
       const profileData = updatedProfile.data
-      console.log('Final profile data:', profileData)
       
-      // 添加时间戳参数，强制浏览器重新加载头像
       if (profileData.avatar) {
         profileData.avatar = profileData.avatar.includes('?') 
           ? `${profileData.avatar}&t=${Date.now()}`
           : `${profileData.avatar}?t=${Date.now()}`
-        console.log('Updated avatar URL:', profileData.avatar)
       }
       
       updateUser(profileData)
-      console.log('User updated in store')
-      
-      // 立即获取更新后的用户状态，验证是否更新成功
-      setTimeout(() => {
-        const { user } = useAuthStore.getState()
-        console.log('User after update:', user)
-        console.log('Avatar after update:', user?.avatar)
-      }, 100)
     } catch (error: any) {
-      console.error('Upload error:', error)
-      console.error('Error response:', error.response)
       message.error((error.response?.data?.message || t('message.failedToUpdate')) + ' avatar')
     }
   }

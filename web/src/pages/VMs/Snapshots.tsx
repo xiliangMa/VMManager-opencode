@@ -31,8 +31,7 @@ const VMSnapshots: React.FC<VMSnapshotsProps> = ({ vmId: propVmId, vmStatus: pro
           if (response.code === 0) {
             setVmStatus(response.data.status)
           }
-        } catch (error) {
-          console.error('Failed to fetch VM status:', error)
+        } catch (_error) {
         }
       }
       fetchVM()

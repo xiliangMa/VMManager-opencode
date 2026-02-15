@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Modal, Slider, Button, Space, message, Spin, Alert, Divider, Typography } from 'antd'
 import { ThunderboltOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
@@ -23,6 +23,15 @@ interface HotplugStatus {
   max_memory: number
 }
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string
+    }
+  }
+  message?: string
+}
+
 const HotplugModal: React.FC<HotplugModalProps> = ({ vmId, vmName, visible, onClose, onSuccess }) => {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
@@ -31,13 +40,7 @@ const HotplugModal: React.FC<HotplugModalProps> = ({ vmId, vmName, visible, onCl
   const [memory, setMemory] = useState(512)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (visible && vmId) {
-      fetchStatus()
-    }
-  }, [visible, vmId])
-
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     setLoading(true)
     try {
       const response = await vmsApi.getHotplugStatus(vmId)
@@ -45,13 +48,18 @@ const HotplugModal: React.FC<HotplugModalProps> = ({ vmId, vmName, visible, onCl
       setStatus(data)
       setVcpus(data.current_vcpus || 1)
       setMemory(data.current_memory || 512)
-    } catch (error) {
-      console.error('Failed to fetch hotplug status:', error)
+    } catch {
       message.error(t('hotplug.fetchFailed'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [vmId, t])
+
+  useEffect(() => {
+    if (visible && vmId) {
+      fetchStatus()
+    }
+  }, [visible, vmId, fetchStatus])
 
   const handleHotplugCPU = async () => {
     if (!status?.vcpu_hotplug_enabled) {
@@ -64,8 +72,9 @@ const HotplugModal: React.FC<HotplugModalProps> = ({ vmId, vmName, visible, onCl
       message.success(t('hotplug.vcpuSuccess'))
       fetchStatus()
       onSuccess?.()
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+    } catch (error: unknown) {
+      const apiError = error as ApiError
+      const errorMessage = apiError?.response?.data?.message || apiError?.message || t('common.error')
       message.error(errorMessage)
     } finally {
       setSaving(false)
@@ -83,8 +92,9 @@ const HotplugModal: React.FC<HotplugModalProps> = ({ vmId, vmName, visible, onCl
       message.success(t('hotplug.memorySuccess'))
       fetchStatus()
       onSuccess?.()
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+    } catch (error: unknown) {
+      const apiError = error as ApiError
+      const errorMessage = apiError?.response?.data?.message || apiError?.message || t('common.error')
       message.error(errorMessage)
     } finally {
       setSaving(false)

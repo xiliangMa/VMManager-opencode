@@ -41,8 +41,7 @@ const VMInstallation: React.FC = () => {
       } else if (data.agent_installed) {
         setCurrentStep(3)
       }
-    } catch (error) {
-      console.error('Failed to fetch installation status:', error)
+    } catch (_error) {
     }
   }
 

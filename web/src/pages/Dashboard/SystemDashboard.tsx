@@ -75,8 +75,7 @@ const SystemDashboard: React.FC = () => {
         cpu: [...prev.cpu.slice(1), { time: new Date().toLocaleTimeString(), value: cpuPercent }],
         memory: [...prev.memory.slice(1), { time: new Date().toLocaleTimeString(), value: memoryPercent }]
       }))
-    } catch (error) {
-      console.error('Failed to fetch system stats:', error)
+    } catch (_error) {
     } finally {
       setLoading(false)
     }

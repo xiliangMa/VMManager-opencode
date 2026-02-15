@@ -97,8 +97,7 @@ const Dashboard: React.FC = () => {
         fetchSystemStats(),
         fetchSystemResources()
       ])
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error)
+    } catch (_error) {
     } finally {
       setLoading(false)
     }
@@ -119,8 +118,7 @@ const Dashboard: React.FC = () => {
           publicTemplates: data.public_templates !== undefined ? data.public_templates : 0
         })
       }
-    } catch (error) {
-      console.error('Failed to fetch system stats:', error)
+    } catch (_error) {
     }
   }
 
@@ -152,8 +150,7 @@ const Dashboard: React.FC = () => {
           return newData.slice(-20)
         })
       }
-    } catch (error) {
-      console.error('Failed to fetch system resources:', error)
+    } catch (_error) {
     }
   }
 

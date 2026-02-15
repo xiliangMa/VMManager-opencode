@@ -42,7 +42,6 @@ const AlertHistoryPage: React.FC = () => {
         setStats(response.data || { total: 0, critical: 0, warning: 0, info: 0 })
       }
     } catch (_error) {
-      console.error('Failed to fetch alert stats:', _error)
     }
   }, [])
 

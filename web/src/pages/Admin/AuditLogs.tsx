@@ -58,8 +58,7 @@ const AuditLogs: React.FC = () => {
         pageSize,
         total: response.data?.meta?.total || 0
       }))
-    } catch (error) {
-      console.error('Failed to fetch audit logs:', error)
+    } catch (_error) {
     } finally {
       setLoading(false)
     }
@@ -97,8 +96,7 @@ const AuditLogs: React.FC = () => {
       a.click()
       window.URL.revokeObjectURL(url)
       message.success(t('common.success'))
-    } catch (error) {
-      console.error('Export failed:', error)
+    } catch (_error) {
       message.error(t('common.error'))
     }
   }

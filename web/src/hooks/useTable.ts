@@ -1,7 +1,21 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 
+interface TableParams {
+  page?: number
+  page_size?: number
+  search?: string
+  [key: string]: string | number | undefined
+}
+
+interface ApiResponse<T> {
+  data: T[]
+  meta?: {
+    total?: number
+  }
+}
+
 interface UseTableOptions<T> {
-  api: (params?: any) => Promise<{ data: T[]; meta: any }>
+  api: (params?: TableParams) => Promise<ApiResponse<T>>
   initialPageSize?: number
 }
 
@@ -17,8 +31,8 @@ interface UseTableResult<T> {
   refresh: () => void
   search: string
   setSearch: (value: string) => void
-  filters: Record<string, any>
-  setFilters: (filters: Record<string, any>) => void
+  filters: Record<string, string | number | undefined>
+  setFilters: (filters: Record<string, string | number | undefined>) => void
 }
 
 export function useTable<T>(options: UseTableOptions<T>): UseTableResult<T> {
@@ -32,13 +46,13 @@ export function useTable<T>(options: UseTableOptions<T>): UseTableResult<T> {
     total: 0
   })
   const [search, setSearch] = useState('')
-  const [filters, setFilters] = useState<Record<string, any>>({})
+  const [filters, setFilters] = useState<Record<string, string | number | undefined>>({})
   const mountedRef = useRef(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const params: any = {
+      const params: TableParams = {
         page: pagination.current,
         page_size: pagination.pageSize
       }
@@ -53,9 +67,7 @@ export function useTable<T>(options: UseTableOptions<T>): UseTableResult<T> {
         }
       })
 
-      console.log('Fetching data with params:', params)
       const response = await api(params)
-      console.log('API response:', response)
 
       if (response.data && Array.isArray(response.data)) {
         setData(response.data)
@@ -64,12 +76,10 @@ export function useTable<T>(options: UseTableOptions<T>): UseTableResult<T> {
           total: response.meta?.total || response.data.length
         }))
       } else {
-        console.warn('Invalid response data format:', response)
         setData([])
         setPagination(prev => ({ ...prev, total: 0 }))
       }
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
+    } catch (_error) {
       setData([])
       setPagination(prev => ({ ...prev, total: 0 }))
     } finally {
