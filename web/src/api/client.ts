@@ -205,7 +205,19 @@ export const vmsApi = {
     client.get(`/vms/${id}/mounted-iso`).then(res => res.data),
 
   clone: (id: string, data: { name: string; description?: string }) =>
-    client.post(`/vms/${id}/clone`, data).then(res => res.data)
+    client.post(`/vms/${id}/clone`, data).then(res => res.data),
+
+  batchStart: (vmIds: string[]) =>
+    client.post('/vms/batch/start', { vm_ids: vmIds }).then(res => res.data),
+
+  batchStop: (vmIds: string[], force = false) =>
+    client.post('/vms/batch/stop', { vm_ids: vmIds, force }).then(res => res.data),
+
+  batchDelete: (vmIds: string[]) =>
+    client.delete('/vms/batch', { data: { vm_ids: vmIds } }).then(res => res.data),
+
+  batchOperation: (operation: string, vmIds: string[]) =>
+    client.post(`/vms/batch/${operation}`, { vm_ids: vmIds }).then(res => res.data)
 }
 
 export const snapshotsApi = {

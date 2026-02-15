@@ -25,7 +25,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
 	auditHandler := handlers.NewAuditHandler(repos.AuditLog)
 	snapshotHandler := handlers.NewSnapshotHandler(repos.VM)
-	batchHandler := handlers.NewBatchHandler(repos.VM)
+	batchHandler := handlers.NewBatchHandler(repos.VM, libvirtClient, cfg.Storage.Path, auditService)
 	statsHandler := handlers.NewVMStatsHandler(repos.VMStats, repos.DB)
 	alertRuleHandler := handlers.NewAlertRuleHandler(repos.AlertRule)
 	alertHistoryHandler := handlers.NewAlertHistoryHandler(repos.AlertHistory)
@@ -83,8 +83,9 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			{
 				batch.POST("/start", batchHandler.BatchStart)
 				batch.POST("/stop", batchHandler.BatchStop)
-				batch.POST("/restart", batchHandler.BatchRestart)
+				batch.POST("/force-stop", batchHandler.BatchStop)
 				batch.DELETE("", batchHandler.BatchDelete)
+				batch.POST("/:operation", batchHandler.BatchOperation)
 			}
 		}
 

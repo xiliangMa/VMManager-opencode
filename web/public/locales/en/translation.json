@@ -179,6 +179,28 @@
     "agentScriptTip": "The following script will be executed in the VM, can be modified as needed",
     "agentScriptNote": "Please run the script in VM console"
   },
+  "batch": {
+    "operations": "Batch Operations",
+    "start": "Batch Start",
+    "stop": "Batch Stop",
+    "forceStop": "Force Stop",
+    "delete": "Batch Delete",
+    "selectVMs": "Please select VMs first",
+    "startSuccess": "Batch start successful",
+    "startFailed": "Batch start failed",
+    "stopSuccess": "Batch stop successful",
+    "stopFailed": "Batch stop failed",
+    "deleteSuccess": "Batch delete successful",
+    "deleteFailed": "Batch delete failed",
+    "stopConfirm": "Confirm Batch Stop",
+    "forceStopConfirm": "Confirm Force Stop",
+    "deleteConfirm": "Confirm Batch Delete",
+    "deleteWarning": "{{count}} VMs will be deleted, this action cannot be undone",
+    "selectedCount": "{{count}} VMs selected",
+    "partialSuccess": "Partial Success",
+    "successCount": "Success: {{count}}",
+    "failedCount": "Failed: {{count}}"
+  },
   "template": {
     "name": "Template Name",
     "upload": "Upload Template",

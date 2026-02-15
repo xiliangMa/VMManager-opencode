@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm, Row, Col, Statistic } from 'antd'
-import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PoweroffOutlined, SyncOutlined, DesktopOutlined } from '@ant-design/icons'
+import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm, Row, Col, Statistic, Dropdown, Modal, List } from 'antd'
+import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PoweroffOutlined, SyncOutlined, DesktopOutlined, DownOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { vmsApi, VM } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
@@ -12,6 +12,8 @@ const VMs: React.FC = () => {
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [lockingVms, setLockingVms] = useState<Set<string>>(new Set())
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [batchLoading, setBatchLoading] = useState(false)
 
   const { data, loading, pagination, refresh, search, setSearch } = useTable<VM>({
     api: vmsApi.list
@@ -199,6 +201,180 @@ const VMs: React.FC = () => {
     }
   }
 
+  const handleBatchStart = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning(t('batch.selectVMs'))
+      return
+    }
+
+    setBatchLoading(true)
+    try {
+      const result = await vmsApi.batchStart(selectedRowKeys as string[])
+      if (result.data?.failed?.length > 0) {
+        Modal.warning({
+          title: t('batch.partialSuccess'),
+          content: (
+            <div>
+              <p>{t('batch.successCount')}: {result.data.success.length}</p>
+              <p>{t('batch.failedCount')}: {result.data.failed.length}</p>
+              <List
+                size="small"
+                dataSource={result.data.failed}
+                renderItem={(item: any) => (
+                  <List.Item>
+                    {item.name || item.vm_id}: {item.reason}
+                  </List.Item>
+                )}
+              />
+            </div>
+          )
+        })
+      } else {
+        message.success(t('batch.startSuccess'))
+      }
+      setSelectedRowKeys([])
+      refresh()
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || t('batch.startFailed'))
+    } finally {
+      setBatchLoading(false)
+    }
+  }
+
+  const handleBatchStop = async (force = false) => {
+    if (selectedRowKeys.length === 0) {
+      message.warning(t('batch.selectVMs'))
+      return
+    }
+
+    Modal.confirm({
+      title: force ? t('batch.forceStopConfirm') : t('batch.stopConfirm'),
+      icon: <ExclamationCircleOutlined />,
+      content: t('batch.selectedCount', { count: selectedRowKeys.length }),
+      onOk: async () => {
+        setBatchLoading(true)
+        try {
+          const result = await vmsApi.batchStop(selectedRowKeys as string[], force)
+          if (result.data?.failed?.length > 0) {
+            Modal.warning({
+              title: t('batch.partialSuccess'),
+              content: (
+                <div>
+                  <p>{t('batch.successCount')}: {result.data.success.length}</p>
+                  <p>{t('batch.failedCount')}: {result.data.failed.length}</p>
+                  <List
+                    size="small"
+                    dataSource={result.data.failed}
+                    renderItem={(item: any) => (
+                      <List.Item>
+                        {item.name || item.vm_id}: {item.reason}
+                      </List.Item>
+                    )}
+                  />
+                </div>
+              )
+            })
+          } else {
+            message.success(t('batch.stopSuccess'))
+          }
+          setSelectedRowKeys([])
+          refresh()
+        } catch (error: any) {
+          message.error(error?.response?.data?.message || t('batch.stopFailed'))
+        } finally {
+          setBatchLoading(false)
+        }
+      }
+    })
+  }
+
+  const handleBatchDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning(t('batch.selectVMs'))
+      return
+    }
+
+    Modal.confirm({
+      title: t('batch.deleteConfirm'),
+      icon: <ExclamationCircleOutlined />,
+      content: t('batch.deleteWarning', { count: selectedRowKeys.length }),
+      okType: 'danger',
+      onOk: async () => {
+        setBatchLoading(true)
+        try {
+          const result = await vmsApi.batchDelete(selectedRowKeys as string[])
+          if (result.data?.failed?.length > 0) {
+            Modal.warning({
+              title: t('batch.partialSuccess'),
+              content: (
+                <div>
+                  <p>{t('batch.successCount')}: {result.data.success.length}</p>
+                  <p>{t('batch.failedCount')}: {result.data.failed.length}</p>
+                  <List
+                    size="small"
+                    dataSource={result.data.failed}
+                    renderItem={(item: any) => (
+                      <List.Item>
+                        {item.name || item.vm_id}: {item.reason}
+                      </List.Item>
+                    )}
+                  />
+                </div>
+              )
+            })
+          } else {
+            message.success(t('batch.deleteSuccess'))
+          }
+          setSelectedRowKeys([])
+          refresh()
+        } catch (error: any) {
+          message.error(error?.response?.data?.message || t('batch.deleteFailed'))
+        } finally {
+          setBatchLoading(false)
+        }
+      }
+    })
+  }
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[]) => {
+      setSelectedRowKeys(newSelectedRowKeys)
+    }
+  }
+
+  const batchMenuItems = [
+    {
+      key: 'start',
+      label: t('batch.start'),
+      icon: <PlayCircleOutlined />,
+      onClick: handleBatchStart
+    },
+    {
+      key: 'stop',
+      label: t('batch.stop'),
+      icon: <PoweroffOutlined />,
+      onClick: () => handleBatchStop(false)
+    },
+    {
+      key: 'force-stop',
+      label: t('batch.forceStop'),
+      icon: <PoweroffOutlined />,
+      danger: true,
+      onClick: () => handleBatchStop(true)
+    },
+    {
+      type: 'divider' as const
+    },
+    {
+      key: 'delete',
+      label: t('batch.delete'),
+      icon: <DeleteOutlined />,
+      danger: true,
+      onClick: handleBatchDelete
+    }
+  ]
+
   return (
     <div>
       <Card>
@@ -235,6 +411,13 @@ const VMs: React.FC = () => {
               ]}
             />
             <Button onClick={refresh}>{t('common.refresh')}</Button>
+            {selectedRowKeys.length > 0 && (
+              <Dropdown menu={{ items: batchMenuItems }} disabled={batchLoading}>
+                <Button loading={batchLoading}>
+                  {t('batch.operations')} ({selectedRowKeys.length}) <DownOutlined />
+                </Button>
+              </Dropdown>
+            )}
           </Space>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/vms/create')}>
             {t('vm.createVM')}
@@ -242,6 +425,7 @@ const VMs: React.FC = () => {
         </div>
 
         <Table
+          rowSelection={rowSelection}
           columns={columns}
           dataSource={data}
           rowKey="id"

@@ -179,6 +179,28 @@
     "agentScriptTip": "以下脚本将在虚拟机中执行，可根据需要修改",
     "agentScriptNote": "请在虚拟机控制台中运行脚本"
   },
+  "batch": {
+    "operations": "批量操作",
+    "start": "批量启动",
+    "stop": "批量停止",
+    "forceStop": "强制停止",
+    "delete": "批量删除",
+    "selectVMs": "请先选择虚拟机",
+    "startSuccess": "批量启动成功",
+    "startFailed": "批量启动失败",
+    "stopSuccess": "批量停止成功",
+    "stopFailed": "批量停止失败",
+    "deleteSuccess": "批量删除成功",
+    "deleteFailed": "批量删除失败",
+    "stopConfirm": "确认批量停止",
+    "forceStopConfirm": "确认强制停止",
+    "deleteConfirm": "确认批量删除",
+    "deleteWarning": "将删除 {{count}} 个虚拟机，此操作不可恢复",
+    "selectedCount": "已选择 {{count}} 个虚拟机",
+    "partialSuccess": "部分操作成功",
+    "successCount": "成功: {{count}}",
+    "failedCount": "失败: {{count}}"
+  },
   "template": {
     "name": "模板名称",
     "upload": "上传模板",
