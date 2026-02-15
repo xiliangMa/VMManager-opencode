@@ -46,12 +46,24 @@
       "description": "虚拟机快照相关接口"
     },
     {
+      "name": "Backups",
+      "description": "虚拟机备份相关接口"
+    },
+    {
       "name": "Templates",
       "description": "模板管理相关接口"
     },
     {
+      "name": "ISOs",
+      "description": "ISO 镜像管理相关接口"
+    },
+    {
       "name": "Admin",
       "description": "系统管理相关接口"
+    },
+    {
+      "name": "WebSocket",
+      "description": "WebSocket 实时通信接口"
     }
   ],
   "paths": {
@@ -582,6 +594,593 @@
         }
       }
     },
+    "/vms/{id}/sync": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "同步虚拟机状态",
+        "security": [{"Bearer": []}],
+        "description": "手动触发虚拟机状态同步，从 Libvirt 获取最新状态并更新数据库",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "同步成功",
+            "schema": {
+              "$ref": "#/definitions/VMDetailResponse"
+            }
+          }
+        }
+      }
+    },
+    "/vms/statuses": {
+      "get": {
+        "tags": ["Virtual Machines"],
+        "summary": "获取所有虚拟机状态",
+        "security": [{"Bearer": []}],
+        "description": "批量获取所有虚拟机的当前状态，用于实时状态监控",
+        "responses": {
+          "200": {
+            "description": "成功获取状态列表",
+            "schema": {
+              "$ref": "#/definitions/VMStatusListResponse"
+            }
+          }
+        }
+      }
+    },
+    "/vms/{id}/start-installation": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "开始安装操作系统",
+        "security": [{"Bearer": []}],
+        "description": "启动虚拟机并标记为安装模式，用于首次安装操作系统",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "安装任务已启动"
+          }
+        }
+      }
+    },
+    "/vms/{id}/finish-installation": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "完成安装",
+        "security": [{"Bearer": []}],
+        "description": "标记虚拟机操作系统安装完成",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "安装完成"
+          }
+        }
+      }
+    },
+    "/vms/{id}/installation-status": {
+      "get": {
+        "tags": ["Virtual Machines"],
+        "summary": "获取安装状态",
+        "security": [{"Bearer": []}],
+        "description": "获取虚拟机操作系统安装进度状态",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取安装状态",
+            "schema": {
+              "$ref": "#/definitions/InstallationStatusResponse"
+            }
+          }
+        }
+      }
+    },
+    "/vms/{id}/mount-iso": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "挂载 ISO 镜像",
+        "security": [{"Bearer": []}],
+        "description": "为虚拟机挂载 ISO 镜像文件",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MountISORequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "挂载成功"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Virtual Machines"],
+        "summary": "卸载 ISO 镜像",
+        "security": [{"Bearer": []}],
+        "description": "卸载虚拟机当前挂载的 ISO 镜像",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "卸载成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/mounted-iso": {
+      "get": {
+        "tags": ["Virtual Machines"],
+        "summary": "获取已挂载的 ISO",
+        "security": [{"Bearer": []}],
+        "description": "获取虚拟机当前挂载的 ISO 镜像信息",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取挂载信息",
+            "schema": {
+              "$ref": "#/definitions/MountedISOResponse"
+            }
+          }
+        }
+      }
+    },
+    "/vms/{id}/clone": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "克隆虚拟机",
+        "security": [{"Bearer": []}],
+        "description": "基于现有虚拟机创建克隆副本",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CloneVMRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "克隆任务已创建",
+            "schema": {
+              "$ref": "#/definitions/VMCreatedResponse"
+            }
+          }
+        }
+      }
+    },
+    "/vms/{id}/hotplug": {
+      "get": {
+        "tags": ["Virtual Machines"],
+        "summary": "获取热插拔状态",
+        "security": [{"Bearer": []}],
+        "description": "获取虚拟机 CPU 和内存热插拔支持状态",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取热插拔状态",
+            "schema": {
+              "$ref": "#/definitions/HotplugStatusResponse"
+            }
+          }
+        }
+      }
+    },
+    "/vms/{id}/hotplug/cpu": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "热插拔 CPU",
+        "security": [{"Bearer": []}],
+        "description": "在运行中动态调整虚拟机 CPU 核心数",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HotplugCPURequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "热插拔成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/hotplug/memory": {
+      "post": {
+        "tags": ["Virtual Machines"],
+        "summary": "热插拔内存",
+        "security": [{"Bearer": []}],
+        "description": "在运行中动态调整虚拟机内存大小",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HotplugMemoryRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "热插拔成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/backups": {
+      "get": {
+        "tags": ["Backups"],
+        "summary": "获取备份列表",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取备份列表",
+            "schema": {
+              "$ref": "#/definitions/BackupListResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Backups"],
+        "summary": "创建备份",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateBackupRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "备份创建成功",
+            "schema": {
+              "$ref": "#/definitions/BackupResponse"
+            }
+          }
+        }
+      }
+    },
+    "/vms/{id}/backups/{backup_id}": {
+      "get": {
+        "tags": ["Backups"],
+        "summary": "获取备份详情",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "backup_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取备份详情",
+            "schema": {
+              "$ref": "#/definitions/BackupResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Backups"],
+        "summary": "删除备份",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "backup_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/backups/{backup_id}/restore": {
+      "post": {
+        "tags": ["Backups"],
+        "summary": "恢复备份",
+        "security": [{"Bearer": []}],
+        "description": "将虚拟机恢复到指定备份状态",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "backup_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "恢复任务已提交"
+          }
+        }
+      }
+    },
+    "/vms/{id}/backups/schedules": {
+      "get": {
+        "tags": ["Backups"],
+        "summary": "获取备份计划列表",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取计划列表",
+            "schema": {
+              "$ref": "#/definitions/BackupScheduleListResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Backups"],
+        "summary": "创建备份计划",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateBackupScheduleRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "计划创建成功",
+            "schema": {
+              "$ref": "#/definitions/BackupScheduleResponse"
+            }
+          }
+        }
+      }
+    },
+    "/vms/{id}/backups/schedules/{schedule_id}": {
+      "put": {
+        "tags": ["Backups"],
+        "summary": "更新备份计划",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateBackupScheduleRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "更新成功"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Backups"],
+        "summary": "删除备份计划",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功"
+          }
+        }
+      }
+    },
+    "/vms/{id}/backups/schedules/{schedule_id}/toggle": {
+      "post": {
+        "tags": ["Backups"],
+        "summary": "启用/禁用备份计划",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "切换成功"
+          }
+        }
+      }
+    },
     "/vms/{id}/snapshots": {
       "get": {
         "tags": ["Snapshots"],
@@ -1084,6 +1683,238 @@
             "schema": {
               "$ref": "#/definitions/UploadStatusResponse"
             }
+          }
+        }
+      }
+    },
+    "/isos": {
+      "get": {
+        "tags": ["ISOs"],
+        "summary": "获取 ISO 镜像列表",
+        "security": [{"Bearer": []}],
+        "description": "获取可用的 ISO 镜像列表",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "type": "integer",
+            "default": 1
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "type": "integer",
+            "default": 20
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取 ISO 列表",
+            "schema": {
+              "$ref": "#/definitions/ISOListResponse"
+            }
+          }
+        }
+      }
+    },
+    "/isos/{id}": {
+      "get": {
+        "tags": ["ISOs"],
+        "summary": "获取 ISO 详情",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取 ISO 详情",
+            "schema": {
+              "$ref": "#/definitions/ISOResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["ISOs"],
+        "summary": "删除 ISO 镜像",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功"
+          }
+        }
+      }
+    },
+    "/isos/upload/init": {
+      "post": {
+        "tags": ["ISOs"],
+        "summary": "初始化 ISO 上传",
+        "security": [{"Bearer": []}],
+        "description": "开始 ISO 镜像分片上传流程",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/InitISOUploadRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "上传初始化成功",
+            "schema": {
+              "$ref": "#/definitions/InitUploadResponse"
+            }
+          }
+        }
+      }
+    },
+    "/isos/upload/part": {
+      "post": {
+        "tags": ["ISOs"],
+        "summary": "上传 ISO 分片",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UploadPartRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "分片上传成功",
+            "schema": {
+              "$ref": "#/definitions/UploadPartResponse"
+            }
+          }
+        }
+      }
+    },
+    "/isos/upload/complete": {
+      "post": {
+        "tags": ["ISOs"],
+        "summary": "完成 ISO 上传",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CompleteUploadRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "上传完成",
+            "schema": {
+              "$ref": "#/definitions/ISOResponse"
+            }
+          }
+        }
+      }
+    },
+    "/isos/upload/status": {
+      "get": {
+        "tags": ["ISOs"],
+        "summary": "获取 ISO 上传状态",
+        "security": [{"Bearer": []}],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取上传状态",
+            "schema": {
+              "$ref": "#/definitions/UploadStatusResponse"
+            }
+          }
+        }
+      }
+    },
+    "/ws/vnc/{vm_id}": {
+      "get": {
+        "tags": ["WebSocket"],
+        "summary": "VNC 控制台 WebSocket",
+        "description": "连接虚拟机 VNC 控制台的 WebSocket 端点。用于实时传输键盘、鼠标事件和显示画面。\n\n**连接方式**:\n```\nws://localhost:8080/ws/vnc/{vm_id}?token=your_jwt_token\n```\n\n**消息格式**:\n- 客户端发送: 二进制 VNC 协议数据\n- 服务端推送: 二进制 VNC 协议数据",
+        "parameters": [
+          {
+            "name": "vm_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid",
+            "description": "虚拟机 ID"
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "JWT 认证 Token"
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket 连接已建立"
+          },
+          "401": {
+            "description": "认证失败或 Token 无效"
+          },
+          "404": {
+            "description": "虚拟机不存在"
+          }
+        }
+      }
+    },
+    "/ws/vm-status": {
+      "get": {
+        "tags": ["WebSocket"],
+        "summary": "虚拟机状态实时推送",
+        "description": "订阅虚拟机状态变更事件的 WebSocket 端点。当虚拟机状态发生变化时，服务端会主动推送最新状态。\n\n**连接方式**:\n```\nws://localhost:8080/ws/vm-status?token=your_jwt_token\n```\n\n**推送消息格式**:\n```json\n{\n  \"type\": \"vm_status_update\",\n  \"data\": {\n    \"vm_id\": \"uuid\",\n    \"status\": \"running\",\n    \"previous_status\": \"stopped\",\n    \"timestamp\": \"2024-01-01T00:00:00Z\"\n  }\n}\n```\n\n**事件类型**:\n- `vm_status_update`: 虚拟机状态变更\n- `vm_created`: 虚拟机创建\n- `vm_deleted`: 虚拟机删除",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "JWT 认证 Token"
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket 连接已建立"
+          },
+          "401": {
+            "description": "认证失败或 Token 无效"
           }
         }
       }
@@ -2953,6 +3784,414 @@
               "description": "公开模板数"
             }
           }
+        }
+      }
+    },
+    "VMStatusListResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/VMStatusInfo"
+          }
+        }
+      }
+    },
+    "VMStatusInfo": {
+      "type": "object",
+      "properties": {
+        "vm_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "creating", "running", "stopped", "suspended", "failed", "deleting"]
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "InstallationStatusResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "is_installing": {
+              "type": "boolean"
+            },
+            "installation_started_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "installation_finished_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "has_agent": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "MountISORequest": {
+      "type": "object",
+      "required": ["iso_id"],
+      "properties": {
+        "iso_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ISO 镜像 ID"
+        }
+      }
+    },
+    "MountedISOResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "iso_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "iso_name": {
+              "type": "string"
+            },
+            "mounted_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    },
+    "CloneVMRequest": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "新虚拟机名称"
+        },
+        "description": {
+          "type": "string",
+          "description": "新虚拟机描述"
+        }
+      }
+    },
+    "HotplugStatusResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "cpu_hotplug_supported": {
+              "type": "boolean"
+            },
+            "memory_hotplug_supported": {
+              "type": "boolean"
+            },
+            "current_vcpus": {
+              "type": "integer"
+            },
+            "max_vcpus": {
+              "type": "integer"
+            },
+            "current_memory_mb": {
+              "type": "integer"
+            },
+            "max_memory_mb": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "HotplugCPURequest": {
+      "type": "object",
+      "required": ["vcpus"],
+      "properties": {
+        "vcpus": {
+          "type": "integer",
+          "description": "目标 CPU 核心数"
+        }
+      }
+    },
+    "HotplugMemoryRequest": {
+      "type": "object",
+      "required": ["memory_mb"],
+      "properties": {
+        "memory_mb": {
+          "type": "integer",
+          "description": "目标内存大小（MB）"
+        }
+      }
+    },
+    "BackupListResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BackupInfo"
+          }
+        }
+      }
+    },
+    "BackupInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "vm_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["creating", "completed", "failed", "restoring"]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "BackupResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/BackupInfo"
+        }
+      }
+    },
+    "CreateBackupRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "备份名称"
+        },
+        "description": {
+          "type": "string",
+          "description": "备份描述"
+        }
+      }
+    },
+    "BackupScheduleListResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BackupScheduleInfo"
+          }
+        }
+      }
+    },
+    "BackupScheduleInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "vm_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "cron_expression": {
+          "type": "string",
+          "description": "Cron 表达式"
+        },
+        "retention_count": {
+          "type": "integer",
+          "description": "保留备份数量"
+        },
+        "is_enabled": {
+          "type": "boolean"
+        },
+        "last_run_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "next_run_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "BackupScheduleResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/BackupScheduleInfo"
+        }
+      }
+    },
+    "CreateBackupScheduleRequest": {
+      "type": "object",
+      "required": ["name", "cron_expression"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "cron_expression": {
+          "type": "string",
+          "description": "Cron 表达式，如 '0 2 * * *' 表示每天凌晨 2 点"
+        },
+        "retention_count": {
+          "type": "integer",
+          "default": 7,
+          "description": "保留备份数量"
+        }
+      }
+    },
+    "ISOListResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ISOInfo"
+          }
+        },
+        "meta": {
+          "$ref": "#/definitions/PaginationMeta"
+        }
+      }
+    },
+    "ISOInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer"
+        },
+        "os_type": {
+          "type": "string"
+        },
+        "os_version": {
+          "type": "string"
+        },
+        "architecture": {
+          "type": "string",
+          "enum": ["x86_64", "arm64"]
+        },
+        "is_public": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ISOResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/ISOInfo"
+        }
+      }
+    },
+    "InitISOUploadRequest": {
+      "type": "object",
+      "required": ["filename", "file_size"],
+      "properties": {
+        "filename": {
+          "type": "string"
+        },
+        "file_size": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "os_type": {
+          "type": "string"
+        },
+        "os_version": {
+          "type": "string"
+        },
+        "architecture": {
+          "type": "string",
+          "enum": ["x86_64", "arm64"]
+        }
+      }
+    },
+    "CompleteUploadRequest": {
+      "type": "object",
+      "required": ["upload_id"],
+      "properties": {
+        "upload_id": {
+          "type": "string",
+          "format": "uuid"
         }
       }
     }
