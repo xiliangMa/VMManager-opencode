@@ -39,6 +39,12 @@ const Profile: React.FC = () => {
     }
   }, [user, profileForm, preferencesForm])
 
+  // 监听用户状态变化，输出日志
+  useEffect(() => {
+    console.log('User state changed:', user)
+    console.log('User avatar:', user?.avatar)
+  }, [user])
+
   const handleProfileUpdate = async (values: any) => {
     setLoading(true)
     try {
@@ -105,15 +111,29 @@ const Profile: React.FC = () => {
       message.success(t('message.updatedSuccessfully') + ' avatar')
       const updatedProfile = await authApi.getProfile()
       console.log('Updated profile:', updatedProfile)
+      console.log('Updated profile structure:', typeof updatedProfile)
+      
+      // authApi.getProfile() 已经返回了 res.data，所以 updatedProfile 就是用户数据对象
+      const profileData = updatedProfile
+      console.log('Final profile data:', profileData)
+      
       // 添加时间戳参数，强制浏览器重新加载头像
-      if (updatedProfile.data.avatar) {
-        updatedProfile.data.avatar = updatedProfile.data.avatar.includes('?') 
-          ? `${updatedProfile.data.avatar}&t=${Date.now()}`
-          : `${updatedProfile.data.avatar}?t=${Date.now()}`
-        console.log('Updated avatar URL:', updatedProfile.data.avatar)
+      if (profileData.avatar) {
+        profileData.avatar = profileData.avatar.includes('?') 
+          ? `${profileData.avatar}&t=${Date.now()}`
+          : `${profileData.avatar}?t=${Date.now()}`
+        console.log('Updated avatar URL:', profileData.avatar)
       }
-      updateUser(updatedProfile.data)
+      
+      updateUser(profileData)
       console.log('User updated in store')
+      
+      // 立即获取更新后的用户状态，验证是否更新成功
+      setTimeout(() => {
+        const { user } = useAuthStore.getState()
+        console.log('User after update:', user)
+        console.log('Avatar after update:', user?.avatar)
+      }, 100)
     } catch (error: any) {
       console.error('Upload error:', error)
       console.error('Error response:', error.response)
@@ -153,7 +173,11 @@ const Profile: React.FC = () => {
               onChange={handleAvatarChange}
             />
             <div style={{ cursor: 'pointer' }} onClick={handleAvatarClick}>
-              <Avatar size={100} src={user?.avatar} icon={<UserOutlined />} />
+              <Avatar 
+                size={100} 
+                src={user?.avatar} 
+                icon={<UserOutlined />}
+              />
               <div style={{ marginTop: 8 }}>
                 <Button icon={<UploadOutlined />}>{t('button.changeAvatar')}</Button>
               </div>
