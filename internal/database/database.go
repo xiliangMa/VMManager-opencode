@@ -457,6 +457,10 @@ func Migrate(db *gorm.DB) error {
 
 	ALTER TABLE audit_logs DROP COLUMN IF EXISTS ip_address;
 	ALTER TABLE audit_logs ADD COLUMN ip_address VARCHAR(45);
+
+	-- Migration: Add ISO installation fields
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS iso_id UUID;
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS installation_mode VARCHAR(20) DEFAULT 'template';
 	`
 	return db.Exec(sql).Error
 }

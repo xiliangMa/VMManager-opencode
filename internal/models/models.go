@@ -74,6 +74,8 @@ type VirtualMachine struct {
 	Name              string      `gorm:"size:100;not null" json:"name"`
 	Description       string      `gorm:"type:text" json:"description"`
 	TemplateID        *uuid.UUID  `gorm:"type:uuid" json:"templateId"`
+	ISOID             *uuid.UUID  `gorm:"type:uuid" json:"isoId"`
+	InstallationMode  string      `gorm:"size:20;default:'template'" json:"installationMode"`
 	OwnerID           uuid.UUID   `gorm:"type:uuid;not null" json:"ownerId"`
 	Status            string      `gorm:"size:20;default:'stopped'" json:"status"`
 	Architecture      string      `gorm:"size:20;default:'x86_64'" json:"architecture"`
@@ -83,7 +85,7 @@ type VirtualMachine struct {
 	MACAddress        string      `gorm:"size:17;uniqueIndex" json:"macAddress"`
 	IPAddress         string      `json:"ipAddress"`
 	Gateway           string      `json:"gateway"`
-	DNSServers        []string    `gorm:"type:inet[]" json:"dnsServers"`
+	DNSServers        []string    `gorm:"type:text[]" json:"dnsServers"`
 	CPUAllocated      int         `gorm:"not null" json:"cpuAllocated"`
 	MemoryAllocated   int         `gorm:"not null" json:"memoryAllocated"`
 	DiskAllocated     int         `gorm:"not null" json:"diskAllocated"`
@@ -102,6 +104,7 @@ type VirtualMachine struct {
 	AgentInstalled    bool        `gorm:"default:false" json:"agentInstalled"`
 	Owner             *User       `gorm:"foreignKey:OwnerID" json:"owner"`
 	Template          *VMTemplate `gorm:"foreignKey:TemplateID" json:"template"`
+	ISO               *ISO        `gorm:"foreignKey:ISOID" json:"iso"`
 	CreatedAt         time.Time   `json:"createdAt"`
 	UpdatedAt         time.Time   `json:"updatedAt"`
 	DeletedAt         *time.Time  `gorm:"index" json:"deletedAt"`

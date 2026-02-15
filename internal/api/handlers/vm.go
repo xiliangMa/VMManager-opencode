@@ -119,19 +119,40 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	userUUID, _ := uuid.Parse(userID.(string))
 
 	var req struct {
-		Name            string   `json:"name" binding:"required"`
-		Description     string   `json:"description"`
-		TemplateID      *string  `json:"template_id"`
-		CPUAllocated    int      `json:"cpu_allocated" binding:"required,min=1"`
-		MemoryAllocated int      `json:"memory_allocated" binding:"required,min=512"`
-		DiskAllocated   int      `json:"disk_allocated" binding:"required,min=10"`
-		BootOrder       string   `json:"boot_order"`
-		Autostart       bool     `json:"autostart"`
-		Tags            []string `json:"tags"`
+		Name             string   `json:"name" binding:"required"`
+		Description      string   `json:"description"`
+		TemplateID       *string  `json:"template_id"`
+		ISOID            *string  `json:"iso_id"`
+		InstallationMode string   `json:"installation_mode"`
+		CPUAllocated     int      `json:"cpu_allocated" binding:"required,min=1"`
+		MemoryAllocated  int      `json:"memory_allocated" binding:"required,min=512"`
+		DiskAllocated    int      `json:"disk_allocated" binding:"required,min=10"`
+		BootOrder        string   `json:"boot_order"`
+		Autostart        bool     `json:"autostart"`
+		Tags             []string `json:"tags"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
+		return
+	}
+
+	installationMode := req.InstallationMode
+	if installationMode == "" {
+		if req.ISOID != nil {
+			installationMode = "iso"
+		} else {
+			installationMode = "template"
+		}
+	}
+
+	if installationMode == "iso" && req.ISOID == nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "iso_id_required_for_iso_mode"), "iso_id is required when installation_mode is 'iso'"))
+		return
+	}
+
+	if installationMode == "template" && req.TemplateID == nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "template_id_required_for_template_mode"), "template_id is required when installation_mode is 'template'"))
 		return
 	}
 
@@ -182,20 +203,35 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	vncPassword, _ := models.GenerateVNCPassword(8)
 
 	vm := models.VirtualMachine{
-		ID:              uuid.New(),
-		Name:            req.Name,
-		Description:     req.Description,
-		OwnerID:         userUUID,
-		Status:          "stopped",
-		MACAddress:      macAddress,
-		VNCPassword:     vncPassword,
-		CPUAllocated:    req.CPUAllocated,
-		MemoryAllocated: req.MemoryAllocated,
-		DiskAllocated:   req.DiskAllocated,
-		DiskPath:        fmt.Sprintf("%s/%s.qcow2", h.storagePath, uuid.New().String()),
-		BootOrder:       req.BootOrder,
-		Autostart:       req.Autostart,
-		Tags:            req.Tags,
+		ID:               uuid.New(),
+		Name:             req.Name,
+		Description:      req.Description,
+		OwnerID:          userUUID,
+		Status:           "stopped",
+		InstallationMode: installationMode,
+		MACAddress:       macAddress,
+		VNCPassword:      vncPassword,
+		CPUAllocated:     req.CPUAllocated,
+		MemoryAllocated:  req.MemoryAllocated,
+		DiskAllocated:    req.DiskAllocated,
+		DiskPath:         fmt.Sprintf("%s/%s.qcow2", h.storagePath, uuid.New().String()),
+		BootOrder:        req.BootOrder,
+		Autostart:        req.Autostart,
+		Tags:             req.Tags,
+	}
+
+	if installationMode == "iso" && req.ISOID != nil {
+		isoUUID, _ := uuid.Parse(*req.ISOID)
+		vm.ISOID = &isoUUID
+
+		iso, err := h.isoRepo.FindByID(ctx, *req.ISOID)
+		if err == nil && iso != nil {
+			if iso.Architecture != "" {
+				vm.Architecture = iso.Architecture
+			}
+			vm.BootOrder = "cdrom,hd,network"
+			vm.InstallStatus = "pending"
+		}
 	}
 
 	if req.TemplateID != nil {
@@ -214,13 +250,20 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	}
 
 	if h.auditService != nil {
-		h.auditService.LogSuccess(c, "vm.create", "virtual_machine", &vm.ID, map[string]interface{}{
-			"name":     vm.Name,
-			"cpu":      vm.CPUAllocated,
-			"memory":   vm.MemoryAllocated,
-			"disk":     vm.DiskAllocated,
-			"template": req.TemplateID,
-		})
+		auditDetails := map[string]interface{}{
+			"name":              vm.Name,
+			"cpu":               vm.CPUAllocated,
+			"memory":            vm.MemoryAllocated,
+			"disk":              vm.DiskAllocated,
+			"installation_mode": installationMode,
+		}
+		if req.TemplateID != nil {
+			auditDetails["template_id"] = *req.TemplateID
+		}
+		if req.ISOID != nil {
+			auditDetails["iso_id"] = *req.ISOID
+		}
+		h.auditService.LogSuccess(c, "vm.create", "virtual_machine", &vm.ID, auditDetails)
 	}
 
 	c.JSON(http.StatusCreated, errors.Success(vm))
