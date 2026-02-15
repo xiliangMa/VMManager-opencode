@@ -46,6 +46,8 @@ export interface VMDetail extends VM {
   install_status?: string
   install_progress?: number
   agent_installed?: boolean
+  vcpu_hotplug?: boolean
+  memory_hotplug?: boolean
 }
 
 export interface CreateVMRequest {
@@ -208,6 +210,15 @@ export const vmsApi = {
 
   clone: (id: string, data: { name: string; description?: string }) =>
     client.post(`/vms/${id}/clone`, data).then(res => res.data),
+
+  getHotplugStatus: (id: string) =>
+    client.get(`/vms/${id}/hotplug`).then(res => res.data),
+
+  hotplugCPU: (id: string, vcpus: number) =>
+    client.post(`/vms/${id}/hotplug/cpu`, { vcpus }).then(res => res.data),
+
+  hotplugMemory: (id: string, memory: number) =>
+    client.post(`/vms/${id}/hotplug/memory`, { memory }).then(res => res.data),
 
   batchStart: (vmIds: string[]) =>
     client.post('/vms/batch/start', { vm_ids: vmIds }).then(res => res.data),

@@ -6,24 +6,28 @@ import (
 )
 
 type VMConfig struct {
-	Name            string
-	UUID            string
-	MemoryMB        int
-	CPU             int
-	Architecture    string
-	MachineType     string
-	DiskPath        string
-	DiskFormat      string
-	ISOPath         string
-	BootOrder       string
-	MACAddress      string
-	VNCPort         int
-	VNCPassword     string
-	NetworkBridge   string
-	NetworkModel    string
-	UEFI            bool
-	CPUType         string
-	InstallMode     string
+	Name          string
+	UUID          string
+	MemoryMB      int
+	CPU           int
+	MaxCPU        int
+	MaxMemoryMB   int
+	Architecture  string
+	MachineType   string
+	DiskPath      string
+	DiskFormat    string
+	ISOPath       string
+	BootOrder     string
+	MACAddress    string
+	VNCPort       int
+	VNCPassword   string
+	NetworkBridge string
+	NetworkModel  string
+	UEFI          bool
+	CPUType       string
+	InstallMode   string
+	VCPUHotplug   bool
+	MemoryHotplug bool
 }
 
 func GenerateVMXML(config *VMConfig) string {
@@ -62,6 +66,25 @@ func GenerateVMXML(config *VMConfig) string {
 
 	bootDevs := parseBootOrder(config.BootOrder)
 
+	vcpuPlacement := "static"
+	vcpuCurrent := ""
+	maxVCPUs := config.CPU
+	if config.VCPUHotplug {
+		vcpuPlacement = "auto"
+		if config.MaxCPU > config.CPU {
+			maxVCPUs = config.MaxCPU
+		}
+		vcpuCurrent = fmt.Sprintf(" current='%d'", config.CPU)
+	}
+
+	currentMemory := config.MemoryMB
+	maxMemory := config.MemoryMB
+	if config.MemoryHotplug {
+		if config.MaxMemoryMB > config.MemoryMB {
+			maxMemory = config.MaxMemoryMB
+		}
+	}
+
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf(`<domain type='kvm'>
@@ -69,8 +92,8 @@ func GenerateVMXML(config *VMConfig) string {
   <uuid>%s</uuid>
   <memory unit='MiB'>%d</memory>
   <currentMemory unit='MiB'>%d</currentMemory>
-  <vcpu placement='static'>%d</vcpu>
-`, config.Name, config.UUID, config.MemoryMB, config.MemoryMB, config.CPU))
+  <vcpu placement='%s'%s>%d</vcpu>
+`, config.Name, config.UUID, maxMemory, currentMemory, vcpuPlacement, vcpuCurrent, maxVCPUs))
 
 	sb.WriteString(generateOSXML(arch, machineType, bootDevs, config.UEFI))
 

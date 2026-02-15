@@ -72,6 +72,9 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			vms.DELETE("/:id/mount-iso", vmHandler.UnmountISO)
 			vms.GET("/:id/mounted-iso", vmHandler.GetMountedISO)
 			vms.POST("/:id/clone", vmHandler.CloneVM)
+			vms.GET("/:id/hotplug", vmHandler.GetHotplugStatus)
+			vms.POST("/:id/hotplug/cpu", vmHandler.HotplugCPU)
+			vms.POST("/:id/hotplug/memory", vmHandler.HotplugMemory)
 
 			snapshots := vms.Group("/:id/snapshots")
 			{

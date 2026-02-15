@@ -84,7 +84,9 @@ const VMCreate: React.FC = () => {
         memory_allocated: values.memory,
         disk_allocated: values.disk,
         autostart: values.autostart || false,
-        installation_mode: installationMode
+        installation_mode: installationMode,
+        vcpu_hotplug: values.vcpu_hotplug || false,
+        memory_hotplug: values.memory_hotplug || false
       }
 
       if (installationMode === 'template') {
@@ -366,6 +368,32 @@ const VMCreate: React.FC = () => {
                   ]}
                 />
               </Form.Item>
+
+              <Form.Item
+                name="vcpu_hotplug"
+                label={t('form.vcpuHotplug')}
+                extra={t('helper.vcpuHotplugHelp')}
+              >
+                <Select
+                  options={[
+                    { label: t('option.disabled'), value: false },
+                    { label: t('option.enabled'), value: true }
+                  ]}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="memory_hotplug"
+                label={t('form.memoryHotplug')}
+                extra={t('helper.memoryHotplugHelp')}
+              >
+                <Select
+                  options={[
+                    { label: t('option.disabled'), value: false },
+                    { label: t('option.enabled'), value: true }
+                  ]}
+                />
+              </Form.Item>
             </Panel>
           </Collapse>
         )}
@@ -377,6 +405,32 @@ const VMCreate: React.FC = () => {
                 name="autostart"
                 label={t('form.autoStart')}
                 extra={t('helper.autoStartHelp')}
+              >
+                <Select
+                  options={[
+                    { label: t('option.disabled'), value: false },
+                    { label: t('option.enabled'), value: true }
+                  ]}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="vcpu_hotplug"
+                label={t('form.vcpuHotplug')}
+                extra={t('helper.vcpuHotplugHelp')}
+              >
+                <Select
+                  options={[
+                    { label: t('option.disabled'), value: false },
+                    { label: t('option.enabled'), value: true }
+                  ]}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="memory_hotplug"
+                label={t('form.memoryHotplug')}
+                extra={t('helper.memoryHotplugHelp')}
               >
                 <Select
                   options={[

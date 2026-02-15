@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm, Modal, Select, Spin, Input } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined, CopyOutlined, ClockCircleOutlined, CameraOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined, CopyOutlined, ClockCircleOutlined, CameraOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { vmsApi, isosApi, ISO } from '../../api/client'
 import type { VMDetail } from '../../api/client'
 import VMBackups from './Backups'
 import VMSnapshots from './Snapshots'
+import HotplugModal from '../../components/VM/HotplugModal'
 import dayjs from 'dayjs'
 
 const VMDetail: React.FC = () => {
@@ -24,6 +25,7 @@ const VMDetail: React.FC = () => {
   const [cloneName, setCloneName] = useState('')
   const [cloneDescription, setCloneDescription] = useState('')
   const [cloneLoading, setCloneLoading] = useState(false)
+  const [hotplugModalVisible, setHotplugModalVisible] = useState(false)
 
   const fetchVm = async () => {
     if (!id) return
@@ -308,6 +310,9 @@ const VMDetail: React.FC = () => {
             <Button icon={<CopyOutlined />} onClick={handleOpenCloneModal} disabled={locked}>
               {t('vm.clone')}
             </Button>
+            <Button icon={<ThunderboltOutlined />} onClick={() => setHotplugModalVisible(true)} disabled={locked}>
+              {t('hotplug.title')}
+            </Button>
             <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)} disabled={vm.status !== 'running' || locked}>
               {t('console.fullscreen')}
             </Button>
@@ -461,6 +466,14 @@ const VMDetail: React.FC = () => {
           </div>
         </Spin>
       </Modal>
+
+      <HotplugModal
+        vmId={id || ''}
+        vmName={vm?.name || ''}
+        visible={hotplugModalVisible}
+        onClose={() => setHotplugModalVisible(false)}
+        onSuccess={fetchVm}
+      />
     </div>
   )
 }

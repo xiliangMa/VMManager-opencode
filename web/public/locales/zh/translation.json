@@ -203,6 +203,27 @@
     "failed": "失败",
     "paused": "已暂停"
   },
+  "hotplug": {
+    "title": "热插拔资源调整",
+    "notEnabled": "热插拔未启用",
+    "notEnabledDesc": "此虚拟机未启用热插拔功能。请在创建虚拟机时启用热插拔选项。",
+    "cpuSection": "CPU 调整",
+    "memorySection": "内存调整",
+    "currentVcpus": "当前 CPU",
+    "maxVcpus": "最大 CPU",
+    "currentMemory": "当前内存",
+    "maxMemory": "最大内存",
+    "adjustVcpus": "调整 CPU 核心数",
+    "adjustMemory": "调整内存大小",
+    "cores": "核心",
+    "applyVcpu": "应用 CPU 配置",
+    "applyMemory": "应用内存配置",
+    "vcpuNotEnabled": "CPU 热插拔未启用",
+    "memoryNotEnabled": "内存热插拔未启用",
+    "vcpuSuccess": "CPU 配置已成功应用",
+    "memorySuccess": "内存配置已成功应用",
+    "fetchFailed": "获取热插拔状态失败"
+  },
   "batch": {
     "operations": "批量操作",
     "start": "批量启动",
@@ -842,6 +863,8 @@
     "finished": "已完成",
     "bootOrder": "启动顺序",
     "autoStart": "自动启动",
+    "vcpuHotplug": "CPU 热插拔",
+    "memoryHotplug": "内存热插拔",
     "currentPassword": "当前密码",
     "newPassword": "新密码",
     "confirmPassword": "确认密码",
@@ -939,7 +962,9 @@
     "uniqueIdentifier": "唯一标识符",
     "optionalDescription": "可选描述",
     "bootOrderHelp": "启动设备的顺序",
-    "autoStartHelp": "当主机系统启动时自动启动此虚拟机"
+    "autoStartHelp": "当主机系统启动时自动启动此虚拟机",
+    "vcpuHotplugHelp": "启用后可在运行时动态调整 CPU 核心数",
+    "memoryHotplugHelp": "启用后可在运行时动态调整内存大小"
   },
   "option": {
     "enabled": "已启用",

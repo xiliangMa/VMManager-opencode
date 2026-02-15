@@ -203,6 +203,27 @@
     "failed": "Failed",
     "paused": "Paused"
   },
+  "hotplug": {
+    "title": "Hotplug Resource Adjustment",
+    "notEnabled": "Hotplug Not Enabled",
+    "notEnabledDesc": "Hotplug is not enabled for this VM. Please enable hotplug options when creating the VM.",
+    "cpuSection": "CPU Adjustment",
+    "memorySection": "Memory Adjustment",
+    "currentVcpus": "Current CPU",
+    "maxVcpus": "Max CPU",
+    "currentMemory": "Current Memory",
+    "maxMemory": "Max Memory",
+    "adjustVcpus": "Adjust CPU cores",
+    "adjustMemory": "Adjust memory size",
+    "cores": "cores",
+    "applyVcpu": "Apply CPU Configuration",
+    "applyMemory": "Apply Memory Configuration",
+    "vcpuNotEnabled": "CPU hotplug not enabled",
+    "memoryNotEnabled": "Memory hotplug not enabled",
+    "vcpuSuccess": "CPU configuration applied successfully",
+    "memorySuccess": "Memory configuration applied successfully",
+    "fetchFailed": "Failed to fetch hotplug status"
+  },
   "batch": {
     "operations": "Batch Operations",
     "start": "Batch Start",
@@ -842,6 +863,8 @@
     "finished": "Finished",
     "bootOrder": "Boot Order",
     "autoStart": "Auto Start",
+    "vcpuHotplug": "CPU Hotplug",
+    "memoryHotplug": "Memory Hotplug",
     "currentPassword": "Current Password",
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
@@ -939,7 +962,9 @@
     "uniqueIdentifier": "Unique identifier",
     "optionalDescription": "Optional description",
     "bootOrderHelp": "Order of boot devices",
-    "autoStartHelp": "Automatically start this VM when host system boots"
+    "autoStartHelp": "Automatically start this VM when host system boots",
+    "vcpuHotplugHelp": "Enable dynamic CPU core adjustment at runtime",
+    "memoryHotplugHelp": "Enable dynamic memory adjustment at runtime"
   },
   "option": {
     "enabled": "Enabled",

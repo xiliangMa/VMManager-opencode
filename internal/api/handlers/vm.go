@@ -792,23 +792,36 @@ func generateISOConfig(isoPath string) string {
 }
 
 func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) string {
-	// Note: VNC password is disabled for WebSocket proxy compatibility
-	// The proxy forwards raw bytes and doesn't handle VNC auth protocol
-
 	arch := vm.Architecture
 	if arch == "" {
 		arch = "x86_64"
 	}
 
+	vcpuPlacement := "static"
+	vcpuCurrent := ""
+	maxVCPUs := vm.CPUAllocated
+	if vm.VCPUHotplug {
+		vcpuPlacement = "auto"
+		vcpuCurrent = fmt.Sprintf(" current='%d'", vm.CPUAllocated)
+	}
+
+	currentMemory := vm.MemoryAllocated
+	maxMemory := vm.MemoryAllocated
+	if vm.MemoryHotplug {
+		if vm.MemoryAllocated > 0 {
+			maxMemory = vm.MemoryAllocated
+		}
+	}
+
 	var archConfig string
 	switch arch {
 	case "arm64", "aarch64":
-		// ARM64 架构配置 - 在 x86 主机上使用 TCG 进行二进制翻译
 		archConfig = fmt.Sprintf(`<domain type='qemu'>
   <name>%s</name>
   <uuid>%s</uuid>
   <memory unit='MiB'>%d</memory>
-  <vcpu placement='static'>%d</vcpu>
+  <currentMemory unit='MiB'>%d</currentMemory>
+  <vcpu placement='%s'%s>%d</vcpu>
   <os>
     <type arch='aarch64' machine='virt'>hvm</type>
     <loader readonly='yes' type='pflash'>/usr/share/AAVMF/AAVMF_CODE.fd</loader>
@@ -863,13 +876,14 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
     <input type='mouse' bus='usb'>
     </input>
   </devices>
-</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
+</domain>`, vm.Name, vm.ID.String(), maxMemory, currentMemory, vcpuPlacement, vcpuCurrent, maxVCPUs, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
 	case "x86_64":
 		archConfig = fmt.Sprintf(`<domain type='qemu'>
   <name>%s</name>
   <uuid>%s</uuid>
   <memory unit='MiB'>%d</memory>
-  <vcpu placement='static'>%d</vcpu>
+  <currentMemory unit='MiB'>%d</currentMemory>
+  <vcpu placement='%s'%s>%d</vcpu>
   <os>
     <type arch='x86_64' machine='q35'>hvm</type>
     <loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE.fd</loader>
@@ -923,7 +937,7 @@ func generateDomainXML(vm models.VirtualMachine, diskPath, isoPath string) strin
     <input type='mouse' bus='virtio'>
     </input>
   </devices>
-</domain>`, vm.Name, vm.ID.String(), vm.MemoryAllocated, vm.CPUAllocated, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
+</domain>`, vm.Name, vm.ID.String(), maxMemory, currentMemory, vcpuPlacement, vcpuCurrent, maxVCPUs, vm.ID.String(), generateBootOrder(vm.BootOrder), diskPath, generateISOConfig(isoPath))
 	}
 
 	return archConfig
@@ -2000,5 +2014,182 @@ func (h *VMHandler) CloneVM(c *gin.Context) {
 		"name":        newVM.Name,
 		"description": newVM.Description,
 		"status":      newVM.Status,
+	}))
+}
+
+type HotplugCPURequest struct {
+	VCPUs int `json:"vcpus" binding:"required,min=1,max=128"`
+}
+
+func (h *VMHandler) HotplugCPU(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	var req HotplugCPURequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithCode(errors.ErrCodeBadRequest, t(c, "invalid_request")))
+		return
+	}
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithCode(errors.ErrCodeNotFound, t(c, "vm_not_found")))
+		return
+	}
+
+	if vm.LibvirtDomainUUID == "" {
+		c.JSON(http.StatusBadRequest, errors.FailWithCode(errors.ErrCodeBadRequest, t(c, "vm_not_in_libvirt")))
+		return
+	}
+
+	if !vm.VCPUHotplug {
+		c.JSON(http.StatusBadRequest, errors.FailWithCode(errors.ErrCodeBadRequest, t(c, "hotplug_not_enabled")))
+		return
+	}
+
+	if req.VCPUs > vm.CPUAllocated {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vcpu_exceeds_max"), fmt.Sprintf("max: %d", vm.CPUAllocated)))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithCode(errors.ErrCodeInternalError, t(c, "libvirt_not_connected")))
+		return
+	}
+
+	if err := h.libvirt.SetVCPUs(vm.LibvirtDomainUUID, uint(req.VCPUs)); err != nil {
+		log.Printf("[VM] Failed to hotplug CPU for VM %s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_hotplug_cpu"), err.Error()))
+		return
+	}
+
+	log.Printf("[VM] Hotplug CPU successful for VM %s: %d vCPUs", id, req.VCPUs)
+
+	if h.auditService != nil {
+		h.auditService.LogSuccess(c, "vm.hotplug_cpu", "virtual_machine", &vm.ID, map[string]interface{}{
+			"vcpus": req.VCPUs,
+		})
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"vcpus": req.VCPUs,
+	}))
+}
+
+type HotplugMemoryRequest struct {
+	Memory int `json:"memory" binding:"required,min=256"`
+}
+
+func (h *VMHandler) HotplugMemory(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	var req HotplugMemoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithCode(errors.ErrCodeBadRequest, t(c, "invalid_request")))
+		return
+	}
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithCode(errors.ErrCodeNotFound, t(c, "vm_not_found")))
+		return
+	}
+
+	if vm.LibvirtDomainUUID == "" {
+		c.JSON(http.StatusBadRequest, errors.FailWithCode(errors.ErrCodeBadRequest, t(c, "vm_not_in_libvirt")))
+		return
+	}
+
+	if !vm.MemoryHotplug {
+		c.JSON(http.StatusBadRequest, errors.FailWithCode(errors.ErrCodeBadRequest, t(c, "hotplug_not_enabled")))
+		return
+	}
+
+	if req.Memory > vm.MemoryAllocated {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "memory_exceeds_max"), fmt.Sprintf("max: %d MB", vm.MemoryAllocated)))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithCode(errors.ErrCodeInternalError, t(c, "libvirt_not_connected")))
+		return
+	}
+
+	memoryKB := uint64(req.Memory) * 1024
+	if err := h.libvirt.SetMemory(vm.LibvirtDomainUUID, memoryKB); err != nil {
+		log.Printf("[VM] Failed to hotplug memory for VM %s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_hotplug_memory"), err.Error()))
+		return
+	}
+
+	log.Printf("[VM] Hotplug memory successful for VM %s: %d MB", id, req.Memory)
+
+	if h.auditService != nil {
+		h.auditService.LogSuccess(c, "vm.hotplug_memory", "virtual_machine", &vm.ID, map[string]interface{}{
+			"memory": req.Memory,
+		})
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"memory": req.Memory,
+	}))
+}
+
+func (h *VMHandler) GetHotplugStatus(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithCode(errors.ErrCodeNotFound, t(c, "vm_not_found")))
+		return
+	}
+
+	if vm.LibvirtDomainUUID == "" {
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"vcpu_hotplug_enabled":   vm.VCPUHotplug,
+			"memory_hotplug_enabled": vm.MemoryHotplug,
+			"current_vcpus":          vm.CPUAllocated,
+			"current_memory":         vm.MemoryAllocated,
+			"max_vcpus":              vm.CPUAllocated,
+			"max_memory":             vm.MemoryAllocated,
+		}))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"vcpu_hotplug_enabled":   vm.VCPUHotplug,
+			"memory_hotplug_enabled": vm.MemoryHotplug,
+			"current_vcpus":          vm.CPUAllocated,
+			"current_memory":         vm.MemoryAllocated,
+			"max_vcpus":              vm.CPUAllocated,
+			"max_memory":             vm.MemoryAllocated,
+		}))
+		return
+	}
+
+	currentVCPUs, maxVCPUs, err := h.libvirt.GetVCPUInfo(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Failed to get vcpu info: %v", err)
+		currentVCPUs = uint(vm.CPUAllocated)
+		maxVCPUs = uint(vm.CPUAllocated)
+	}
+
+	currentMemoryKB, maxMemoryKB, err := h.libvirt.GetMemoryInfo(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Failed to get memory info: %v", err)
+		currentMemoryKB = uint64(vm.MemoryAllocated) * 1024
+		maxMemoryKB = uint64(vm.MemoryAllocated) * 1024
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"vcpu_hotplug_enabled":   vm.VCPUHotplug,
+		"memory_hotplug_enabled": vm.MemoryHotplug,
+		"current_vcpus":          currentVCPUs,
+		"current_memory":         currentMemoryKB / 1024,
+		"max_vcpus":              maxVCPUs,
+		"max_memory":             maxMemoryKB / 1024,
 	}))
 }

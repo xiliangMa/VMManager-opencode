@@ -933,3 +933,159 @@ func findSubstring(xml, startTag, endTag string) string {
 	}
 	return ""
 }
+
+func (c *Client) SetVCPUs(domainUUID string, vcpus uint) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	state, _, err := domain.GetState()
+	if err != nil {
+		return fmt.Errorf("failed to get domain state: %w", err)
+	}
+
+	if state == libvirt.DOMAIN_RUNNING {
+		err = domain.SetVcpusFlags(vcpus, libvirt.DOMAIN_VCPU_LIVE|libvirt.DOMAIN_VCPU_CONFIG)
+		if err != nil {
+			return fmt.Errorf("failed to set live vcpus: %w", err)
+		}
+		log.Printf("[LIBVIRT] Set live vcpus to %d for domain %s", vcpus, domainUUID)
+	} else {
+		err = domain.SetVcpusFlags(vcpus, libvirt.DOMAIN_VCPU_CONFIG)
+		if err != nil {
+			return fmt.Errorf("failed to set config vcpus: %w", err)
+		}
+		log.Printf("[LIBVIRT] Set config vcpus to %d for domain %s", vcpus, domainUUID)
+	}
+
+	return nil
+}
+
+func (c *Client) SetMemory(domainUUID string, memoryKB uint64) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	state, _, err := domain.GetState()
+	if err != nil {
+		return fmt.Errorf("failed to get domain state: %w", err)
+	}
+
+	if state == libvirt.DOMAIN_RUNNING {
+		err = domain.SetMemoryFlags(memoryKB, libvirt.DOMAIN_MEM_LIVE|libvirt.DOMAIN_MEM_CONFIG)
+		if err != nil {
+			return fmt.Errorf("failed to set live memory: %w", err)
+		}
+		log.Printf("[LIBVIRT] Set live memory to %d KB for domain %s", memoryKB, domainUUID)
+	} else {
+		err = domain.SetMemoryFlags(memoryKB, libvirt.DOMAIN_MEM_CONFIG)
+		if err != nil {
+			return fmt.Errorf("failed to set config memory: %w", err)
+		}
+		log.Printf("[LIBVIRT] Set config memory to %d KB for domain %s", memoryKB, domainUUID)
+	}
+
+	return nil
+}
+
+func (c *Client) SetMaxMemory(domainUUID string, maxMemoryKB uint64) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	err = domain.SetMemoryFlags(maxMemoryKB, libvirt.DOMAIN_MEM_MAXIMUM)
+	if err != nil {
+		return fmt.Errorf("failed to set max memory: %w", err)
+	}
+
+	log.Printf("[LIBVIRT] Set max memory to %d KB for domain %s", maxMemoryKB, domainUUID)
+	return nil
+}
+
+func (c *Client) GetVCPUInfo(domainUUID string) (current uint, max uint, err error) {
+	if c.conn == nil {
+		return 0, 0, fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	info, err := domain.GetInfo()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get domain info: %w", err)
+	}
+
+	xmlDesc, err := domain.GetXMLDesc(0)
+	if err != nil {
+		return info.NrVirtCpu, 0, nil
+	}
+
+	maxVCPUsStr := findSubstring(xmlDesc, "<vcpu current='yes'>", "</vcpu>")
+	if maxVCPUsStr == "" {
+		maxVCPUsStr = findSubstring(xmlDesc, "<vcpu>", "</vcpu>")
+	}
+	var maxVCPUs uint
+	fmt.Sscanf(maxVCPUsStr, "%d", &maxVCPUs)
+
+	return info.NrVirtCpu, maxVCPUs, nil
+}
+
+func (c *Client) GetMemoryInfo(domainUUID string) (currentKB uint64, maxKB uint64, err error) {
+	if c.conn == nil {
+		return 0, 0, fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	xmlDesc, err := domain.GetXMLDesc(0)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	currentKB = parseMemoryValue(xmlDesc, "<currentMemory unit='KiB'>", "</currentMemory>")
+	maxKB = parseMemoryValue(xmlDesc, "<memory unit='KiB'>", "</memory>")
+
+	return currentKB, maxKB, nil
+}
+
+func parseMemoryValue(xml, startTag, endTag string) uint64 {
+	valueStr := findSubstring(xml, startTag, endTag)
+	if valueStr == "" {
+		valueStr = findSubstring(xml, strings.Replace(startTag, "'KiB'", "'k'", 1), strings.Replace(endTag, "'KiB'", "'k'", 1))
+	}
+	if valueStr == "" {
+		valueStr = findSubstring(xml, "<currentMemory>", "</currentMemory>")
+	}
+	if valueStr == "" {
+		valueStr = findSubstring(xml, "<memory>", "</memory>")
+	}
+
+	var value uint64
+	fmt.Sscanf(valueStr, "%d", &value)
+	return value
+}
