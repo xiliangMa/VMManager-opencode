@@ -24,6 +24,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	statsHandler := handlers.NewVMStatsHandler(repos.VMStats)
 	alertRuleHandler := handlers.NewAlertRuleHandler(repos.AlertRule)
 	alertHistoryHandler := handlers.NewAlertHistoryHandler(repos.AlertHistory)
+	isoHandler := handlers.NewISOHandler(repos.ISO, repos.ISOUpload)
 
 	api := router.Group("/api/v1")
 	{
@@ -94,6 +95,22 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 				uploads.POST("/complete/:id", middleware.AdminRequired(), templateHandler.CompleteTemplateUpload)
 				uploads.DELETE("/:id", middleware.AdminRequired(), templateHandler.AbortUpload)
 				uploads.GET("/:id/status", middleware.AdminRequired(), templateHandler.GetUploadStatus)
+			}
+		}
+
+		isos := api.Group("/isos")
+		{
+			isos.Use(jwtMiddleware)
+			isos.GET("", isoHandler.ListISOs)
+			isos.GET("/:id", isoHandler.GetISO)
+			isos.DELETE("/:id", middleware.AdminRequired(), isoHandler.DeleteISO)
+
+			isoUploads := isos.Group("/upload")
+			{
+				isoUploads.POST("/init", middleware.AdminRequired(), isoHandler.InitISOUpload)
+				isoUploads.POST("/part", middleware.AdminRequired(), isoHandler.UploadISOPart)
+				isoUploads.POST("/complete", middleware.AdminRequired(), isoHandler.CompleteISOUpload)
+				isoUploads.GET("/status", middleware.AdminRequired(), isoHandler.GetUploadStatus)
 			}
 		}
 

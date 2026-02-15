@@ -227,3 +227,54 @@ func (u *TemplateUpload) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type ISO struct {
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name         string     `gorm:"size:255;not null" json:"name"`
+	Description  string     `gorm:"type:text" json:"description"`
+	FileName     string     `gorm:"size:255;not null" json:"fileName"`
+	FileSize     int64      `gorm:"not null" json:"fileSize"`
+	ISOPath      string     `gorm:"size:500;not null" json:"isoPath"`
+	MD5          string     `gorm:"size:32" json:"md5"`
+	SHA256       string     `gorm:"size:64" json:"sha256"`
+	OSType       string     `gorm:"size:50" json:"osType"`
+	OSVersion    string     `gorm:"size:50" json:"osVersion"`
+	Architecture string     `gorm:"size:20;default:'x86_64'" json:"architecture"`
+	Status       string     `gorm:"size:20;default:'active'" json:"status"`
+	UploadedBy   *uuid.UUID `gorm:"type:uuid" json:"uploadedBy"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
+}
+
+func (i *ISO) BeforeCreate(tx *gorm.DB) (err error) {
+	if i.ID == uuid.Nil {
+		i.ID = uuid.New()
+	}
+	return
+}
+
+type ISOUpload struct {
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name         string     `gorm:"size:255;not null" json:"name"`
+	Description  string     `gorm:"type:text" json:"description"`
+	FileName     string     `gorm:"size:255;not null" json:"fileName"`
+	FileSize     int64      `gorm:"not null" json:"fileSize"`
+	Architecture string     `gorm:"size:20" json:"architecture"`
+	OSType       string     `gorm:"size:50" json:"osType"`
+	OSVersion    string     `gorm:"size:50" json:"osVersion"`
+	UploadPath   string     `gorm:"size:500" json:"uploadPath"`
+	TempPath     string     `gorm:"size:500" json:"tempPath"`
+	Status       string     `gorm:"size:20;default:'uploading'" json:"status"`
+	Progress     int        `gorm:"default:0" json:"progress"`
+	ErrorMessage string     `gorm:"type:text" json:"errorMessage"`
+	UploadedBy   *uuid.UUID `gorm:"type:uuid" json:"uploadedBy"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	CompletedAt  *time.Time `json:"completedAt"`
+}
+
+func (u *ISOUpload) BeforeCreate(tx *gorm.DB) (err error) {
+	if u.ID == uuid.Nil {
+		u.ID = uuid.New()
+	}
+	return
+}

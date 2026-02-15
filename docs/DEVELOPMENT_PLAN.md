@@ -1,0 +1,583 @@
+# VMManager 开发计划
+
+## 项目目标
+
+VMManager 主要实现 X86 平台虚拟机管理，支持基于模板（国产凝思系统 arm64）创建虚拟机直接启动，以及 ISO 上传和基于 ISO 安装系统的虚拟机创建功能。
+
+## 当前实现状态
+
+> **检查日期**: 2026-02-15
+> **检查方式**: 代码审查和功能验证
+
+### 已实现功能
+
+#### 虚拟机管理
+- ✅ 虚拟机创建（基于模板）- 已验证 [vm.go:82-178](internal/api/handlers/vm.go)
+- ✅ 虚拟机生命周期管理（启动、停止、重启、暂停、恢复）- 已验证 [vm.go](internal/api/handlers/vm.go)
+- ✅ VNC/SPICE 控制台访问 - 已验证 [Console.tsx](web/src/pages/VMs/Console.tsx)
+- ✅ 虚拟机资源监控 - 已验证 [Monitor.tsx](web/src/pages/VMs/Monitor.tsx)
+- ⏸️ 快照管理 - **暂不开发**
+- ✅ 批量操作 - 已验证 [batch.go](internal/api/handlers/batch.go)
+- ✅ 虚拟机列表和详情展示 - 已验证
+- ✅ 虚拟机搜索和筛选 - 已验证
+
+#### 模板管理
+- ✅ 模板上传（QCOW2、VMDK、OVA 格式）- 已验证 [template.go](internal/api/handlers/template.go)
+  - 支持分片上传、断点续传
+  - 支持 MD5 校验
+- ✅ 模板列表和详情 - 已验证
+- ✅ 模板分类和筛选 - 已验证
+- ✅ 模板使用统计 - 已验证
+- ⚠️ 模板下载功能 - **需要验证**
+  - 后端接口存在，但前端下载功能需要验证
+
+#### 用户管理
+- ✅ 用户注册和登录 - 已验证 [auth.go](internal/api/handlers/auth.go)
+- ✅ RBAC 权限控制 - 已验证（admin/user 角色）
+- ✅ 资源配额管理 - 已验证 [admin.go](internal/api/handlers/admin.go)
+- ✅ 审计日志 - 已验证 [AuditLogs.tsx](web/src/pages/Admin/AuditLogs.tsx)
+- ✅ 用户头像上传 - 已验证 [Profile.tsx](web/src/pages/Settings/Profile.tsx)
+- ✅ 用户资料管理 - 已验证
+
+#### 系统管理
+- ✅ 系统监控（CPU、内存、磁盘）- 已验证 [index.tsx](web/src/pages/Dashboard/index.tsx)
+- ✅ 告警规则配置 - 已验证 [AlertRules.tsx](web/src/pages/Admin/AlertRules.tsx)
+- ✅ 告警历史记录 - 已验证 [AlertHistory.tsx](web/src/pages/Admin/AlertHistory.tsx)
+- ✅ 通知管理（邮件、钉钉、Webhook）- 已验证 [manager.go](internal/notification/manager.go)
+
+#### 国际化
+- ✅ 中文支持 - 已验证 [zh/translation.json](web/public/locales/zh/translation.json)
+- ✅ 英文支持 - 已验证 [en/translation.json](web/public/locales/en/translation.json)
+- ✅ 后端国际化 - 已验证 [zh-CN.json](translations/zh-CN.json)
+
+### 发现的问题
+
+1. **模板下载功能需要验证**
+   - 位置：前端下载按钮和后端接口
+   - 问题：需要验证下载功能是否正常工作
+
+2. **虚拟机创建后的实际启动**
+   - 位置：`internal/api/handlers/vm.go`
+   - 问题：创建虚拟机后只保存到数据库，未实际调用 Libvirt 创建域
+   - 建议：需要实现异步任务来创建实际的虚拟机
+
+### 暂不开发的功能
+
+1. **快照管理**
+   - 原因：优先级较低，暂不开发
+   - 现状：API 接口已存在但未实现实际的 Libvirt 快照操作
+   - 后续：根据用户需求再决定是否开发
+
+### 未实现功能
+
+#### ISO 管理
+- ❌ ISO 文件上传
+- ❌ ISO 文件列表管理
+- ❌ ISO 文件删除
+- ❌ ISO 文件校验
+
+#### X86 架构支持
+- ❌ X86 虚拟机创建
+- ❌ X86 模板管理
+- ❌ X86 架构检测和适配
+
+#### 基于 ISO 的虚拟机创建
+- ❌ ISO 选择界面
+- ❌ 安装向导
+- ❌ 自动化安装脚本
+- ❌ 安装进度监控
+
+#### 高级虚拟机功能
+- ❌ 虚拟机克隆
+- ❌ 虚拟机迁移
+- ❌ 虚拟机备份和恢复
+- ❌ 虚拟机导入导出
+
+#### 网络管理
+- ❌ 虚拟网络创建
+- ❌ 网络拓扑管理
+- ❌ IP 地址池管理
+- ❌ 网络安全组
+
+#### 存储管理
+- ❌ 存储池管理
+- ❌ 存储卷管理
+- ❌ 存储配额管理
+
+## 开发计划
+
+### 第一阶段：ISO 管理和安装功能（优先级：高）
+
+**目标**：实现 ISO 文件管理和基于 ISO 创建虚拟机
+
+#### 1.1 ISO 文件管理
+
+**后端开发**：
+- [ ] 创建 ISO 数据模型
+  - 文件位置：`internal/models/models.go`
+  - 字段：ID、名称、大小、架构、操作系统类型、版本、校验和、上传者、上传时间、状态
+- [ ] 实现 ISO 上传接口
+  - 文件位置：`internal/api/handlers/iso.go`
+  - 接口：POST `/api/isos/upload`
+  - 功能：支持大文件上传、断点续传、MD5 校验
+- [ ] 实现 ISO 列表接口
+  - 接口：GET `/api/isos`
+  - 功能：分页、搜索、筛选
+- [ ] 实现 ISO 删除接口
+  - 接口：DELETE `/api/isos/:id`
+  - 功能：检查是否被虚拟机使用
+- [ ] 实现 ISO 详情接口
+  - 接口：GET `/api/isos/:id`
+- [ ] 创建 ISO 存储仓库
+  - 文件位置：`internal/repository/iso_repository.go`
+
+**前端开发**：
+- [ ] 创建 ISO 管理页面
+  - 文件位置：`web/src/pages/ISO/List.tsx`
+  - 功能：ISO 列表、搜索、上传、删除
+- [ ] 实现 ISO 上传组件
+  - 支持拖拽上传
+  - 显示上传进度
+  - 校验文件类型
+- [ ] 添加路由和菜单项
+  - 文件位置：`web/src/router/index.tsx`、`web/src/components/Layout/MainLayout.tsx`
+
+**数据库迁移**：
+- [ ] 创建 ISO 表
+  - 文件位置：`migrations/YYYYMMDD_add_iso_table.sql`
+
+**测试**：
+- [ ] 单元测试
+- [ ] 集成测试
+- [ ] 上传大文件测试
+
+**预计工时**：3-5 天
+
+#### 1.2 基于 ISO 创建虚拟机
+
+**后端开发**：
+- [ ] 扩展虚拟机创建接口
+  - 文件位置：`internal/api/handlers/vm.go`
+  - 添加 `iso_id` 参数
+  - 支持 `installation_mode`（template/iso）
+- [ ] 实现 ISO 安装逻辑
+  - 创建临时虚拟机配置
+  - 挂载 ISO 文件
+  - 配置启动顺序（CD-ROM 优先）
+  - 生成 VNC 访问信息
+- [ ] 实现安装进度监控
+  - WebSocket 推送安装状态
+  - 检测安装完成信号
+- [ ] 实现自动化安装脚本支持
+  - 支持 Cloud-init
+  - 支持 Kickstart（X86）
+  - 支持 Preseed（Debian/Ubuntu）
+
+**前端开发**：
+- [ ] 扩展虚拟机创建表单
+  - 文件位置：`web/src/pages/VMs/Create.tsx`
+  - 添加安装模式选择（模板/ISO）
+  - ISO 选择器
+  - 安装配置选项
+- [ ] 实现安装向导界面
+  - 步骤 1：选择安装方式
+  - 步骤 2：配置虚拟机资源
+  - 步骤 3：选择 ISO 和安装选项
+  - 步骤 4：确认和创建
+- [ ] 实现安装进度显示
+  - 实时显示安装状态
+  - 集成 VNC 控制台
+  - 安装完成通知
+
+**数据库迁移**：
+- [ ] 扩展虚拟机表
+  - 文件位置：`migrations/YYYYMMDD_add_vm_installation_fields.sql`
+  - 添加字段：`installation_mode`、`iso_id`、`installation_status`、`installation_script`
+
+**测试**：
+- [ ] ISO 安装流程测试
+- [ ] 不同操作系统安装测试
+- [ ] 安装失败回滚测试
+
+**预计工时**：5-7 天
+
+### 第二阶段：X86 架构支持（优先级：高）
+
+**目标**：完善 X86 平台虚拟机管理功能
+
+#### 2.1 X86 虚拟机支持
+
+**后端开发**：
+- [ ] 扩展虚拟机模型
+  - 添加架构字段（arm64/x86_64）
+  - 添加 CPU 类型字段
+  - 添加机器类型字段
+- [ ] 实现 X86 虚拟机创建
+  - 文件位置：`internal/libvirt/client.go`
+  - 支持 X86 CPU 类型配置
+  - 支持 X86 机器类型（pc、q35）
+  - 支持 UEFI 启动
+- [ ] 实现 X86 模板支持
+  - 支持 X86 模板上传
+  - 自动检测模板架构
+- [ ] 实现架构自动检测
+  - 检测宿主机架构
+  - 根据模板自动设置虚拟机架构
+
+**前端开发**：
+- [ ] 添加架构选择功能
+  - 虚拟机创建时选择架构
+  - 模板上传时选择架构
+- [ ] 架构兼容性提示
+  - 提示用户架构兼容性
+  - 显示架构图标
+
+**数据库迁移**：
+- [ ] 添加架构字段
+  - 文件位置：`migrations/YYYYMMDD_add_architecture_column.sql`（已存在）
+
+**测试**：
+- [ ] X86 虚拟机创建测试
+- [ ] X86 模板测试
+- [ ] 跨架构兼容性测试
+
+**预计工时**：3-4 天
+
+#### 2.2 国产凝思系统支持
+
+**后端开发**：
+- [ ] 创建凝思系统模板
+  - 配置 ARM64 架构
+  - 配置国产 CPU 类型
+  - 配置系统优化参数
+- [ ] 实现凝思系统自动化安装
+  - 支持自动化安装脚本
+  - 支持系统初始化配置
+
+**前端开发**：
+- [ ] 添加凝思系统模板
+  - 模板图标和截图
+  - 模板说明文档
+
+**测试**：
+- [ ] 凝思系统安装测试
+- [ ] 凝思系统功能测试
+
+**预计工时**：2-3 天
+
+### 第三阶段：高级虚拟机功能（优先级：中）
+
+**目标**：实现虚拟机克隆、迁移、备份等高级功能
+
+#### 3.1 虚拟机克隆
+
+**后端开发**：
+- [ ] 实现虚拟机克隆接口
+  - 完整克隆（复制所有磁盘）
+  - 链接克隆（使用 backing file）
+- [ ] 实现克隆进度监控
+- [ ] 实现克隆后配置修改
+  - MAC 地址重新生成
+  - 主机名修改
+  - IP 地址配置
+
+**前端开发**：
+- [ ] 虚拟机克隆界面
+  - 克隆类型选择
+  - 克隆配置选项
+  - 克隆进度显示
+
+**预计工时**：3-4 天
+
+#### 3.2 虚拟机迁移
+
+**后端开发**：
+- [ ] 实现虚拟机迁移接口
+  - 在线迁移（Live Migration）
+  - 离线迁移
+- [ ] 实现迁移前置检查
+  - 检查目标主机资源
+  - 检查网络连通性
+  - 检查存储兼容性
+- [ ] 实现迁移进度监控
+
+**前端开发**：
+- [ ] 虚拟机迁移界面
+  - 目标主机选择
+  - 迁移类型选择
+  - 迁移进度显示
+
+**预计工时**：5-7 天
+
+#### 3.3 虚拟机备份和恢复
+
+**后端开发**：
+- [ ] 实现虚拟机备份接口
+  - 完整备份
+  - 增量备份
+  - 快照备份
+- [ ] 实现备份存储管理
+- [ ] 实现虚拟机恢复接口
+- [ ] 实现备份计划管理
+
+**前端开发**：
+- [ ] 备份管理界面
+  - 备份列表
+  - 创建备份
+  - 恢复虚拟机
+  - 备份计划配置
+
+**预计工时**：5-7 天
+
+### 第四阶段：网络管理（优先级：中）
+
+**目标**：实现虚拟网络管理功能
+
+#### 4.1 虚拟网络管理
+
+**后端开发**：
+- [ ] 创建虚拟网络模型
+- [ ] 实现虚拟网络创建接口
+  - NAT 网络
+  - 桥接网络
+  - 隔离网络
+- [ ] 实现虚拟网络编辑接口
+- [ ] 实现虚拟网络删除接口
+- [ ] 实现虚拟网络列表接口
+
+**前端开发**：
+- [ ] 虚拟网络管理界面
+  - 网络列表
+  - 网络拓扑图
+  - 网络配置
+
+**预计工时**：5-7 天
+
+#### 4.2 IP 地址管理
+
+**后端开发**：
+- [ ] 实现 IP 地址池管理
+- [ ] 实现 IP 地址分配
+- [ ] 实现 IP 地址回收
+- [ ] 实现 IP 地址冲突检测
+
+**前端开发**：
+- [ ] IP 地址管理界面
+  - 地址池列表
+  - 地址分配情况
+  - 地址使用统计
+
+**预计工时**：3-4 天
+
+### 第五阶段：存储管理（优先级：低）
+
+**目标**：实现存储池和存储卷管理
+
+#### 5.1 存储池管理
+
+**后端开发**：
+- [ ] 创建存储池模型
+- [ ] 实现存储池创建接口
+  - 目录存储池
+  - LVM 存储池
+  - Ceph 存储池
+- [ ] 实现存储池编辑接口
+- [ ] 实现存储池删除接口
+- [ ] 实现存储池列表接口
+
+**前端开发**：
+- [ ] 存储池管理界面
+  - 存储池列表
+  - 存储池配置
+  - 存储池监控
+
+**预计工时**：5-7 天
+
+#### 5.2 存储卷管理
+
+**后端开发**：
+- [ ] 实现存储卷创建接口
+- [ ] 实现存储卷删除接口
+- [ ] 实现存储卷扩容接口
+- [ ] 实现存储卷克隆接口
+
+**前端开发**：
+- [ ] 存储卷管理界面
+  - 存储卷列表
+  - 存储卷操作
+  - 存储卷监控
+
+**预计工时**：3-4 天
+
+## 技术要点
+
+### ISO 上传实现
+
+```go
+// 大文件上传，支持断点续传
+func (h *ISOHandler) UploadISO(c *gin.Context) {
+    // 1. 接收文件
+    file, header, err := c.Request.FormFile("file")
+    
+    // 2. 计算文件 MD5
+    md5Hash := md5.New()
+    tee := io.TeeReader(file, md5Hash)
+    
+    // 3. 保存文件
+    isoPath := filepath.Join(h.isoStoragePath, header.Filename)
+    dst, _ := os.Create(isoPath)
+    io.Copy(dst, tee)
+    
+    // 4. 保存到数据库
+    iso := models.ISO{
+        Name: header.Filename,
+        Size: header.Size,
+        MD5: hex.EncodeToString(md5Hash.Sum(nil)),
+        Status: "active",
+    }
+    h.isoRepo.Create(c, &iso)
+    
+    c.JSON(200, gin.H{"code": 0, "data": iso})
+}
+```
+
+### X86 虚拟机创建
+
+```go
+// X86 虚拟机 XML 配置
+func generateX86XML(vm *models.VirtualMachine) string {
+    return fmt.Sprintf(`
+<domain type='kvm'>
+  <name>%s</name>
+  <memory unit='MiB'>%d</memory>
+  <vcpu>%d</vcpu>
+  <os>
+    <type arch='x86_64' machine='q35'>hvm</type>
+    <boot dev='hd'/>
+    <boot dev='cdrom'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode='host-passthrough'/>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='%s'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='%s'/>
+      <target dev='hda' bus='ide'/>
+      <readonly/>
+    </disk>
+  </devices>
+</domain>`, vm.Name, vm.MemoryAllocated, vm.CPUAllocated, vm.DiskPath, vm.ISOPath)
+}
+```
+
+### ISO 安装流程
+
+```go
+// ISO 安装虚拟机
+func (h *VMHandler) CreateVMFromISO(c *gin.Context) {
+    // 1. 创建虚拟机记录
+    vm := models.VirtualMachine{
+        Name: req.Name,
+        InstallationMode: "iso",
+        ISOID: &isoID,
+        InstallationStatus: "installing",
+    }
+    
+    // 2. 创建磁盘文件
+    diskPath := createDisk(vm.DiskAllocated)
+    
+    // 3. 生成虚拟机 XML（CD-ROM 启动）
+    xml := generateVMXMLWithISO(vm, iso.Path)
+    
+    // 4. 定义并启动虚拟机
+    domain := h.libvirtClient.DefineXML(xml)
+    domain.Create()
+    
+    // 5. 启动安装监控
+    go monitorInstallation(vm.ID, domain)
+    
+    c.JSON(200, gin.H{"code": 0, "data": vm})
+}
+```
+
+## 开发环境
+
+### Mac mini M4 开发环境
+
+开发主要在 Mac mini M4 (ARM64) 上进行，需要注意：
+
+1. **Libvirt 安装**：
+   ```bash
+   brew install libvirt qemu
+   brew services start libvirt
+   ```
+
+2. **架构限制**：
+   - Mac mini M4 (ARM64) 无法运行 X86 虚拟机
+   - 可以运行 ARM64 虚拟机进行测试
+   - X86 功能需要远程连接到 X86 服务器进行测试
+
+3. **远程 Libvirt 配置（用于 X86 测试）**：
+   ```yaml
+   libvirt:
+     uri: "qemu+ssh://user@x86-server/system"
+   ```
+
+4. **本地 ARM64 虚拟机测试**：
+   - 可以使用本地 Libvirt 创建 ARM64 虚拟机
+   - 支持测试虚拟机创建、启动、停止等基本功能
+   - 支持测试 VNC 控制台访问
+
+### 测试环境
+
+建议搭建 X86 测试服务器：
+- 安装 Libvirt 和 QEMU
+- 配置 SSH 免密登录
+- 配置防火墙规则
+
+## 里程碑
+
+- **里程碑 1**（预计 2 周）：完成 ISO 管理和基于 ISO 创建虚拟机功能
+- **里程碑 2**（预计 3 周）：完成 X86 架构支持和国产凝思系统模板
+- **里程碑 3**（预计 5 周）：完成虚拟机克隆、迁移、备份功能
+- **里程碑 4**（预计 7 周）：完成网络管理功能
+- **里程碑 5**（预计 8 周）：完成存储管理功能
+
+## 风险和挑战
+
+1. **跨架构兼容性**：ARM64 开发环境无法直接测试 X86 功能
+   - 解决方案：搭建远程 X86 测试环境
+
+2. **大文件上传**：ISO 文件通常较大（数 GB）
+   - 解决方案：实现断点续传、分片上传
+
+3. **安装自动化**：不同操作系统安装流程差异大
+   - 解决方案：支持多种自动化安装方案（Cloud-init、Kickstart、Preseed）
+
+4. **性能优化**：虚拟机操作可能耗时较长
+   - 解决方案：使用异步任务、WebSocket 推送进度
+
+## 后续规划
+
+1. **容器支持**：支持 LXC 容器管理
+2. **Kubernetes 集成**：支持 K8s 集群管理
+3. **多租户增强**：更完善的租户隔离和资源限制
+4. **监控告警增强**：集成 Prometheus、Grafana
+5. **自动化运维**：支持 Ansible、Terraform 集成
+6. **AI 运维**：智能资源调度、异常检测
+
+## 参考资源
+
+- [Libvirt 官方文档](https://libvirt.org/docs.html)
+- [QEMU 官方文档](https://www.qemu.org/docs/master/)
+- [Cloud-init 文档](https://cloudinit.readthedocs.io/)
+- [Kickstart 文档](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/performing_an_advanced_rhel_installation/index)

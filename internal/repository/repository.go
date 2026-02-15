@@ -13,6 +13,8 @@ type Repositories struct {
 	TemplateUpload *TemplateUploadRepository
 	AlertRule      *AlertRuleRepository
 	AlertHistory   *AlertHistoryRepository
+	ISO            *ISORepository
+	ISOUpload      *ISOUploadRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -25,6 +27,8 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		TemplateUpload: NewTemplateUploadRepository(db),
 		AlertRule:      NewAlertRuleRepository(db),
 		AlertHistory:   NewAlertHistoryRepository(db),
+		ISO:            NewISORepository(db),
+		ISOUpload:      NewISOUploadRepository(db),
 	}
 }
 

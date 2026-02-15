@@ -411,3 +411,80 @@ export const alertHistoryApi = {
   getStats: () =>
     client.get('/admin/alert-histories/stats').then(res => res.data)
 }
+
+export interface ISO {
+  id: string
+  name: string
+  description?: string
+  fileName: string
+  fileSize: number
+  isoPath: string
+  md5?: string
+  sha256?: string
+  osType?: string
+  osVersion?: string
+  architecture: string
+  status: string
+  uploadedBy?: string
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface ISOUpload {
+  id: string
+  name: string
+  description?: string
+  fileName: string
+  fileSize: number
+  architecture?: string
+  osType?: string
+  osVersion?: string
+  uploadPath?: string
+  status: string
+  progress: number
+  errorMessage?: string
+  uploadedBy?: string
+  createdAt: string
+  completedAt?: string
+}
+
+export const isosApi = {
+  list: (params?: { page?: number; page_size?: number; search?: string; architecture?: string }) =>
+    client.get('/isos', { params }).then(res => res.data),
+
+  get: (id: string) =>
+    client.get(`/isos/${id}`).then(res => res.data),
+
+  delete: (id: string) =>
+    client.delete(`/isos/${id}`).then(res => res.data),
+
+  initUpload: (data: {
+    name: string
+    description?: string
+    file_name: string
+    file_size: number
+    architecture?: string
+    os_type?: string
+    os_version?: string
+    chunk_size: number
+  }) =>
+    client.post('/isos/upload/init', data).then(res => res.data),
+
+  uploadPart: (uploadId: string, chunkIndex: number, totalChunks: number, formData: FormData) =>
+    client.post(`/isos/upload/part?upload_id=${uploadId}&chunk_index=${chunkIndex}&total_chunks=${totalChunks}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data),
+
+  completeUpload: (uploadId: string, data: {
+    total_chunks: number
+    checksum?: string
+    name?: string
+    description?: string
+    os_type?: string
+    os_version?: string
+  }) =>
+    client.post(`/isos/upload/complete?upload_id=${uploadId}`, data).then(res => res.data),
+
+  getUploadStatus: (uploadId: string) =>
+    client.get(`/isos/upload/status?upload_id=${uploadId}`).then(res => res.data)
+}

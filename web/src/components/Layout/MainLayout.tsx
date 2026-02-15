@@ -12,7 +12,8 @@ import {
   MenuUnfoldOutlined,
   TranslationOutlined,
   BellOutlined,
-  HistoryOutlined
+  HistoryOutlined,
+  CloudUploadOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
@@ -44,6 +45,11 @@ const MainLayout: React.FC = () => {
       key: '/templates',
       icon: <FileOutlined />,
       label: t('template.templateList')
+    },
+    {
+      key: '/isos',
+      icon: <CloudUploadOutlined />,
+      label: t('iso.isoList')
     },
     ...(user?.role === 'admin' ? [
       {

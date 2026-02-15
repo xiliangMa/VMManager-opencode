@@ -277,6 +277,54 @@ func Migrate(db *gorm.DB) error {
 	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS iso_path VARCHAR(500);
 	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS install_script TEXT;
 	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS post_install_script TEXT;
+
+	-- Migration: Create ISO tables
+	CREATE TABLE IF NOT EXISTS isos (
+		id UUID PRIMARY KEY,
+		name VARCHAR(255) NOT NULL,
+		description TEXT,
+		file_name VARCHAR(255) NOT NULL,
+		file_size BIGINT NOT NULL,
+		iso_path VARCHAR(500) NOT NULL,
+		md5 VARCHAR(32),
+		sha256 VARCHAR(64),
+		os_type VARCHAR(50),
+		os_version VARCHAR(50),
+		architecture VARCHAR(20) DEFAULT 'x86_64',
+		status VARCHAR(20) DEFAULT 'active',
+		uploaded_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ
+	);
+	
+	CREATE TABLE IF NOT EXISTS iso_uploads (
+		id UUID PRIMARY KEY,
+		name VARCHAR(255) NOT NULL,
+		description TEXT,
+		file_name VARCHAR(255) NOT NULL,
+		file_size BIGINT NOT NULL,
+		architecture VARCHAR(20),
+		os_type VARCHAR(50),
+		os_version VARCHAR(50),
+		upload_path VARCHAR(500),
+		temp_path VARCHAR(500),
+		status VARCHAR(20) DEFAULT 'uploading',
+		progress BIGINT DEFAULT 0,
+		error_message TEXT,
+		uploaded_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		completed_at TIMESTAMPTZ
+	);
+
+	-- Migration: Add ISO reference to virtual_machines
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS iso_id UUID;
+	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS installation_mode VARCHAR(20) DEFAULT 'template';
+
+	-- Create indexes for ISO tables
+	CREATE INDEX IF NOT EXISTS idx_isos_status ON isos(status);
+	CREATE INDEX IF NOT EXISTS idx_isos_architecture ON isos(architecture);
+	CREATE INDEX IF NOT EXISTS idx_isos_os_type ON isos(os_type);
+	CREATE INDEX IF NOT EXISTS idx_iso_uploads_status ON iso_uploads(status);
 	`
 	return db.Exec(sql).Error
 }
