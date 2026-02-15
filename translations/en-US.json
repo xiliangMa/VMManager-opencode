@@ -127,5 +127,7 @@
   "failed_to_mount_iso": "Failed to mount ISO",
   "failed_to_unmount_iso": "Failed to unmount ISO",
   "failed_to_clone_vm": "Failed to clone VM",
-  "vm_domain_not_found": "VM domain not found"
+  "vm_domain_not_found": "VM domain not found",
+  "template_not_found": "Template not found",
+  "failed_to_get_vms": "Failed to get VM list"
 }

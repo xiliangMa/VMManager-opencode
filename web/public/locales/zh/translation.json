@@ -190,6 +190,7 @@
     "architecture": "架构",
     "format": "格式",
     "templateList": "模板",
+    "vmList": "关联虚拟机",
     "createTemplate": "创建模板",
     "editTemplate": "编辑模板",
     "deleteTemplate": "删除模板",

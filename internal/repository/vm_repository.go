@@ -123,6 +123,30 @@ func (r *VMRepository) CountByOwner(ctx context.Context, ownerID string) (int64,
 	return count, err
 }
 
+func (r *VMRepository) FindByTemplateID(ctx context.Context, templateID string, page, pageSize int) ([]models.VirtualMachine, int64, error) {
+	var vms []models.VirtualMachine
+	var total int64
+
+	offset := (page - 1) * pageSize
+
+	err := r.db.WithContext(ctx).
+		Model(&models.VirtualMachine{}).
+		Where("template_id = ?", templateID).
+		Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = r.db.WithContext(ctx).
+		Where("template_id = ?", templateID).
+		Order("created_at DESC").
+		Limit(pageSize).
+		Offset(offset).
+		Find(&vms).Error
+
+	return vms, total, err
+}
+
 func (r *VMRepository) GetVNCPort(ctx context.Context) (int, error) {
 	var port int
 	err := r.db.WithContext(ctx).

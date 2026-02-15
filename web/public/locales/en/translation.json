@@ -183,6 +183,7 @@
     "name": "Template Name",
     "upload": "Upload Template",
     "templateList": "Templates",
+    "vmList": "Related VMs",
     "download": "Download",
     "public": "Public Template",
     "private": "Private Template",

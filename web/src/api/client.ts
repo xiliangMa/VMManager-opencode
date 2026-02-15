@@ -243,6 +243,9 @@ export const templatesApi = {
   delete: (id: string) =>
     client.delete(`/templates/${id}`).then(res => res.data),
 
+  getVMs: (id: string, params?: { page?: number; page_size?: number }) =>
+    client.get(`/templates/${id}/vms`, { params }).then(res => res.data),
+
   initUpload: (data: {
     name: string
     description?: string

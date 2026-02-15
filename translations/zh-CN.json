@@ -127,5 +127,7 @@
   "failed_to_mount_iso": "挂载 ISO 失败",
   "failed_to_unmount_iso": "卸载 ISO 失败",
   "failed_to_clone_vm": "克隆虚拟机失败",
-  "vm_domain_not_found": "虚拟机域不存在"
+  "vm_domain_not_found": "虚拟机域不存在",
+  "template_not_found": "模板不存在",
+  "failed_to_get_vms": "获取虚拟机列表失败"
 }

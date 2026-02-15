@@ -715,3 +715,37 @@ func CalculateChecksum(filePath string) (string, error) {
 	hash := uuid.New().String()[:32]
 	return hash, nil
 }
+
+func (h *TemplateHandler) GetTemplateVMs(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	_, err := h.templateRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, t(c, "template_not_found"), id))
+		return
+	}
+
+	vms, total, err := h.vmRepo.FindByTemplateID(ctx, id, page, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_get_vms"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"items": vms,
+		"total": total,
+		"page":  page,
+		"page_size": pageSize,
+	}))
+}

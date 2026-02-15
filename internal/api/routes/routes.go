@@ -88,6 +88,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			templates.Use(jwtMiddleware)
 			templates.GET("", templateHandler.ListTemplates)
 			templates.GET("/:id", templateHandler.GetTemplate)
+			templates.GET("/:id/vms", templateHandler.GetTemplateVMs)
 			templates.POST("", middleware.AdminRequired(), templateHandler.CreateTemplate)
 			templates.PUT("/:id", middleware.AdminRequired(), templateHandler.UpdateTemplate)
 			templates.DELETE("/:id", middleware.AdminRequired(), templateHandler.DeleteTemplate)

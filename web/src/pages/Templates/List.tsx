@@ -1,9 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Table, Button, Card, Tag, Space, message, Popconfirm, Input, Row, Col, Statistic } from 'antd'
+import { Table, Button, Card, Tag, Space, message, Popconfirm, Input, Row, Col, Statistic, Drawer } from 'antd'
 import { EditOutlined, DeleteOutlined, UploadOutlined, SearchOutlined, FileOutlined } from '@ant-design/icons'
-import { templatesApi, Template } from '../../api/client'
+import { templatesApi, Template, VM } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
 
@@ -14,6 +14,44 @@ const Templates: React.FC = () => {
   const { data, loading, pagination, refresh, search, setSearch } = useTable<Template>({
     api: templatesApi.list
   })
+
+  const [drawerVisible, setDrawerVisible] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
+  const [vmList, setVMList] = useState<VM[]>([])
+  const [vmLoading, setVMLoading] = useState(false)
+  const [vmTotal, setVMTotal] = useState(0)
+  const [vmPage, setVMPage] = useState(1)
+
+  const handleShowVMs = async (template: Template) => {
+    setSelectedTemplate(template)
+    setDrawerVisible(true)
+    setVMLoading(true)
+    setVMPage(1)
+    try {
+      const response = await templatesApi.getVMs(template.id, { page: 1, page_size: 10 })
+      setVMList(response.data?.items || response.items || [])
+      setVMTotal(response.data?.total || response.total || 0)
+    } catch (error: any) {
+      message.error(t('common.error'))
+    } finally {
+      setVMLoading(false)
+    }
+  }
+
+  const handleVMPageChange = async (page: number) => {
+    if (!selectedTemplate) return
+    setVMPage(page)
+    setVMLoading(true)
+    try {
+      const response = await templatesApi.getVMs(selectedTemplate.id, { page, page_size: 10 })
+      setVMList(response.data?.items || response.items || [])
+      setVMTotal(response.data?.total || response.total || 0)
+    } catch (error: any) {
+      message.error(t('common.error'))
+    } finally {
+      setVMLoading(false)
+    }
+  }
 
   const handleDelete = async (id: string) => {
     try {
@@ -30,7 +68,10 @@ const Templates: React.FC = () => {
     {
       title: t('template.name'),
       dataIndex: 'name',
-      key: 'name'
+      key: 'name',
+      render: (text: string, record: Template) => (
+        <a onClick={() => handleShowVMs(record)}>{text}</a>
+      )
     },
     {
       title: t('template.osType'),
@@ -141,6 +182,73 @@ const Templates: React.FC = () => {
           }}
         />
       </Card>
+
+      <Drawer
+        title={`${t('template.vmList')} - ${selectedTemplate?.name || ''}`}
+        placement="right"
+        width={720}
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+      >
+        <Table
+          columns={[
+            {
+              title: t('vm.name'),
+              dataIndex: 'name',
+              key: 'name',
+              render: (text: string, record: VM) => (
+                <a onClick={() => {
+                  setDrawerVisible(false)
+                  navigate(`/vms/${record.id}`)
+                }}>{text}</a>
+              )
+            },
+            {
+              title: t('vm.status'),
+              dataIndex: 'status',
+              key: 'status',
+              render: (status: string) => {
+                const colors: Record<string, string> = {
+                  running: 'green',
+                  stopped: 'red',
+                  suspended: 'orange',
+                  pending: 'blue',
+                  error: 'error'
+                }
+                return <Tag color={colors[status] || 'default'}>{status}</Tag>
+              }
+            },
+            {
+              title: t('table.vcpu'),
+              dataIndex: 'cpuAllocated',
+              key: 'cpu',
+              render: (cpu: number) => `${cpu} vCPU`
+            },
+            {
+              title: t('vm.memory'),
+              dataIndex: 'memoryAllocated',
+              key: 'memory',
+              render: (memory: number) => `${memory} MB`
+            },
+            {
+              title: t('common.createdAt'),
+              dataIndex: 'createdAt',
+              key: 'createdAt',
+              render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+            }
+          ]}
+          dataSource={vmList}
+          rowKey="id"
+          loading={vmLoading}
+          pagination={{
+            current: vmPage,
+            pageSize: 10,
+            total: vmTotal,
+            showTotal: (total) => `${t('common.total')} ${total} ${t('vm.items')}`
+          }}
+          onChange={(p) => handleVMPageChange(p.current || 1)}
+        />
+      </Drawer>
     </div>
   )
 }
