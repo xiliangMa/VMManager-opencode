@@ -185,6 +185,24 @@
     "agentScriptTip": "The following script will be executed in the VM, can be modified as needed",
     "agentScriptNote": "Please run the script in VM console"
   },
+  "installProgress": {
+    "title": "Installation Progress",
+    "status": "Status",
+    "step": "Step",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "connectionError": "Connection Error",
+    "completed": "Installation Completed",
+    "completedDesc": "System installation completed, VM is ready to use",
+    "failed": "Installation Failed"
+  },
+  "installStatus": {
+    "pending": "Pending",
+    "installing": "Installing",
+    "completed": "Completed",
+    "failed": "Failed",
+    "paused": "Paused"
+  },
   "batch": {
     "operations": "Batch Operations",
     "start": "Batch Start",

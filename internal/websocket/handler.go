@@ -14,14 +14,16 @@ import (
 	"time"
 
 	"vmmanager/internal/libvirt"
+	"vmmanager/internal/services"
 
 	"github.com/gorilla/websocket"
 )
 
 type Handler struct {
-	upgrader websocket.Upgrader
-	clients  map[string]*VNCClient
-	libvirt  *libvirt.Client
+	upgrader       websocket.Upgrader
+	clients        map[string]*VNCClient
+	libvirt        *libvirt.Client
+	installMonitor *services.InstallMonitor
 }
 
 type VNCClient struct {
@@ -56,7 +58,7 @@ type ConsoleInfo struct {
 	WebSocketURL string `json:"websocket_url"`
 }
 
-func NewHandler(libvirtClient *libvirt.Client) *Handler {
+func NewHandler(libvirtClient *libvirt.Client, installMonitor *services.InstallMonitor) *Handler {
 	return &Handler{
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  4096,
@@ -66,8 +68,9 @@ func NewHandler(libvirtClient *libvirt.Client) *Handler {
 			},
 			Subprotocols: []string{"binary"},
 		},
-		clients: make(map[string]*VNCClient),
-		libvirt: libvirtClient,
+		clients:        make(map[string]*VNCClient),
+		libvirt:        libvirtClient,
+		installMonitor: installMonitor,
 	}
 }
 
@@ -348,7 +351,7 @@ func (c *VNCClient) performVNCHandshake(h *Handler) error {
 		// Get VNC password from libvirt domain
 		password := c.getVNCPassword(h)
 		response := c.encryptVNCChallenge(challenge, password)
-		
+
 		if _, err := c.targetConn.Write(response); err != nil {
 			return fmt.Errorf("failed to send auth response: %w", err)
 		}
@@ -408,12 +411,12 @@ func (c *VNCClient) getVNCPassword(h *Handler) string {
 	if err != nil {
 		return ""
 	}
-	
+
 	xmlDesc, err := domain.GetXMLDesc()
 	if err != nil {
 		return ""
 	}
-	
+
 	// Extract passwd attribute from graphics element
 	for _, line := range strings.Split(xmlDesc, "\n") {
 		if strings.Contains(line, "<graphics") && strings.Contains(line, "type='vnc'") {
@@ -435,26 +438,26 @@ func (c *VNCClient) encryptVNCChallenge(challenge []byte, password string) []byt
 	// Pad password to 8 bytes
 	key := make([]byte, 8)
 	copy(key, password)
-	
+
 	// Reverse bits in each byte (VNC specific)
 	for i := range key {
 		key[i] = reverseBits(key[i])
 	}
-	
+
 	// Encrypt challenge (16 bytes = 2 blocks)
 	response := make([]byte, 16)
-	
+
 	block, err := des.NewCipher(key)
 	if err != nil {
 		// Fallback: return empty response
 		return response
 	}
-	
+
 	// Encrypt first 8 bytes
 	block.Encrypt(response[0:8], challenge[0:8])
 	// Encrypt second 8 bytes
 	block.Encrypt(response[8:16], challenge[8:16])
-	
+
 	return response
 }
 
@@ -736,4 +739,55 @@ func (h *Handler) GetConsoleInfo(vmID string) (*ConsoleInfo, error) {
 		Port:         port,
 		WebSocketURL: fmt.Sprintf("/ws/vnc/%s", vmID),
 	}, nil
+}
+
+func (h *Handler) HandleInstallProgress(w http.ResponseWriter, r *http.Request) {
+	vmID := r.URL.Query().Get("vm_id")
+	if vmID == "" {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if strings.HasPrefix(path, "ws/install/") {
+			vmID = strings.TrimPrefix(path, "ws/install/")
+		} else if strings.HasPrefix(path, "api/v1/ws/install/") {
+			vmID = strings.TrimPrefix(path, "api/v1/ws/install/")
+		}
+	}
+
+	if vmID == "" {
+		http.Error(w, "vm_id is required", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := h.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("[InstallProgress] Failed to upgrade: %v", err)
+		return
+	}
+
+	log.Printf("[InstallProgress] Client connected for VM: %s", vmID)
+
+	if h.installMonitor != nil {
+		h.installMonitor.Subscribe(vmID, conn)
+	}
+
+	defer func() {
+		if h.installMonitor != nil {
+			h.installMonitor.Unsubscribe(vmID, conn)
+		}
+		conn.Close()
+		log.Printf("[InstallProgress] Client disconnected for VM: %s", vmID)
+	}()
+
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("[InstallProgress] Read error: %v", err)
+			}
+			break
+		}
+	}
+}
+
+func (h *Handler) SetInstallMonitor(monitor *services.InstallMonitor) {
+	h.installMonitor = monitor
 }

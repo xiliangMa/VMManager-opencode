@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Card, Steps, Button, Space, message, Alert, Progress, Result, Modal, Input } from 'antd'
 import { ArrowLeftOutlined, PlayCircleOutlined, CheckCircleOutlined, CloudUploadOutlined, SettingOutlined, KeyOutlined } from '@ant-design/icons'
 import { vmsApi } from '../../api/client'
+import InstallProgressCard from '../../components/VM/InstallProgressCard'
 
 const { TextArea } = Input
 
@@ -160,6 +161,9 @@ const VMInstallation: React.FC = () => {
 
       {currentStep === 1 && (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <div style={{ maxWidth: 600, margin: '0 auto 24px' }}>
+            <InstallProgressCard vmId={id || ''} onComplete={fetchStatus} />
+          </div>
           <Progress 
             type="circle" 
             percent={status?.install_progress || 0} 

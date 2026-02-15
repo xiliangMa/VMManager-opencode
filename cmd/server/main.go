@@ -67,7 +67,10 @@ func main() {
 		defer libvirtClient.Close()
 	}
 
-	wsHandler := websocket.NewHandler(libvirtClient)
+	installMonitor := services.NewInstallMonitor(repos.VM, libvirtClient)
+	installMonitor.Start()
+
+	wsHandler := websocket.NewHandler(libvirtClient, installMonitor)
 
 	alertService := services.NewAlertService(
 		repos.AlertRule,
@@ -132,6 +135,12 @@ func main() {
 		wsHandler.ServeHTTP(c.Writer, c.Request)
 	})
 
+	router.GET("/ws/install/:vm_id", func(c *gin.Context) {
+		vmID := c.Param("vm_id")
+		log.Printf("[Main] Install Progress WebSocket request for VM: %s", vmID)
+		wsHandler.HandleInstallProgress(c.Writer, c.Request)
+	})
+
 	routes.Register(router, cfg, repos, libvirtClient, wsHandler, backupService)
 
 	httpServer := &http.Server{
@@ -153,6 +162,8 @@ func main() {
 		<-sigChan
 
 		log.Println("Shutting down servers...")
+
+		installMonitor.Stop()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

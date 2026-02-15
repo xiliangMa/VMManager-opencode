@@ -185,6 +185,24 @@
     "agentScriptTip": "以下脚本将在虚拟机中执行，可根据需要修改",
     "agentScriptNote": "请在虚拟机控制台中运行脚本"
   },
+  "installProgress": {
+    "title": "安装进度",
+    "status": "状态",
+    "step": "步骤",
+    "connected": "已连接",
+    "disconnected": "未连接",
+    "connectionError": "连接错误",
+    "completed": "安装完成",
+    "completedDesc": "系统安装已完成，虚拟机可以正常使用",
+    "failed": "安装失败"
+  },
+  "installStatus": {
+    "pending": "等待中",
+    "installing": "安装中",
+    "completed": "已完成",
+    "failed": "失败",
+    "paused": "已暂停"
+  },
   "batch": {
     "operations": "批量操作",
     "start": "批量启动",

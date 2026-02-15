@@ -188,3 +188,10 @@ func (r *VMRepository) CountByTemplateID(ctx context.Context, templateID string)
 		Count(&count).Error
 	return count, err
 }
+
+func (r *VMRepository) UpdateInstallStatus(ctx context.Context, id, installStatus string) error {
+	return r.db.WithContext(ctx).
+		Model(&models.VirtualMachine{}).
+		Where("id = ?", id).
+		Update("install_status", installStatus).Error
+}
