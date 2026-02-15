@@ -460,6 +460,8 @@
     "vmNotFound": "Virtual machine not found",
     "vmNotRunning": "Virtual machine is not running",
     "templateNotFound": "Template not found",
+    "templateInUse": "Template is in use",
+    "failedToCheckTemplateUsage": "Failed to check template usage",
     "userNotFound": "User not found",
     "invalidRequest": "Invalid request",
     "permissionDenied": "Permission denied",

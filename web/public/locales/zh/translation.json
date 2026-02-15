@@ -460,6 +460,8 @@
     "vmNotFound": "虚拟机不存在",
     "vmNotRunning": "虚拟机未运行",
     "templateNotFound": "模板不存在",
+    "templateInUse": "模板正在使用中",
+    "failedToCheckTemplateUsage": "检查模板使用情况失败",
     "userNotFound": "用户不存在",
     "invalidRequest": "无效请求",
     "permissionDenied": "权限不足",

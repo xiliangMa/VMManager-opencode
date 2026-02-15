@@ -155,3 +155,12 @@ func (r *VMRepository) FindByLibvirtUUID(ctx context.Context, uuid string) (*mod
 	}
 	return &vm, err
 }
+
+func (r *VMRepository) CountByTemplateID(ctx context.Context, templateID string) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.VirtualMachine{}).
+		Where("template_id = ?", templateID).
+		Count(&count).Error
+	return count, err
+}

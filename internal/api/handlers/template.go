@@ -25,6 +25,7 @@ import (
 type TemplateHandler struct {
 	templateRepo *repository.TemplateRepository
 	uploadRepo   *repository.TemplateUploadRepository
+	vmRepo       *repository.VMRepository
 	config       *UploadConfig
 }
 
@@ -37,10 +38,12 @@ type UploadConfig struct {
 func NewTemplateHandler(
 	templateRepo *repository.TemplateRepository,
 	uploadRepo *repository.TemplateUploadRepository,
+	vmRepo *repository.VMRepository,
 ) *TemplateHandler {
 	return &TemplateHandler{
 		templateRepo: templateRepo,
 		uploadRepo:   uploadRepo,
+		vmRepo:       vmRepo,
 		config: &UploadConfig{
 			UploadPath:  "./uploads",
 			MaxPartSize: 100 * 1024 * 1024,
@@ -228,6 +231,17 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 	template, err := h.templateRepo.FindByID(ctx, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeTemplateNotFound, t(c, "template_not_found_id"), id))
+		return
+	}
+
+	vmCount, err := h.vmRepo.CountByTemplateID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_check_template_usage"), err.Error()))
+		return
+	}
+
+	if vmCount > 0 {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "template_in_use"), fmt.Sprintf("%d virtual machines are using this template", vmCount)))
 		return
 	}
 
