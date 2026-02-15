@@ -310,7 +310,10 @@
     "systemMonitor": "System Monitor",
     "systemInfo": "System Information",
     "exportAuditLogs": "Export Audit Logs",
-    "userItems": "users"
+    "userItems": "users",
+    "resourceUsage": "Resource Usage",
+    "used": "Used",
+    "cores": "cores"
   },
   "audit": {
     "totalLogs": "Total Logs",

@@ -308,7 +308,10 @@ export const usersApi = {
     client.put(`/admin/users/${id}/quota`, quota).then(res => res.data),
 
   updateRole: (id: string, role: { role: string }) =>
-    client.put(`/admin/users/${id}/role`, role).then(res => res.data)
+    client.put(`/admin/users/${id}/role`, role).then(res => res.data),
+
+  getResourceUsage: (id: string) =>
+    client.get(`/admin/users/${id}/resource-usage`).then(res => res.data)
 }
 
 export interface AuthProfile {

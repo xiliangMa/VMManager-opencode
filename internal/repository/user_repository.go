@@ -103,3 +103,36 @@ func (r *UserRepository) UpdateQuota(ctx context.Context, id string, cpu, memory
 		Where("id = ?", id).
 		Updates(updates).Error
 }
+
+type ResourceUsage struct {
+	VMCount     int   `json:"vmCount"`
+	CPUUsed     int   `json:"cpuUsed"`
+	MemoryUsed  int   `json:"memoryUsed"`
+	DiskUsed    int64 `json:"diskUsed"`
+}
+
+func (r *UserRepository) GetResourceUsage(ctx context.Context, userID string) (*ResourceUsage, error) {
+	var usage ResourceUsage
+
+	err := r.db.WithContext(ctx).
+		Model(&models.VirtualMachine{}).
+		Where("owner_id = ?", userID).
+		Select("COUNT(*) as vm_count, COALESCE(SUM(cpu_allocated), 0) as cpu_used, COALESCE(SUM(memory_allocated), 0) as memory_used").
+		Scan(&usage).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var diskUsed int64
+	err = r.db.WithContext(ctx).
+		Model(&models.VirtualMachine{}).
+		Where("owner_id = ?", userID).
+		Select("COALESCE(SUM(disk_allocated), 0)").
+		Scan(&diskUsed).Error
+	if err != nil {
+		return nil, err
+	}
+	usage.DiskUsed = diskUsed
+
+	return &usage, nil
+}

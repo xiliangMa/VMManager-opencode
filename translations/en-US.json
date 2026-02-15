@@ -129,5 +129,11 @@
   "failed_to_clone_vm": "Failed to clone VM",
   "vm_domain_not_found": "VM domain not found",
   "template_not_found": "Template not found",
-  "failed_to_get_vms": "Failed to get VM list"
+  "failed_to_get_vms": "Failed to get VM list",
+  "failed_to_get_resource_usage": "Failed to get resource usage",
+  "quota_exceeded": "Quota exceeded",
+  "quota_cpu_exceeded": "CPU quota exceeded, currently using {used} cores, quota is {quota} cores",
+  "quota_memory_exceeded": "Memory quota exceeded, currently using {used} MB, quota is {quota} MB",
+  "quota_disk_exceeded": "Disk quota exceeded, currently using {used} GB, quota is {quota} GB",
+  "quota_vm_count_exceeded": "VM count quota exceeded, currently have {used} VMs, quota is {quota} VMs"
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Table, Card, Button, Space, Tag, message, Popconfirm, Modal, Form, Input, InputNumber, Select, Tooltip, Row, Col, Statistic } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons'
+import { Table, Card, Button, Space, Tag, message, Popconfirm, Modal, Form, Input, InputNumber, Select, Tooltip, Row, Col, Statistic, Drawer, Progress } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, SearchOutlined, PieChartOutlined } from '@ant-design/icons'
 import { usersApi, User } from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
 import { useTable } from '../../hooks/useTable'
@@ -13,9 +13,27 @@ const Users: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [form] = Form.useForm()
+  const [drawerVisible, setDrawerVisible] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [resourceUsage, setResourceUsage] = useState<any>(null)
+  const [usageLoading, setUsageLoading] = useState(false)
   const { data, loading, pagination, refresh, search, setSearch } = useTable<User>({
     api: usersApi.list
   })
+
+  const handleShowResourceUsage = async (user: User) => {
+    setSelectedUser(user)
+    setDrawerVisible(true)
+    setUsageLoading(true)
+    try {
+      const response = await usersApi.getResourceUsage(user.id)
+      setResourceUsage(response.data || response)
+    } catch (error) {
+      message.error(t('common.error'))
+    } finally {
+      setUsageLoading(false)
+    }
+  }
 
   const handleCreate = () => {
     setEditingUser(null)
@@ -132,6 +150,9 @@ const Users: React.FC = () => {
         const canDelete = !isCurrentUser && !isAdminUser
         return (
           <Space>
+            <Tooltip title={t('admin.resourceUsage')}>
+              <Button type="text" icon={<PieChartOutlined />} onClick={() => handleShowResourceUsage(record)} />
+            </Tooltip>
             <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} disabled={!canEdit} />
             {canDelete ? (
               <Popconfirm
@@ -290,6 +311,92 @@ const Users: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      <Drawer
+        title={`${t('admin.resourceUsage')} - ${selectedUser?.username || ''}`}
+        placement="right"
+        width={500}
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+      >
+        {usageLoading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>{t('common.loading')}</div>
+        ) : resourceUsage ? (
+          <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Card title={t('admin.vmCountQuota')} size="small">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Statistic 
+                    title={t('admin.used')} 
+                    value={resourceUsage.used?.vm_count || 0} 
+                    suffix={`/ ${resourceUsage.quota?.vm_count || 0}`}
+                  />
+                </Col>
+                <Col span={12}>
+                  <Progress 
+                    percent={resourceUsage.quota?.vm_count ? Math.round((resourceUsage.used?.vm_count || 0) / resourceUsage.quota.vm_count * 100) : 0}
+                    status={resourceUsage.quota?.vm_count && (resourceUsage.used?.vm_count || 0) >= resourceUsage.quota.vm_count ? 'exception' : 'normal'}
+                  />
+                </Col>
+              </Row>
+            </Card>
+
+            <Card title={t('admin.cpuQuota')} size="small">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Statistic 
+                    title={t('admin.used')} 
+                    value={resourceUsage.used?.cpu || 0} 
+                    suffix={`/ ${resourceUsage.quota?.cpu || 0} ${t('admin.cores')}`}
+                  />
+                </Col>
+                <Col span={12}>
+                  <Progress 
+                    percent={resourceUsage.quota?.cpu ? Math.round((resourceUsage.used?.cpu || 0) / resourceUsage.quota.cpu * 100) : 0}
+                    status={resourceUsage.quota?.cpu && (resourceUsage.used?.cpu || 0) >= resourceUsage.quota.cpu ? 'exception' : 'normal'}
+                  />
+                </Col>
+              </Row>
+            </Card>
+
+            <Card title={t('admin.memoryQuota')} size="small">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Statistic 
+                    title={t('admin.used')} 
+                    value={resourceUsage.used?.memory || 0} 
+                    suffix={`/ ${resourceUsage.quota?.memory || 0} MB`}
+                  />
+                </Col>
+                <Col span={12}>
+                  <Progress 
+                    percent={resourceUsage.quota?.memory ? Math.round((resourceUsage.used?.memory || 0) / resourceUsage.quota.memory * 100) : 0}
+                    status={resourceUsage.quota?.memory && (resourceUsage.used?.memory || 0) >= resourceUsage.quota.memory ? 'exception' : 'normal'}
+                  />
+                </Col>
+              </Row>
+            </Card>
+
+            <Card title={t('admin.diskQuota')} size="small">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Statistic 
+                    title={t('admin.used')} 
+                    value={resourceUsage.used?.disk || 0} 
+                    suffix={`/ ${resourceUsage.quota?.disk || 0} GB`}
+                  />
+                </Col>
+                <Col span={12}>
+                  <Progress 
+                    percent={resourceUsage.quota?.disk ? Math.round((resourceUsage.used?.disk || 0) / resourceUsage.quota.disk * 100) : 0}
+                    status={resourceUsage.quota?.disk && (resourceUsage.used?.disk || 0) >= resourceUsage.quota.disk ? 'exception' : 'normal'}
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Space>
+        ) : null}
+      </Drawer>
       </Card>
     </div>
   )

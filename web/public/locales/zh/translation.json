@@ -310,7 +310,10 @@
     "systemMonitor": "系统监控",
     "systemInfo": "系统信息",
     "exportAuditLogs": "导出审计日志",
-    "userItems": "个用户"
+    "userItems": "个用户",
+    "resourceUsage": "资源使用量",
+    "used": "已使用",
+    "cores": "核"
   },
   "audit": {
     "totalLogs": "日志总数",

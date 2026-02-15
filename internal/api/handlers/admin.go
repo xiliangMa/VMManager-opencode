@@ -442,3 +442,48 @@ func (h *AdminHandler) GetSystemStats(libvirtClient any) gin.HandlerFunc {
 		})
 	}
 }
+
+func (h *AdminHandler) GetUserResourceUsage(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	user, err := h.userRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeUserNotFound, t(c, "user_not_found"), id))
+		return
+	}
+
+	usage, err := h.userRepo.GetResourceUsage(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_get_resource_usage"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"quota": gin.H{
+			"cpu":      user.QuotaCPU,
+			"memory":   user.QuotaMemory,
+			"disk":     user.QuotaDisk,
+			"vm_count": user.QuotaVMCount,
+		},
+		"used": gin.H{
+			"cpu":      usage.CPUUsed,
+			"memory":   usage.MemoryUsed,
+			"disk":     usage.DiskUsed,
+			"vm_count": usage.VMCount,
+		},
+		"available": gin.H{
+			"cpu":      max(0, user.QuotaCPU-usage.CPUUsed),
+			"memory":   max(0, user.QuotaMemory-usage.MemoryUsed),
+			"disk":     max(0, int(user.QuotaDisk)-int(usage.DiskUsed)),
+			"vm_count": max(0, user.QuotaVMCount-usage.VMCount),
+		},
+	}))
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}

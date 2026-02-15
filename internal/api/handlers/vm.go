@@ -139,19 +139,29 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 		return
 	}
 
-	vmCount, _ := h.vmRepo.CountByOwner(ctx, userUUID.String())
-	if user.QuotaVMCount > 0 && int(vmCount) >= user.QuotaVMCount {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "vm_quota_exceeded"), fmt.Sprintf("current: %d, limit: %d", vmCount, user.QuotaVMCount)))
+	usage, err := h.userRepo.GetResourceUsage(ctx, userUUID.String())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_get_resource_usage"), err.Error()))
 		return
 	}
 
-	if req.CPUAllocated > user.QuotaCPU {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "cpu_quota_exceeded"), fmt.Sprintf("requested: %d, limit: %d", req.CPUAllocated, user.QuotaCPU)))
+	if user.QuotaVMCount > 0 && usage.VMCount >= user.QuotaVMCount {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "quota_vm_count_exceeded"), fmt.Sprintf("used: %d, quota: %d", usage.VMCount, user.QuotaVMCount)))
 		return
 	}
 
-	if req.MemoryAllocated > user.QuotaMemory {
-		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "memory_quota_exceeded"), fmt.Sprintf("requested: %d, limit: %d", req.MemoryAllocated, user.QuotaMemory)))
+	if user.QuotaCPU > 0 && (usage.CPUUsed+req.CPUAllocated) > user.QuotaCPU {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "quota_cpu_exceeded"), fmt.Sprintf("used: %d, requested: %d, quota: %d", usage.CPUUsed, req.CPUAllocated, user.QuotaCPU)))
+		return
+	}
+
+	if user.QuotaMemory > 0 && (usage.MemoryUsed+req.MemoryAllocated) > user.QuotaMemory {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "quota_memory_exceeded"), fmt.Sprintf("used: %d, requested: %d, quota: %d", usage.MemoryUsed, req.MemoryAllocated, user.QuotaMemory)))
+		return
+	}
+
+	if user.QuotaDisk > 0 && (int(usage.DiskUsed)+req.DiskAllocated) > user.QuotaDisk {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeQuotaExceeded, t(c, "quota_disk_exceeded"), fmt.Sprintf("used: %d, requested: %d, quota: %d", usage.DiskUsed, req.DiskAllocated, user.QuotaDisk)))
 		return
 	}
 

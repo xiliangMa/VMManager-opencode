@@ -128,6 +128,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 				users.GET("", adminHandler.ListUsers)
 				users.POST("", adminHandler.CreateUser)
 				users.GET("/:id", adminHandler.GetUser)
+				users.GET("/:id/resource-usage", adminHandler.GetUserResourceUsage)
 				users.PUT("/:id", adminHandler.UpdateUser)
 				users.DELETE("/:id", adminHandler.DeleteUser)
 				users.PUT("/:id/quota", adminHandler.UpdateUserQuota)

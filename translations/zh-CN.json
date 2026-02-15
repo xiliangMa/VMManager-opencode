@@ -129,5 +129,11 @@
   "failed_to_clone_vm": "克隆虚拟机失败",
   "vm_domain_not_found": "虚拟机域不存在",
   "template_not_found": "模板不存在",
-  "failed_to_get_vms": "获取虚拟机列表失败"
+  "failed_to_get_vms": "获取虚拟机列表失败",
+  "failed_to_get_resource_usage": "获取资源使用量失败",
+  "quota_exceeded": "配额不足",
+  "quota_cpu_exceeded": "CPU 配额不足，当前已使用 {used} 核，配额为 {quota} 核",
+  "quota_memory_exceeded": "内存配额不足，当前已使用 {used} MB，配额为 {quota} MB",
+  "quota_disk_exceeded": "磁盘配额不足，当前已使用 {used} GB，配额为 {quota} GB",
+  "quota_vm_count_exceeded": "虚拟机数量已达上限，当前已有 {used} 个，配额为 {quota} 个"
 }
