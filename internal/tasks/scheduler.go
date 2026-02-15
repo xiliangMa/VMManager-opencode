@@ -7,6 +7,7 @@ import (
 	"time"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
+	"vmmanager/internal/services"
 
 	"vmmanager/internal/libvirt"
 
@@ -25,10 +26,11 @@ type Scheduler struct {
 	isoUploadRepo      *repository.ISOUploadRepository
 	templateUploadRepo *repository.TemplateUploadRepository
 	libvirt            *libvirt.Client
+	alertService       *services.AlertService
 	stopChan           chan struct{}
 }
 
-func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client) *Scheduler {
+func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client, alertService *services.AlertService) *Scheduler {
 	return &Scheduler{
 		db:                 db,
 		vmRepo:             repository.NewVMRepository(db),
@@ -36,6 +38,7 @@ func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client) *Scheduler {
 		isoUploadRepo:      repository.NewISOUploadRepository(db),
 		templateUploadRepo: repository.NewTemplateUploadRepository(db),
 		libvirt:            libvirtClient,
+		alertService:       alertService,
 		stopChan:           make(chan struct{}),
 	}
 }
@@ -43,6 +46,10 @@ func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client) *Scheduler {
 func (s *Scheduler) Start() {
 	ticker := time.NewTicker(30 * time.Second)
 	cleanupTicker := time.NewTicker(UploadCleanupInterval)
+
+	if s.alertService != nil {
+		s.alertService.Start()
+	}
 
 	go func() {
 		for {
@@ -55,6 +62,9 @@ func (s *Scheduler) Start() {
 			case <-s.stopChan:
 				ticker.Stop()
 				cleanupTicker.Stop()
+				if s.alertService != nil {
+					s.alertService.Stop()
+				}
 				return
 			}
 		}

@@ -18,6 +18,7 @@ import (
 	"vmmanager/internal/libvirt"
 	"vmmanager/internal/middleware"
 	"vmmanager/internal/repository"
+	"vmmanager/internal/services"
 	"vmmanager/internal/tasks"
 	"vmmanager/internal/websocket"
 
@@ -68,7 +69,14 @@ func main() {
 
 	wsHandler := websocket.NewHandler(libvirtClient)
 
-	scheduler := tasks.NewScheduler(db, libvirtClient)
+	alertService := services.NewAlertService(
+		repos.AlertRule,
+		repos.AlertHistory,
+		repos.VM,
+		repos.VMStats,
+	)
+
+	scheduler := tasks.NewScheduler(db, libvirtClient, alertService)
 	go scheduler.Start()
 
 	if !cfg.App.Debug {

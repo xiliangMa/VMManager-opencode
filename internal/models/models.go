@@ -286,3 +286,29 @@ func (u *ISOUpload) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type VirtualNetwork struct {
+	ID          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name        string     `gorm:"size:100;not null;uniqueIndex" json:"name"`
+	Description string     `gorm:"type:text" json:"description"`
+	NetworkType string     `gorm:"size:20;not null;default:'nat'" json:"networkType"`
+	BridgeName  string     `gorm:"size:100" json:"bridgeName"`
+	Subnet      string     `gorm:"size:20" json:"subnet"`
+	Gateway     string     `gorm:"size:20" json:"gateway"`
+	DHCPStart   string     `gorm:"size:20" json:"dhcpStart"`
+	DHCPEnd     string     `gorm:"size:20" json:"dhcpEnd"`
+	DHCPEnabled bool       `gorm:"default:true" json:"dhcpEnabled"`
+	Autostart   bool       `gorm:"default:true" json:"autostart"`
+	Active      bool       `gorm:"default:false" json:"active"`
+	XMLDef      string     `gorm:"type:text" json:"xmlDef"`
+	CreatedBy   *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+}
+
+func (n *VirtualNetwork) BeforeCreate(tx *gorm.DB) (err error) {
+	if n.ID == uuid.Nil {
+		n.ID = uuid.New()
+	}
+	return
+}

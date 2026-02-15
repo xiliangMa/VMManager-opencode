@@ -16,6 +16,7 @@ type Repositories struct {
 	AlertHistory   *AlertHistoryRepository
 	ISO            *ISORepository
 	ISOUpload      *ISOUploadRepository
+	VirtualNetwork *VirtualNetworkRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -31,6 +32,7 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		AlertHistory:   NewAlertHistoryRepository(db),
 		ISO:            NewISORepository(db),
 		ISOUpload:      NewISOUploadRepository(db),
+		VirtualNetwork: NewVirtualNetworkRepository(db),
 	}
 }
 

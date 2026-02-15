@@ -13,7 +13,8 @@ import {
   TranslationOutlined,
   BellOutlined,
   HistoryOutlined,
-  CloudUploadOutlined
+  CloudUploadOutlined,
+  WifiOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
@@ -71,6 +72,11 @@ const MainLayout: React.FC = () => {
         key: '/admin/alert-history',
         icon: <HistoryOutlined />,
         label: t('alerts.alertHistory')
+      },
+      {
+        key: '/admin/networks',
+        icon: <WifiOutlined />,
+        label: t('network.networks')
       }
     ] : [])
   ]

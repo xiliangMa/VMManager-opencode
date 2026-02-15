@@ -264,6 +264,25 @@ func Migrate(db *gorm.DB) error {
 		created_at TIMESTAMPTZ NOT NULL
 	);
 
+	CREATE TABLE IF NOT EXISTS virtual_networks (
+		id UUID PRIMARY KEY,
+		name VARCHAR(100) NOT NULL UNIQUE,
+		description TEXT,
+		network_type VARCHAR(20) NOT NULL DEFAULT 'nat',
+		bridge_name VARCHAR(100),
+		subnet VARCHAR(20),
+		gateway VARCHAR(20),
+		dhcp_start VARCHAR(20),
+		dhcp_end VARCHAR(20),
+		dhcp_enabled BOOLEAN DEFAULT true,
+		autostart BOOLEAN DEFAULT true,
+		active BOOLEAN DEFAULT false,
+		xml_def TEXT,
+		created_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ,
+		updated_at TIMESTAMPTZ
+	);
+
 	-- Migration: Add architecture column to existing virtual_machines table
 	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS architecture VARCHAR(20) DEFAULT 'x86_64';
 

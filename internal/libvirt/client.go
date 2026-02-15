@@ -468,3 +468,53 @@ func generateMACAddress() (string, error) {
 	}
 	return fmt.Sprintf("52:54:00:%02x:%02x:%02x", b[0], b[1], b[2]), nil
 }
+
+func (c *Client) NetworkCreate(name string) error {
+	net, err := c.conn.LookupNetworkByName(name)
+	if err != nil {
+		return fmt.Errorf("network not found: %w", err)
+	}
+	defer net.Free()
+
+	return net.Create()
+}
+
+func (c *Client) NetworkSetAutostart(name string, autostart bool) error {
+	net, err := c.conn.LookupNetworkByName(name)
+	if err != nil {
+		return fmt.Errorf("network not found: %w", err)
+	}
+	defer net.Free()
+
+	return net.SetAutostart(autostart)
+}
+
+func (c *Client) NetworkGetInfo(name string) (map[string]interface{}, error) {
+	net, err := c.conn.LookupNetworkByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("network not found: %w", err)
+	}
+	defer net.Free()
+
+	active, err := net.IsActive()
+	if err != nil {
+		return nil, err
+	}
+
+	autostart, err := net.GetAutostart()
+	if err != nil {
+		return nil, err
+	}
+
+	xmlDesc, err := net.GetXMLDesc(0)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"name":       name,
+		"active":     active,
+		"autostart":  autostart,
+		"xml":        xmlDesc,
+	}, nil
+}

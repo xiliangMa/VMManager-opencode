@@ -30,6 +30,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	alertRuleHandler := handlers.NewAlertRuleHandler(repos.AlertRule)
 	alertHistoryHandler := handlers.NewAlertHistoryHandler(repos.AlertHistory)
 	isoHandler := handlers.NewISOHandler(repos.ISO, repos.ISOUpload)
+	networkHandler := handlers.NewVirtualNetworkHandler(repos.VirtualNetwork, libvirtClient)
 
 	api := router.Group("/api/v1")
 	{
@@ -169,6 +170,17 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			admin.GET("/system/resources", adminHandler.GetSystemResources(libvirtClient))
 			admin.GET("/system/stats", adminHandler.GetSystemStats(libvirtClient))
 			admin.GET("/system/storage", statsHandler.GetStorageStats)
+
+			networks := admin.Group("/networks")
+			{
+				networks.GET("", networkHandler.List)
+				networks.GET("/:id", networkHandler.Get)
+				networks.POST("", networkHandler.Create)
+				networks.PUT("/:id", networkHandler.Update)
+				networks.DELETE("/:id", networkHandler.Delete)
+				networks.POST("/:id/start", networkHandler.Start)
+				networks.POST("/:id/stop", networkHandler.Stop)
+			}
 		}
 	}
 }

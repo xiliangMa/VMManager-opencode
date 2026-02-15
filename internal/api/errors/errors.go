@@ -107,6 +107,20 @@ func SuccessWithMeta(data any, meta any) Response {
 	}
 }
 
+func SuccessWithPage(data any, total int64, page, pageSize int) Response {
+	return Response{
+		Code:    ErrCodeSuccess,
+		Message: "success",
+		Data:    data,
+		Meta: map[string]interface{}{
+			"page":        page,
+			"page_size":   pageSize,
+			"total":       total,
+			"total_pages": (int(total) + pageSize - 1) / pageSize,
+		},
+	}
+}
+
 func Fail(err error) Response {
 	if appErr, ok := err.(*AppError); ok {
 		return Response{

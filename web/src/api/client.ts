@@ -518,3 +518,45 @@ export const isosApi = {
   getUploadStatus: (uploadId: string) =>
     client.get(`/isos/upload/status?upload_id=${uploadId}`).then(res => res.data)
 }
+
+export interface VirtualNetwork {
+  id: string
+  name: string
+  description?: string
+  networkType: string
+  bridgeName?: string
+  subnet: string
+  gateway: string
+  dhcpStart?: string
+  dhcpEnd?: string
+  dhcpEnabled: boolean
+  autostart: boolean
+  active: boolean
+  xmlDef?: string
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export const networksApi = {
+  list: (params?: { page?: number; page_size?: number }) =>
+    client.get('/admin/networks', { params }).then(res => res.data),
+
+  get: (id: string) =>
+    client.get(`/admin/networks/${id}`).then(res => res.data),
+
+  create: (data: Partial<VirtualNetwork>) =>
+    client.post('/admin/networks', data).then(res => res.data),
+
+  update: (id: string, data: Partial<VirtualNetwork>) =>
+    client.put(`/admin/networks/${id}`, data).then(res => res.data),
+
+  delete: (id: string) =>
+    client.delete(`/admin/networks/${id}`).then(res => res.data),
+
+  start: (id: string) =>
+    client.post(`/admin/networks/${id}/start`).then(res => res.data),
+
+  stop: (id: string) =>
+    client.post(`/admin/networks/${id}/stop`).then(res => res.data)
+}
