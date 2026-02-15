@@ -97,7 +97,7 @@ func (h *AuditHandler) ListAuditLogs(c *gin.Context) {
 			ResourceType: log.ResourceType,
 			ResourceID:   resourceID,
 			Details:      log.Details,
-			IPAddress:    log.IPAddress.String(),
+			IPAddress:    log.IPAddress,
 			UserAgent:    log.UserAgent,
 			Status:       log.Status,
 			ErrorMessage: log.ErrorMessage,
@@ -152,7 +152,7 @@ func (h *AuditHandler) GetAuditLog(c *gin.Context) {
 			ResourceType: log.ResourceType,
 			ResourceID:   log.ResourceID.String(),
 			Details:      log.Details,
-			IPAddress:    log.IPAddress.String(),
+			IPAddress:    log.IPAddress,
 			UserAgent:    log.UserAgent,
 			Status:       log.Status,
 			ErrorMessage: log.ErrorMessage,
@@ -183,7 +183,7 @@ func (h *AuditHandler) ListByUser(c *gin.Context) {
 			ResourceType: log.ResourceType,
 			ResourceID:   log.ResourceID.String(),
 			Details:      log.Details,
-			IPAddress:    log.IPAddress.String(),
+			IPAddress:    log.IPAddress,
 			UserAgent:    log.UserAgent,
 			Status:       log.Status,
 			ErrorMessage: log.ErrorMessage,
@@ -226,7 +226,7 @@ func (h *AuditHandler) ListByAction(c *gin.Context) {
 			ResourceType: log.ResourceType,
 			ResourceID:   log.ResourceID.String(),
 			Details:      log.Details,
-			IPAddress:    log.IPAddress.String(),
+			IPAddress:    log.IPAddress,
 			UserAgent:    log.UserAgent,
 			Status:       log.Status,
 			ErrorMessage: log.ErrorMessage,
@@ -247,25 +247,14 @@ func (h *AuditHandler) ListByAction(c *gin.Context) {
 	})
 }
 
-func (h *AuditHandler) ExportAuditLogs(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	logs, _, err := h.auditRepo.List(ctx, 0, 10000)
+func (h *AuditHandler) ExportAuditLogsCSV(c *gin.Context) {
+	logs, _, err := h.auditRepo.ListWithUsername(c.Request.Context(), 0, 10000)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    5001,
-			"message": "failed to fetch audit logs",
-			"details": err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_fetch_audit_logs"), err.Error()))
 		return
 	}
 
-	if len(logs) == 0 {
-		c.String(http.StatusOK, "No audit logs found\n")
-		return
-	}
-
-	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Type", "text/csv")
 	c.Header("Content-Disposition", "attachment; filename=audit_logs.csv")
 
 	c.String(http.StatusOK, "ID,UserID,Action,ResourceType,ResourceID,IPAddress,Status,CreatedAt\n")
@@ -274,10 +263,7 @@ func (h *AuditHandler) ExportAuditLogs(c *gin.Context) {
 		if log.UserID != nil {
 			username = log.UserID.String()
 		}
-		ipAddress := ""
-		if log.IPAddress != nil {
-			ipAddress = log.IPAddress.String()
-		}
+		ipAddress := log.IPAddress
 		c.String(http.StatusOK, "%s,%s,%s,%s,%s,%s,%s,%s\n",
 			log.ID.String(),
 			username,

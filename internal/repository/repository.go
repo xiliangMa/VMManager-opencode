@@ -21,6 +21,7 @@ type Repositories struct {
 	StorageVolume  *StorageVolumeRepository
 	VMBackup       *VMBackupRepository
 	BackupSchedule *BackupScheduleRepository
+	VMSnapshot     *VMSnapshotRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -41,6 +42,7 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		StorageVolume:  NewStorageVolumeRepository(db),
 		VMBackup:       NewVMBackupRepository(db),
 		BackupSchedule: NewBackupScheduleRepository(db),
+		VMSnapshot:     NewVMSnapshotRepository(db),
 	}
 }
 

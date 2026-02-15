@@ -24,7 +24,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	templateHandler.SetAuditService(auditService)
 	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
 	auditHandler := handlers.NewAuditHandler(repos.AuditLog)
-	snapshotHandler := handlers.NewSnapshotHandler(repos.VM)
+	snapshotHandler := handlers.NewSnapshotHandler(repos.VM, repos.VMSnapshot, libvirtClient)
 	batchHandler := handlers.NewBatchHandler(repos.VM, libvirtClient, cfg.Storage.Path, auditService)
 	statsHandler := handlers.NewVMStatsHandler(repos.VMStats, repos.DB)
 	alertRuleHandler := handlers.NewAlertRuleHandler(repos.AlertRule)
@@ -77,9 +77,10 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			{
 				snapshots.POST("", snapshotHandler.CreateSnapshot)
 				snapshots.GET("", snapshotHandler.ListSnapshots)
-				snapshots.GET("/:name", snapshotHandler.GetSnapshot)
-				snapshots.POST("/:name/restore", snapshotHandler.RestoreSnapshot)
-				snapshots.DELETE("/:name", snapshotHandler.DeleteSnapshot)
+				snapshots.POST("/sync", snapshotHandler.SyncSnapshots)
+				snapshots.GET("/:snapshot_id", snapshotHandler.GetSnapshot)
+				snapshots.POST("/:snapshot_id/restore", snapshotHandler.RestoreSnapshot)
+				snapshots.DELETE("/:snapshot_id", snapshotHandler.DeleteSnapshot)
 			}
 
 			batch := vms.Group("/batch")
@@ -186,7 +187,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			admin.GET("/audit-logs/:id", auditHandler.GetAuditLog)
 			admin.GET("/audit-logs/user/:id", auditHandler.ListByUser)
 			admin.GET("/audit-logs/action/:action", auditHandler.ListByAction)
-			admin.GET("/audit-logs/export", auditHandler.ExportAuditLogs)
+			admin.GET("/audit-logs/export", auditHandler.ExportAuditLogsCSV)
 			admin.GET("/system/resources", adminHandler.GetSystemResources(libvirtClient))
 			admin.GET("/system/stats", adminHandler.GetSystemStats(libvirtClient))
 			admin.GET("/system/storage", statsHandler.GetStorageStats)

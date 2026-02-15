@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"net"
 	"time"
 
 	"vmmanager/internal/models"
@@ -45,9 +44,9 @@ func (s *AuditService) Log(c *gin.Context, input AuditLogInput) {
 		}
 	}
 
-	var ip net.IP
+	var ip string
 	if c.ClientIP() != "" {
-		ip = net.ParseIP(c.ClientIP())
+		ip = c.ClientIP()
 	}
 
 	userAgent := c.GetHeader("User-Agent")

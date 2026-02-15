@@ -777,3 +777,159 @@ func (c *Client) StorageVolumeDelete(poolName, volumeName string) error {
 
 	return vol.Delete(0)
 }
+
+func (c *Client) CreateSnapshot(domainUUID string, snapshotName string, description string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	snapshotXML := fmt.Sprintf(`<domainsnapshot>
+  <name>%s</name>
+  <description>%s</description>
+</domainsnapshot>`, snapshotName, description)
+
+	_, err = domain.CreateSnapshotXML(snapshotXML, 0)
+	return err
+}
+
+func (c *Client) ListSnapshots(domainUUID string) ([]string, error) {
+	if c.conn == nil {
+		return nil, fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return nil, fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	snapshots, err := domain.ListAllSnapshots(0)
+	if err != nil {
+		return nil, err
+	}
+
+	var names []string
+	for _, snap := range snapshots {
+		name, err := snap.GetName()
+		if err == nil {
+			names = append(names, name)
+		}
+		snap.Free()
+	}
+
+	return names, nil
+}
+
+type SnapshotInfo struct {
+	Name        string
+	Description string
+	State       string
+	IsCurrent   bool
+	CreatedAt   string
+}
+
+func (c *Client) GetSnapshotInfo(domainUUID string, snapshotName string) (*SnapshotInfo, error) {
+	if c.conn == nil {
+		return nil, fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return nil, fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	snap, err := domain.SnapshotLookupByName(snapshotName, 0)
+	if err != nil {
+		return nil, fmt.Errorf("snapshot not found: %w", err)
+	}
+	defer snap.Free()
+
+	name, _ := snap.GetName()
+	xml, _ := snap.GetXMLDesc(0)
+	isCurrent, _ := snap.IsCurrent(0)
+
+	return &SnapshotInfo{
+		Name:        name,
+		Description: parseSnapshotDescription(xml),
+		State:       parseSnapshotState(xml),
+		IsCurrent:   isCurrent,
+		CreatedAt:   parseSnapshotCreationTime(xml),
+	}, nil
+}
+
+func (c *Client) RevertToSnapshot(domainUUID string, snapshotName string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	snap, err := domain.SnapshotLookupByName(snapshotName, 0)
+	if err != nil {
+		return fmt.Errorf("snapshot not found: %w", err)
+	}
+	defer snap.Free()
+
+	return snap.RevertToSnapshot(0)
+}
+
+func (c *Client) DeleteSnapshot(domainUUID string, snapshotName string) error {
+	if c.conn == nil {
+		return fmt.Errorf("libvirt connection is nil")
+	}
+
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	snap, err := domain.SnapshotLookupByName(snapshotName, 0)
+	if err != nil {
+		return fmt.Errorf("snapshot not found: %w", err)
+	}
+	defer snap.Free()
+
+	return snap.Delete(0)
+}
+
+func parseSnapshotDescription(xml string) string {
+	return findSubstring(xml, "<description>", "</description>")
+}
+
+func parseSnapshotState(xml string) string {
+	state := findSubstring(xml, "<state>", "</state>")
+	if state != "" {
+		return state
+	}
+	return "unknown"
+}
+
+func parseSnapshotCreationTime(xml string) string {
+	return findSubstring(xml, "<creationTime>", "</creationTime>")
+}
+
+func findSubstring(xml, startTag, endTag string) string {
+	for i := 0; i < len(xml); i++ {
+		if i+len(startTag) <= len(xml) && xml[i:i+len(startTag)] == startTag {
+			end := i + len(startTag)
+			for j := end; j < len(xml); j++ {
+				if j+len(endTag) <= len(xml) && xml[j:j+len(endTag)] == endTag {
+					return xml[end:j]
+				}
+			}
+		}
+	}
+	return ""
+}

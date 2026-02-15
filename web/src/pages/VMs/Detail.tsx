@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm, Modal, Select, Spin, Input } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined, CopyOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined, CopyOutlined, ClockCircleOutlined, CameraOutlined } from '@ant-design/icons'
 import { vmsApi, isosApi, ISO } from '../../api/client'
 import type { VMDetail } from '../../api/client'
 import VMBackups from './Backups'
+import VMSnapshots from './Snapshots'
 import dayjs from 'dayjs'
 
 const VMDetail: React.FC = () => {
@@ -236,20 +237,11 @@ const VMDetail: React.FC = () => {
       key: 'snapshots',
       label: (
         <span>
-          <CloudUploadOutlined />
-          {t('vm.snapshots')}
+          <CameraOutlined />
+          {t('snapshot.snapshots')}
         </span>
       ),
-      children: (
-        <Card size="small" style={{ marginTop: 8 }}>
-          <Space direction="vertical" align="center" style={{ width: '100%' }}>
-            <p>{t('vm.snapshots')}</p>
-            <Button type="primary" onClick={() => navigate(`/vms/${id}/snapshots`)}>
-              {t('vm.snapshots')}
-            </Button>
-          </Space>
-        </Card>
-      )
+      children: vm?.id ? <VMSnapshots vmId={vm.id} vmStatus={vm.status} /> : <div>{t('common.loading')}</div>
     },
     {
       key: 'backups',

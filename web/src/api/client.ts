@@ -131,12 +131,14 @@ export interface User {
 
 export interface VMSnapshot {
   id: string
+  vmId: string
   name: string
-  description?: string
-  state?: string
-  size: number
-  created_at: string
-  updated_at?: string
+  description: string
+  status: string
+  isCurrent: boolean
+  parentId?: string
+  createdBy?: string
+  createdAt: string
 }
 
 export const vmsApi = {
@@ -692,4 +694,24 @@ export const backupApi = {
 
   toggleSchedule: (vmId: string, scheduleId: string) =>
     client.post(`/vms/${vmId}/backups/schedules/${scheduleId}/toggle`).then(res => res.data)
+}
+
+export const snapshotApi = {
+  listSnapshots: (vmId: string) =>
+    client.get(`/vms/${vmId}/snapshots`).then(res => res.data),
+
+  createSnapshot: (vmId: string, data: { name: string; description?: string }) =>
+    client.post(`/vms/${vmId}/snapshots`, data).then(res => res.data),
+
+  getSnapshot: (vmId: string, snapshotId: string) =>
+    client.get(`/vms/${vmId}/snapshots/${snapshotId}`).then(res => res.data),
+
+  deleteSnapshot: (vmId: string, snapshotId: string) =>
+    client.delete(`/vms/${vmId}/snapshots/${snapshotId}`).then(res => res.data),
+
+  restoreSnapshot: (vmId: string, snapshotId: string) =>
+    client.post(`/vms/${vmId}/snapshots/${snapshotId}/restore`).then(res => res.data),
+
+  syncSnapshots: (vmId: string) =>
+    client.post(`/vms/${vmId}/snapshots/sync`).then(res => res.data)
 }

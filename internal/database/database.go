@@ -164,9 +164,9 @@ func Migrate(db *gorm.DB) error {
 		vnc_password VARCHAR(20),
 		spice_port BIGINT,
 		mac_address VARCHAR(17) UNIQUE,
-		ip_address INET,
-		gateway INET,
-		dns_servers INET[],
+		ip_address VARCHAR(45),
+		gateway VARCHAR(45),
+		dns_servers VARCHAR(255)[],
 		cpu_allocated BIGINT NOT NULL,
 		memory_allocated BIGINT NOT NULL,
 		disk_allocated BIGINT NOT NULL,
@@ -204,7 +204,7 @@ func Migrate(db *gorm.DB) error {
 		resource_type VARCHAR(50) NOT NULL,
 		resource_id UUID,
 		details JSONB,
-		ip_address INET,
+		ip_address VARCHAR(45),
 		user_agent TEXT,
 		status VARCHAR(20) DEFAULT 'success',
 		error_message TEXT,
@@ -358,6 +358,21 @@ func Migrate(db *gorm.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_backup_schedules_vm ON backup_schedules(vm_id);
 	CREATE INDEX IF NOT EXISTS idx_backup_schedules_enabled ON backup_schedules(enabled);
 
+	CREATE TABLE IF NOT EXISTS vm_snapshots (
+		id UUID PRIMARY KEY,
+		vm_id UUID NOT NULL REFERENCES virtual_machines(id),
+		name VARCHAR(255) NOT NULL,
+		description TEXT,
+		status VARCHAR(20) NOT NULL DEFAULT 'created',
+		is_current BOOLEAN DEFAULT false,
+		parent_id UUID REFERENCES vm_snapshots(id),
+		created_by UUID REFERENCES users(id),
+		created_at TIMESTAMPTZ
+	);
+
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_vm_snapshots_vm_name ON vm_snapshots(vm_id, name);
+	CREATE INDEX IF NOT EXISTS idx_vm_snapshots_vm ON vm_snapshots(vm_id);
+
 	-- Migration: Add architecture column to existing virtual_machines table
 	ALTER TABLE virtual_machines ADD COLUMN IF NOT EXISTS architecture VARCHAR(20) DEFAULT 'x86_64';
 
@@ -431,6 +446,17 @@ func Migrate(db *gorm.DB) error {
 	-- Migration: Add checksum columns to templates
 	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS md5 VARCHAR(32);
 	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS sha256 VARCHAR(64);
+
+	-- Migration: Fix IP address columns to use VARCHAR instead of INET
+	ALTER TABLE virtual_machines DROP COLUMN IF EXISTS ip_address;
+	ALTER TABLE virtual_machines DROP COLUMN IF EXISTS gateway;
+	ALTER TABLE virtual_machines DROP COLUMN IF EXISTS dns_servers;
+	ALTER TABLE virtual_machines ADD COLUMN ip_address VARCHAR(45);
+	ALTER TABLE virtual_machines ADD COLUMN gateway VARCHAR(45);
+	ALTER TABLE virtual_machines ADD COLUMN dns_servers VARCHAR(255)[];
+
+	ALTER TABLE audit_logs DROP COLUMN IF EXISTS ip_address;
+	ALTER TABLE audit_logs ADD COLUMN ip_address VARCHAR(45);
 	`
 	return db.Exec(sql).Error
 }

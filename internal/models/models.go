@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/google/uuid"
@@ -82,8 +81,8 @@ type VirtualMachine struct {
 	VNCPassword       string      `gorm:"size:20" json:"-"`
 	SPICEPort         int         `json:"spicePort"`
 	MACAddress        string      `gorm:"size:17;uniqueIndex" json:"macAddress"`
-	IPAddress         net.IP      `json:"ipAddress"`
-	Gateway           net.IP      `json:"gateway"`
+	IPAddress         string      `json:"ipAddress"`
+	Gateway           string      `json:"gateway"`
 	DNSServers        []string    `gorm:"type:inet[]" json:"dnsServers"`
 	CPUAllocated      int         `gorm:"not null" json:"cpuAllocated"`
 	MemoryAllocated   int         `gorm:"not null" json:"memoryAllocated"`
@@ -128,7 +127,7 @@ type AuditLog struct {
 	ResourceType string     `gorm:"size:50;not null;index:idx_audit_resource" json:"resourceType"`
 	ResourceID   *uuid.UUID `gorm:"type:uuid" json:"resourceId"`
 	Details      string     `gorm:"type:jsonb" json:"details"`
-	IPAddress    net.IP     `json:"ipAddress"`
+	IPAddress    string     `json:"ipAddress"`
 	UserAgent    string     `gorm:"type:text" json:"userAgent"`
 	Status       string     `gorm:"size:20;default:'success'" json:"status"`
 	ErrorMessage string     `gorm:"type:text" json:"errorMessage"`
@@ -386,21 +385,40 @@ func (b *VMBackup) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type BackupSchedule struct {
-	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	VMID         uuid.UUID  `gorm:"type:uuid;not null;index" json:"vmId"`
-	Name         string     `gorm:"size:255;not null" json:"name"`
-	CronExpr     string     `gorm:"size:100;not null" json:"cronExpr"`
-	BackupType   string     `gorm:"size:20;not null;default:'full'" json:"backupType"`
-	Retention    int        `gorm:"default:7" json:"retention"`
-	Enabled      bool       `gorm:"default:true" json:"enabled"`
-	LastRunAt    *time.Time `json:"lastRunAt"`
-	NextRunAt    *time.Time `json:"nextRunAt"`
-	CreatedBy    *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
+	ID         uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	VMID       uuid.UUID  `gorm:"type:uuid;not null;index" json:"vmId"`
+	Name       string     `gorm:"size:255;not null" json:"name"`
+	CronExpr   string     `gorm:"size:100;not null" json:"cronExpr"`
+	BackupType string     `gorm:"size:20;not null;default:'full'" json:"backupType"`
+	Retention  int        `gorm:"default:7" json:"retention"`
+	Enabled    bool       `gorm:"default:true" json:"enabled"`
+	LastRunAt  *time.Time `json:"lastRunAt"`
+	NextRunAt  *time.Time `json:"nextRunAt"`
+	CreatedBy  *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
 }
 
 func (s *BackupSchedule) BeforeCreate(tx *gorm.DB) (err error) {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return
+}
+
+type VMSnapshot struct {
+	ID          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	VMID        uuid.UUID  `gorm:"type:uuid;not null;index" json:"vmId"`
+	Name        string     `gorm:"size:255;not null;uniqueIndex:idx_vm_snapshot" json:"name"`
+	Description string     `gorm:"type:text" json:"description"`
+	Status      string     `gorm:"size:20;not null;default:'created'" json:"status"`
+	IsCurrent   bool       `gorm:"default:false" json:"isCurrent"`
+	ParentID    *uuid.UUID `gorm:"type:uuid" json:"parentId"`
+	CreatedBy   *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt   time.Time  `json:"createdAt"`
+}
+
+func (s *VMSnapshot) BeforeCreate(tx *gorm.DB) (err error) {
 	if s.ID == uuid.Nil {
 		s.ID = uuid.New()
 	}
