@@ -210,7 +210,14 @@
     "descriptionPlaceholder": "请输入描述信息",
     "selectOSType": "选择操作系统类型",
     "file": "文件",
-    "selectFile": "选择文件"
+    "selectFile": "选择文件",
+    "resumeUpload": "恢复上传",
+    "foundPendingUpload": "发现未完成的上传任务：{{fileName}}，已完成 {{progress}}%",
+    "continueUpload": "继续上传",
+    "startNewUpload": "开始新上传",
+    "fileReselected": "文件已重新选择，可以继续上传",
+    "fileMismatch": "文件不匹配，请选择相同的文件",
+    "allChunksUploaded": "所有分片已上传完成"
   },
   "iso": {
     "isoList": "ISO 镜像",
@@ -242,7 +249,14 @@
     "descriptionPlaceholder": "请输入描述信息",
     "selectOSType": "选择操作系统类型",
     "file": "文件",
-    "selectFile": "选择文件"
+    "selectFile": "选择文件",
+    "resumeUpload": "恢复上传",
+    "foundPendingUpload": "发现未完成的上传任务：{{fileName}}，已完成 {{progress}}%",
+    "continueUpload": "继续上传",
+    "startNewUpload": "开始新上传",
+    "fileReselected": "文件已重新选择，可以继续上传",
+    "fileMismatch": "文件不匹配，请选择相同的文件",
+    "allChunksUploaded": "所有分片已上传完成"
   },
   "admin": {
     "userManagement": "用户管理",

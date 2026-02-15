@@ -334,6 +334,8 @@ func (h *TemplateHandler) InitTemplateUpload(c *gin.Context) {
 		TempPath:     "",
 		Status:       "uploading",
 		Progress:     0,
+		TotalChunks:  totalChunks,
+		ChunkSize:    req.ChunkSize,
 		UploadedBy:   &userUUID,
 	}
 
@@ -426,13 +428,44 @@ func (h *TemplateHandler) UploadTemplatePart(c *gin.Context) {
 	log.Printf("[UPLOAD] Chunk %d/%d written successfully for upload %s (%d bytes)", chunkIndex, totalChunks, uploadID, written)
 
 	progress := int((int64(chunkIndex+1) * 100) / int64(totalChunks))
-	h.uploadRepo.UpdateProgress(ctx, uploadID, progress)
+
+	var uploadedChunks []int
+	if upload.UploadedChunks != "" {
+		chunkStrs := strings.Split(upload.UploadedChunks, ",")
+		for _, s := range chunkStrs {
+			if s != "" {
+				if chunk, err := strconv.Atoi(s); err == nil {
+					uploadedChunks = append(uploadedChunks, chunk)
+				}
+			}
+		}
+	}
+
+	found := false
+	for _, c := range uploadedChunks {
+		if c == chunkIndex {
+			found = true
+			break
+		}
+	}
+	if !found {
+		uploadedChunks = append(uploadedChunks, chunkIndex)
+	}
+
+	chunkStrs := make([]string, len(uploadedChunks))
+	for i, c := range uploadedChunks {
+		chunkStrs[i] = strconv.Itoa(c)
+	}
+	upload.UploadedChunks = strings.Join(chunkStrs, ",")
+	upload.Progress = progress
+	h.uploadRepo.Update(ctx, upload)
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
-		"upload_id":   uploadID,
-		"chunk_index": chunkIndex,
-		"chunk_size":  written,
-		"progress":    progress,
+		"upload_id":       uploadID,
+		"chunk_index":     chunkIndex,
+		"chunk_size":      written,
+		"progress":        progress,
+		"uploaded_chunks": uploadedChunks,
 	}))
 }
 

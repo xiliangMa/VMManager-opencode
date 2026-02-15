@@ -1,11 +1,27 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Form, Input, Select, InputNumber, Button, Card, message, Space, Row, Col, Progress } from 'antd'
-import { ArrowLeftOutlined, UploadOutlined, CloudUploadOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { Form, Input, Select, InputNumber, Button, Card, message, Space, Row, Col, Progress, Modal } from 'antd'
+import { ArrowLeftOutlined, UploadOutlined, CloudUploadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { templatesApi } from '../../api/client'
 
 const CHUNK_SIZE = 100 * 1024 * 1024
+
+interface UploadState {
+  uploadId: string
+  fileName: string
+  fileSize: number
+  name: string
+  description: string
+  osType: string
+  osVersion: string
+  architecture: string
+  format: string
+  totalChunks: number
+  uploadedChunks: number[]
+  progress: number
+  timestamp: number
+}
 
 const TemplateUpload: React.FC = () => {
   const { t } = useTranslation()
@@ -20,6 +36,110 @@ const TemplateUpload: React.FC = () => {
   const [uploadId, setUploadId] = useState<string | null>(null)
   const [selectedArch, setSelectedArch] = useState<string>('x86_64')
   const [selectedFormat, setSelectedFormat] = useState<string>('qcow2')
+  const [uploadedChunks, setUploadedChunks] = useState<number[]>([])
+  const [pendingUpload, setPendingUpload] = useState<UploadState | null>(null)
+
+  const saveUploadState = useCallback((state: UploadState) => {
+    localStorage.setItem('template_upload_state', JSON.stringify(state))
+  }, [])
+
+  const clearUploadState = useCallback(() => {
+    localStorage.removeItem('template_upload_state')
+  }, [])
+
+  useEffect(() => {
+    const savedState = localStorage.getItem('template_upload_state')
+    if (savedState) {
+      try {
+        const state: UploadState = JSON.parse(savedState)
+        const now = Date.now()
+        if (now - state.timestamp < 24 * 60 * 60 * 1000) {
+          setPendingUpload(state)
+        } else {
+          localStorage.removeItem('template_upload_state')
+        }
+      } catch {
+        localStorage.removeItem('template_upload_state')
+      }
+    }
+  }, [])
+
+  const checkPendingUpload = async () => {
+    if (!pendingUpload) return
+    
+    try {
+      const response = await templatesApi.getUploadStatus(pendingUpload.uploadId)
+      if (response.data && response.data.status === 'uploading') {
+        Modal.confirm({
+          title: t('template.resumeUpload'),
+          icon: <ExclamationCircleOutlined />,
+          content: t('template.foundPendingUpload', { fileName: pendingUpload.fileName, progress: pendingUpload.progress }),
+          okText: t('template.continueUpload'),
+          cancelText: t('template.startNewUpload'),
+          onOk: () => resumeUpload(pendingUpload),
+          onCancel: () => {
+            clearUploadState()
+            setPendingUpload(null)
+          }
+        })
+      } else {
+        clearUploadState()
+        setPendingUpload(null)
+      }
+    } catch {
+      clearUploadState()
+      setPendingUpload(null)
+    }
+  }
+
+  useEffect(() => {
+    if (pendingUpload) {
+      checkPendingUpload()
+    }
+  }, [pendingUpload])
+
+  const resumeUpload = async (state: UploadState) => {
+    setUploadId(state.uploadId)
+    setUploadStep(1)
+    setUploadProgress(state.progress)
+    setUploadedChunks(state.uploadedChunks)
+    setSelectedArch(state.architecture)
+    setSelectedFormat(state.format)
+    
+    form.setFieldsValue({
+      name: state.name,
+      description: state.description,
+      os_type: state.osType,
+      os_version: state.osVersion
+    })
+
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file && file.name === state.fileName && file.size === state.fileSize) {
+        setSelectedFile(file)
+        message.success(t('template.fileReselected'))
+      } else {
+        message.error(t('template.fileMismatch'))
+        clearUploadState()
+        setPendingUpload(null)
+        setUploadStep(0)
+      }
+    }
+    fileInput.click()
+  }
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (uploading) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [uploading])
 
   const osOptions = [
     { label: 'Ubuntu', value: 'Ubuntu' },
@@ -100,23 +220,56 @@ const TemplateUpload: React.FC = () => {
     const values = form.getFieldsValue()
 
     setUploading(true)
-    setUploadProgress(0)
+    if (uploadedChunks.length === 0) {
+      setUploadProgress(0)
+    }
 
     try {
       const totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE)
-
+      const chunksToUpload: number[] = []
+      
       for (let i = 0; i < totalChunks; i++) {
-        const start = i * CHUNK_SIZE
-        const end = Math.min(start + CHUNK_SIZE, selectedFile.size)
-        const chunk = selectedFile.slice(start, end)
-        
-        const formData = new FormData()
-        formData.append('file', chunk, selectedFile.name)
+        if (!uploadedChunks.includes(i)) {
+          chunksToUpload.push(i)
+        }
+      }
 
-        await templatesApi.uploadPart(uploadId, i, totalChunks, formData)
-        
-        const progress = Math.round(((i + 1) / totalChunks) * 100)
-        setUploadProgress(progress)
+      if (chunksToUpload.length === 0) {
+        message.info(t('template.allChunksUploaded'))
+      } else {
+        for (let idx = 0; idx < chunksToUpload.length; idx++) {
+          const i = chunksToUpload[idx]
+          const start = i * CHUNK_SIZE
+          const end = Math.min(start + CHUNK_SIZE, selectedFile.size)
+          const chunk = selectedFile.slice(start, end)
+          
+          const formData = new FormData()
+          formData.append('file', chunk, selectedFile.name)
+
+          await templatesApi.uploadPart(uploadId, i, totalChunks, formData)
+
+          const newUploadedChunks = [...uploadedChunks, i]
+          setUploadedChunks(newUploadedChunks)
+          
+          const progress = Math.round(((idx + 1) / chunksToUpload.length) * (100 - uploadProgress) + uploadProgress)
+          setUploadProgress(progress)
+
+          saveUploadState({
+            uploadId,
+            fileName: selectedFile.name,
+            fileSize: selectedFile.size,
+            name: values.name,
+            description: values.description || '',
+            osType: values.os_type || '',
+            osVersion: values.os_version || '',
+            architecture: selectedArch,
+            format: selectedFormat,
+            totalChunks,
+            uploadedChunks: newUploadedChunks,
+            progress,
+            timestamp: Date.now()
+          })
+        }
       }
 
       await templatesApi.completeUpload(uploadId, {
@@ -136,6 +289,7 @@ const TemplateUpload: React.FC = () => {
         is_public: values.is_public !== false
       })
 
+      clearUploadState()
       message.success(t('template.uploadCompleted'))
       setUploadStep(2)
     } catch (error: any) {

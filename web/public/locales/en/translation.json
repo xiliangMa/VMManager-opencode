@@ -210,7 +210,14 @@
     "descriptionPlaceholder": "Please enter description",
     "selectOSType": "Select OS type",
     "file": "File",
-    "selectFile": "Select File"
+    "selectFile": "Select File",
+    "resumeUpload": "Resume Upload",
+    "foundPendingUpload": "Found pending upload: {{fileName}}, {{progress}}% completed",
+    "continueUpload": "Continue Upload",
+    "startNewUpload": "Start New Upload",
+    "fileReselected": "File reselected, you can continue uploading",
+    "fileMismatch": "File mismatch, please select the same file",
+    "allChunksUploaded": "All chunks have been uploaded"
   },
   "iso": {
     "isoList": "ISO Images",
@@ -242,7 +249,14 @@
     "descriptionPlaceholder": "Please enter description",
     "selectOSType": "Select OS type",
     "file": "File",
-    "selectFile": "Select File"
+    "selectFile": "Select File",
+    "resumeUpload": "Resume Upload",
+    "foundPendingUpload": "Found pending upload: {{fileName}}, {{progress}}% completed",
+    "continueUpload": "Continue Upload",
+    "startNewUpload": "Start New Upload",
+    "fileReselected": "File reselected, you can continue uploading",
+    "fileMismatch": "File mismatch, please select the same file",
+    "allChunksUploaded": "All chunks have been uploaded"
   },
   "admin": {
     "userManagement": "User Management",

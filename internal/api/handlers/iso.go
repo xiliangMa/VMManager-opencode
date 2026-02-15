@@ -200,6 +200,8 @@ func (h *ISOHandler) InitISOUpload(c *gin.Context) {
 		TempPath:     "",
 		Status:       "uploading",
 		Progress:     0,
+		TotalChunks:  totalChunks,
+		ChunkSize:    req.ChunkSize,
 		UploadedBy:   &userUUID,
 	}
 
@@ -283,15 +285,46 @@ func (h *ISOHandler) UploadISOPart(c *gin.Context) {
 
 	progress := int(float64(chunkIndex+1) / float64(totalChunks) * 100)
 	upload.Progress = progress
+
+	var uploadedChunks []int
+	if upload.UploadedChunks != "" {
+		chunkStrs := strings.Split(upload.UploadedChunks, ",")
+		for _, s := range chunkStrs {
+			if s != "" {
+				if chunk, err := strconv.Atoi(s); err == nil {
+					uploadedChunks = append(uploadedChunks, chunk)
+				}
+			}
+		}
+	}
+
+	found := false
+	for _, c := range uploadedChunks {
+		if c == chunkIndex {
+			found = true
+			break
+		}
+	}
+	if !found {
+		uploadedChunks = append(uploadedChunks, chunkIndex)
+	}
+
+	chunkStrs := make([]string, len(uploadedChunks))
+	for i, c := range uploadedChunks {
+		chunkStrs[i] = strconv.Itoa(c)
+	}
+	upload.UploadedChunks = strings.Join(chunkStrs, ",")
+
 	h.uploadRepo.Update(ctx, upload)
 
-	log.Printf("[ISO] Uploaded chunk %d/%d for upload %s, file: %s, size: %d", 
+	log.Printf("[ISO] Uploaded chunk %d/%d for upload %s, file: %s, size: %d",
 		chunkIndex+1, totalChunks, uploadID, header.Filename, header.Size)
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
-		"chunk_index":  chunkIndex,
-		"total_chunks": totalChunks,
-		"progress":     progress,
+		"chunk_index":     chunkIndex,
+		"total_chunks":    totalChunks,
+		"progress":        progress,
+		"uploaded_chunks": uploadedChunks,
 	}))
 }
 
@@ -357,7 +390,7 @@ func (h *ISOHandler) CompleteISOUpload(c *gin.Context) {
 
 	if req.Checksum != "" && !strings.EqualFold(req.Checksum, md5Sum) {
 		os.Remove(finalFilePath)
-		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "checksum_mismatch"), 
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "checksum_mismatch"),
 			fmt.Sprintf("expected: %s, got: %s", req.Checksum, md5Sum)))
 		return
 	}

@@ -40,32 +40,32 @@ func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type VMTemplate struct {
-	ID               uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	Name             string     `gorm:"size:100;not null" json:"name"`
-	Description      string     `gorm:"type:text" json:"description"`
-	OSType           string     `gorm:"size:50;not null" json:"osType"`
-	OSVersion        string     `gorm:"size:50" json:"osVersion"`
-	Architecture     string     `gorm:"size:20;default:'arm64'" json:"architecture"`
-	Format           string     `gorm:"size:20;default:'qcow2'" json:"format"`
-	CPUMin           int        `gorm:"default:1" json:"cpuMin"`
-	CPUMax           int        `gorm:"default:4" json:"cpuMax"`
-	MemoryMin        int        `gorm:"default:1024" json:"memoryMin"`
-	MemoryMax        int        `gorm:"default:8192" json:"memoryMax"`
-	DiskMin          int        `gorm:"default:20" json:"diskMin"`
-	DiskMax          int        `gorm:"default:500" json:"diskMax"`
-	TemplatePath     string     `gorm:"size:500;not null" json:"templatePath"`
-	IconURL          string     `gorm:"size:500" json:"iconUrl"`
-	ScreenshotURLs   []string   `gorm:"type:text[]" json:"screenshotUrls"`
-	DiskSize         int64      `gorm:"not null" json:"diskSize"`
-	IsPublic         bool       `gorm:"default:true" json:"isPublic"`
-	IsActive         bool       `gorm:"default:true" json:"isActive"`
-	Downloads        int        `gorm:"default:0" json:"downloads"`
-	CreatedBy        *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
-	CreatedAt        time.Time  `json:"createdAt"`
-	UpdatedAt        time.Time  `json:"updatedAt"`
-	ISOPath          string     `gorm:"size:500" json:"isoPath"`
-	InstallScript    string     `gorm:"type:text" json:"installScript"`
-	PostInstallScript string    `gorm:"type:text" json:"postInstallScript"`
+	ID                uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name              string     `gorm:"size:100;not null" json:"name"`
+	Description       string     `gorm:"type:text" json:"description"`
+	OSType            string     `gorm:"size:50;not null" json:"osType"`
+	OSVersion         string     `gorm:"size:50" json:"osVersion"`
+	Architecture      string     `gorm:"size:20;default:'arm64'" json:"architecture"`
+	Format            string     `gorm:"size:20;default:'qcow2'" json:"format"`
+	CPUMin            int        `gorm:"default:1" json:"cpuMin"`
+	CPUMax            int        `gorm:"default:4" json:"cpuMax"`
+	MemoryMin         int        `gorm:"default:1024" json:"memoryMin"`
+	MemoryMax         int        `gorm:"default:8192" json:"memoryMax"`
+	DiskMin           int        `gorm:"default:20" json:"diskMin"`
+	DiskMax           int        `gorm:"default:500" json:"diskMax"`
+	TemplatePath      string     `gorm:"size:500;not null" json:"templatePath"`
+	IconURL           string     `gorm:"size:500" json:"iconUrl"`
+	ScreenshotURLs    []string   `gorm:"type:text[]" json:"screenshotUrls"`
+	DiskSize          int64      `gorm:"not null" json:"diskSize"`
+	IsPublic          bool       `gorm:"default:true" json:"isPublic"`
+	IsActive          bool       `gorm:"default:true" json:"isActive"`
+	Downloads         int        `gorm:"default:0" json:"downloads"`
+	CreatedBy         *uuid.UUID `gorm:"type:uuid" json:"createdBy"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
+	ISOPath           string     `gorm:"size:500" json:"isoPath"`
+	InstallScript     string     `gorm:"type:text" json:"installScript"`
+	PostInstallScript string     `gorm:"type:text" json:"postInstallScript"`
 }
 
 type VirtualMachine struct {
@@ -134,21 +134,24 @@ type AuditLog struct {
 }
 
 type TemplateUpload struct {
-	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	Name         string     `gorm:"size:100;not null" json:"name"`
-	Description  string     `gorm:"type:text" json:"description"`
-	FileName     string     `gorm:"size:255;not null" json:"fileName"`
-	FileSize     int64      `gorm:"not null" json:"fileSize"`
-	Format       string     `gorm:"size:20" json:"format"`
-	Architecture string     `gorm:"size:20" json:"architecture"`
-	UploadPath   string     `gorm:"size:500" json:"uploadPath"`
-	TempPath     string     `gorm:"size:500" json:"tempPath"`
-	Status       string     `gorm:"size:20;default:'uploading'" json:"status"`
-	Progress     int        `gorm:"default:0" json:"progress"`
-	ErrorMessage string     `gorm:"type:text" json:"errorMessage"`
-	UploadedBy   *uuid.UUID `gorm:"type:uuid" json:"uploadedBy"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	CompletedAt  *time.Time `json:"completedAt"`
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name           string     `gorm:"size:100;not null" json:"name"`
+	Description    string     `gorm:"type:text" json:"description"`
+	FileName       string     `gorm:"size:255;not null" json:"fileName"`
+	FileSize       int64      `gorm:"not null" json:"fileSize"`
+	Format         string     `gorm:"size:20" json:"format"`
+	Architecture   string     `gorm:"size:20" json:"architecture"`
+	UploadPath     string     `gorm:"size:500" json:"uploadPath"`
+	TempPath       string     `gorm:"size:500" json:"tempPath"`
+	Status         string     `gorm:"size:20;default:'uploading'" json:"status"`
+	Progress       int        `gorm:"default:0" json:"progress"`
+	UploadedChunks string     `gorm:"type:text" json:"uploadedChunks"`
+	TotalChunks    int        `gorm:"default:0" json:"totalChunks"`
+	ChunkSize      int64      `gorm:"default:0" json:"chunkSize"`
+	ErrorMessage   string     `gorm:"type:text" json:"errorMessage"`
+	UploadedBy     *uuid.UUID `gorm:"type:uuid" json:"uploadedBy"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	CompletedAt    *time.Time `json:"completedAt"`
 }
 
 type AlertRule struct {
@@ -254,22 +257,25 @@ func (i *ISO) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type ISOUpload struct {
-	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	Name         string     `gorm:"size:255;not null" json:"name"`
-	Description  string     `gorm:"type:text" json:"description"`
-	FileName     string     `gorm:"size:255;not null" json:"fileName"`
-	FileSize     int64      `gorm:"not null" json:"fileSize"`
-	Architecture string     `gorm:"size:20" json:"architecture"`
-	OSType       string     `gorm:"size:50" json:"osType"`
-	OSVersion    string     `gorm:"size:50" json:"osVersion"`
-	UploadPath   string     `gorm:"size:500" json:"uploadPath"`
-	TempPath     string     `gorm:"size:500" json:"tempPath"`
-	Status       string     `gorm:"size:20;default:'uploading'" json:"status"`
-	Progress     int        `gorm:"default:0" json:"progress"`
-	ErrorMessage string     `gorm:"type:text" json:"errorMessage"`
-	UploadedBy   *uuid.UUID `gorm:"type:uuid" json:"uploadedBy"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	CompletedAt  *time.Time `json:"completedAt"`
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name           string     `gorm:"size:255;not null" json:"name"`
+	Description    string     `gorm:"type:text" json:"description"`
+	FileName       string     `gorm:"size:255;not null" json:"fileName"`
+	FileSize       int64      `gorm:"not null" json:"fileSize"`
+	Architecture   string     `gorm:"size:20" json:"architecture"`
+	OSType         string     `gorm:"size:50" json:"osType"`
+	OSVersion      string     `gorm:"size:50" json:"osVersion"`
+	UploadPath     string     `gorm:"size:500" json:"uploadPath"`
+	TempPath       string     `gorm:"size:500" json:"tempPath"`
+	Status         string     `gorm:"size:20;default:'uploading'" json:"status"`
+	Progress       int        `gorm:"default:0" json:"progress"`
+	UploadedChunks string     `gorm:"type:text" json:"uploadedChunks"`
+	TotalChunks    int        `gorm:"default:0" json:"totalChunks"`
+	ChunkSize      int64      `gorm:"default:0" json:"chunkSize"`
+	ErrorMessage   string     `gorm:"type:text" json:"errorMessage"`
+	UploadedBy     *uuid.UUID `gorm:"type:uuid" json:"uploadedBy"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	CompletedAt    *time.Time `json:"completedAt"`
 }
 
 func (u *ISOUpload) BeforeCreate(tx *gorm.DB) (err error) {

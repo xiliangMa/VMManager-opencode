@@ -325,6 +325,14 @@ func Migrate(db *gorm.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_isos_architecture ON isos(architecture);
 	CREATE INDEX IF NOT EXISTS idx_isos_os_type ON isos(os_type);
 	CREATE INDEX IF NOT EXISTS idx_iso_uploads_status ON iso_uploads(status);
+
+	-- Migration: Add resumable upload columns
+	ALTER TABLE template_uploads ADD COLUMN IF NOT EXISTS uploaded_chunks TEXT DEFAULT '';
+	ALTER TABLE template_uploads ADD COLUMN IF NOT EXISTS total_chunks INTEGER DEFAULT 0;
+	ALTER TABLE template_uploads ADD COLUMN IF NOT EXISTS chunk_size BIGINT DEFAULT 0;
+	ALTER TABLE iso_uploads ADD COLUMN IF NOT EXISTS uploaded_chunks TEXT DEFAULT '';
+	ALTER TABLE iso_uploads ADD COLUMN IF NOT EXISTS total_chunks INTEGER DEFAULT 0;
+	ALTER TABLE iso_uploads ADD COLUMN IF NOT EXISTS chunk_size BIGINT DEFAULT 0;
 	`
 	return db.Exec(sql).Error
 }

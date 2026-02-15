@@ -1,11 +1,26 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Form, Input, Select, Button, Card, message, Space, Row, Col, Progress } from 'antd'
-import { ArrowLeftOutlined, UploadOutlined, CloudUploadOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { Form, Input, Select, Button, Card, message, Space, Row, Col, Progress, Modal } from 'antd'
+import { ArrowLeftOutlined, UploadOutlined, CloudUploadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { isosApi } from '../../api/client'
 
 const CHUNK_SIZE = 100 * 1024 * 1024
+
+interface UploadState {
+  uploadId: string
+  fileName: string
+  fileSize: number
+  name: string
+  description: string
+  osType: string
+  osVersion: string
+  architecture: string
+  totalChunks: number
+  uploadedChunks: number[]
+  progress: number
+  timestamp: number
+}
 
 const ISOUpload: React.FC = () => {
   const { t } = useTranslation()
@@ -18,6 +33,110 @@ const ISOUpload: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadId, setUploadId] = useState<string | null>(null)
+  const [uploadedChunks, setUploadedChunks] = useState<number[]>([])
+  const [pendingUpload, setPendingUpload] = useState<UploadState | null>(null)
+
+  const saveUploadState = useCallback((state: UploadState) => {
+    localStorage.setItem('iso_upload_state', JSON.stringify(state))
+  }, [])
+
+  const clearUploadState = useCallback(() => {
+    localStorage.removeItem('iso_upload_state')
+  }, [])
+
+  useEffect(() => {
+    const savedState = localStorage.getItem('iso_upload_state')
+    if (savedState) {
+      try {
+        const state: UploadState = JSON.parse(savedState)
+        const now = Date.now()
+        if (now - state.timestamp < 24 * 60 * 60 * 1000) {
+          setPendingUpload(state)
+        } else {
+          localStorage.removeItem('iso_upload_state')
+        }
+      } catch {
+        localStorage.removeItem('iso_upload_state')
+      }
+    }
+  }, [])
+
+  const checkPendingUpload = async () => {
+    if (!pendingUpload) return
+    
+    try {
+      const response = await isosApi.getUploadStatus(pendingUpload.uploadId)
+      if (response.data && response.data.status === 'uploading') {
+        Modal.confirm({
+          title: t('iso.resumeUpload'),
+          icon: <ExclamationCircleOutlined />,
+          content: t('iso.foundPendingUpload', { fileName: pendingUpload.fileName, progress: pendingUpload.progress }),
+          okText: t('iso.continueUpload'),
+          cancelText: t('iso.startNewUpload'),
+          onOk: () => resumeUpload(pendingUpload),
+          onCancel: () => {
+            clearUploadState()
+            setPendingUpload(null)
+          }
+        })
+      } else {
+        clearUploadState()
+        setPendingUpload(null)
+      }
+    } catch {
+      clearUploadState()
+      setPendingUpload(null)
+    }
+  }
+
+  useEffect(() => {
+    if (pendingUpload) {
+      checkPendingUpload()
+    }
+  }, [pendingUpload])
+
+  const resumeUpload = async (state: UploadState) => {
+    setUploadId(state.uploadId)
+    setUploadStep(1)
+    setUploadProgress(state.progress)
+    setUploadedChunks(state.uploadedChunks)
+    
+    form.setFieldsValue({
+      name: state.name,
+      description: state.description,
+      os_type: state.osType,
+      os_version: state.osVersion,
+      architecture: state.architecture
+    })
+
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = '.iso'
+    fileInput.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file && file.name === state.fileName && file.size === state.fileSize) {
+        setSelectedFile(file)
+        message.success(t('iso.fileReselected'))
+      } else {
+        message.error(t('iso.fileMismatch'))
+        clearUploadState()
+        setPendingUpload(null)
+        setUploadStep(0)
+      }
+    }
+    fileInput.click()
+  }
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (uploading) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [uploading])
 
   const osTypeOptions = [
     { label: 'Ubuntu', value: 'Ubuntu' },
@@ -97,23 +216,55 @@ const ISOUpload: React.FC = () => {
     const values = form.getFieldsValue()
 
     setUploading(true)
-    setUploadProgress(0)
+    if (uploadedChunks.length === 0) {
+      setUploadProgress(0)
+    }
 
     try {
       const totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE)
-
+      const chunksToUpload: number[] = []
+      
       for (let i = 0; i < totalChunks; i++) {
-        const start = i * CHUNK_SIZE
-        const end = Math.min(start + CHUNK_SIZE, selectedFile.size)
-        const chunk = selectedFile.slice(start, end)
+        if (!uploadedChunks.includes(i)) {
+          chunksToUpload.push(i)
+        }
+      }
 
-        const formData = new FormData()
-        formData.append('file', chunk)
+      if (chunksToUpload.length === 0) {
+        message.info(t('iso.allChunksUploaded'))
+      } else {
+        for (let idx = 0; idx < chunksToUpload.length; idx++) {
+          const i = chunksToUpload[idx]
+          const start = i * CHUNK_SIZE
+          const end = Math.min(start + CHUNK_SIZE, selectedFile.size)
+          const chunk = selectedFile.slice(start, end)
 
-        await isosApi.uploadPart(uploadId, i, totalChunks, formData)
+          const formData = new FormData()
+          formData.append('file', chunk)
 
-        const progress = Math.round(((i + 1) / totalChunks) * 100)
-        setUploadProgress(progress)
+          await isosApi.uploadPart(uploadId, i, totalChunks, formData)
+
+          const newUploadedChunks = [...uploadedChunks, i]
+          setUploadedChunks(newUploadedChunks)
+          
+          const progress = Math.round(((idx + 1) / chunksToUpload.length) * (100 - uploadProgress) + uploadProgress)
+          setUploadProgress(progress)
+
+          saveUploadState({
+            uploadId,
+            fileName: selectedFile.name,
+            fileSize: selectedFile.size,
+            name: values.name,
+            description: values.description || '',
+            osType: values.os_type || '',
+            osVersion: values.os_version || '',
+            architecture: values.architecture || 'x86_64',
+            totalChunks,
+            uploadedChunks: newUploadedChunks,
+            progress,
+            timestamp: Date.now()
+          })
+        }
       }
 
       await isosApi.completeUpload(uploadId, {
@@ -124,6 +275,7 @@ const ISOUpload: React.FC = () => {
         os_version: values.os_version
       })
 
+      clearUploadState()
       message.success(t('iso.uploadCompleted'))
       setUploadStep(2)
     } catch (error: any) {
