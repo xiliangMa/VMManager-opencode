@@ -8,6 +8,8 @@ logs/
 
 # Binaries
 server
+vmmanager
+bin/
 *.exe
 *.out
 
