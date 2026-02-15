@@ -220,6 +220,7 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 		Tags:             req.Tags,
 	}
 
+	var isoPath string
 	if installationMode == "iso" && req.ISOID != nil {
 		isoUUID, _ := uuid.Parse(*req.ISOID)
 		vm.ISOID = &isoUUID
@@ -231,16 +232,78 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 			}
 			vm.BootOrder = "cdrom,hd,network"
 			vm.InstallStatus = "pending"
+			isoPath = iso.ISOPath
 		}
 	}
 
+	var templatePath string
 	if req.TemplateID != nil {
 		templateUUID, _ := uuid.Parse(*req.TemplateID)
 		vm.TemplateID = &templateUUID
 
 		template, err := h.templateRepo.FindByID(ctx, *req.TemplateID)
-		if err == nil && template != nil && template.Architecture != "" {
-			vm.Architecture = template.Architecture
+		if err == nil && template != nil {
+			if template.Architecture != "" {
+				vm.Architecture = template.Architecture
+			}
+			templatePath = template.TemplatePath
+		}
+	}
+
+	if h.libvirt != nil {
+		diskPath := vm.DiskPath
+
+		if templatePath != "" && exists(templatePath) {
+			log.Printf("[VM] Copying template disk to: %s", diskPath)
+			cmd := exec.Command("cp", templatePath, diskPath)
+			if err := cmd.Run(); err != nil {
+				log.Printf("[VM] Failed to copy template disk: %v, creating empty disk", err)
+				cmd = exec.Command("qemu-img", "create", "-f", "qcow2", "-o", "preallocation=off", diskPath, fmt.Sprintf("%dG", vm.DiskAllocated))
+				if err := cmd.Run(); err != nil {
+					log.Printf("[VM] Failed to create disk image: %v", err)
+				}
+			}
+		} else {
+			log.Printf("[VM] Creating empty disk image: %s", diskPath)
+			cmd := exec.Command("qemu-img", "create", "-f", "qcow2", "-o", "preallocation=off", diskPath, fmt.Sprintf("%dG", vm.DiskAllocated))
+			if err := cmd.Run(); err != nil {
+				log.Printf("[VM] Failed to create disk image: %v", err)
+			}
+		}
+
+		arch := vm.Architecture
+		if arch == "" {
+			arch = "x86_64"
+		}
+
+		nvramPath := fmt.Sprintf("/var/lib/libvirt/qemu/nvram/%s_VARS.fd", vm.Name)
+		var nvramTemplate string
+		switch arch {
+		case "arm64", "aarch64":
+			nvramTemplate = "/usr/share/AAVMF/AAVMF_VARS.fd"
+		default:
+			nvramTemplate = "/usr/share/OVMF/OVMF_VARS.fd"
+		}
+
+		if exists(nvramTemplate) {
+			cmd := exec.Command("cp", nvramTemplate, nvramPath)
+			if err := cmd.Run(); err != nil {
+				log.Printf("[VM] Failed to create nvram file: %v", err)
+			} else {
+				log.Printf("[VM] NVRAM file created: %s", nvramPath)
+			}
+		}
+
+		domainXML := generateDomainXML(vm, diskPath, isoPath)
+		log.Printf("[VM] Generated domain XML for VM %s", vm.Name)
+
+		domain, err := h.libvirt.DefineXML(domainXML)
+		if err != nil {
+			log.Printf("[VM] Failed to define domain: %v", err)
+		} else {
+			vm.LibvirtDomainUUID = domain.UUID
+			log.Printf("[VM] Domain defined successfully: %s", domain.UUID)
+			domain.Free()
 		}
 	}
 
