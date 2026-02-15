@@ -30,10 +30,7 @@ const Templates: React.FC = () => {
     {
       title: t('template.name'),
       dataIndex: 'name',
-      key: 'name',
-      render: (text: string, record: Template) => (
-        <a onClick={() => navigate(`/templates/${record.id}`)}>{text}</a>
-      )
+      key: 'name'
     },
     {
       title: t('template.osType'),
