@@ -142,7 +142,7 @@ const MainLayout: React.FC = () => {
           
           <Dropdown menu={{ items: userMenuItems, onClick: ({ key }) => handleMenuClick(key) }}>
             <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Avatar icon={<UserOutlined />} />
+              <Avatar src={user?.avatar} icon={<UserOutlined />} />
               <span>{user?.username}</span>
             </div>
           </Dropdown>

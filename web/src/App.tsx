@@ -19,7 +19,7 @@ import UserManagement from './pages/Admin/Users'
 import AuditLogs from './pages/Admin/AuditLogs'
 import AlertRules from './pages/Admin/AlertRules'
 import AlertHistory from './pages/Admin/AlertHistory'
-import Profile from './pages/Settings/Profile'
+import Profile from './pages/Settings'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore()

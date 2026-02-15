@@ -113,8 +113,8 @@ const Profile: React.FC = () => {
       console.log('Updated profile:', updatedProfile)
       console.log('Updated profile structure:', typeof updatedProfile)
       
-      // authApi.getProfile() 已经返回了 res.data，所以 updatedProfile 就是用户数据对象
-      const profileData = updatedProfile
+      // 后端API返回的是 {code, message, data} 结构，data 属性才是用户数据对象
+      const profileData = updatedProfile.data
       console.log('Final profile data:', profileData)
       
       // 添加时间戳参数，强制浏览器重新加载头像
