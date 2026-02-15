@@ -552,7 +552,45 @@
     "usageTrend": "Usage Trend",
     "resourceStats": "Resource Statistics",
     "realtimeMonitor": "Real-time Monitor",
-    "historyData": "Historical Data"
+    "historyData": "Historical Data",
+    "timeRange": {
+      "1h": "1 Hour",
+      "6h": "6 Hours",
+      "24h": "24 Hours",
+      "7d": "7 Days"
+    },
+    "chartType": {
+      "area": "Area",
+      "line": "Line"
+    },
+    "autoRefresh": {
+      "on": "Auto Refresh",
+      "off": "Paused"
+    },
+    "status": {
+      "high": "High Load",
+      "medium": "Medium Load",
+      "normal": "Normal"
+    },
+    "cpuMemoryChart": "CPU/Memory Trend",
+    "resourceAllocation": "Resource Allocation",
+    "cpuCores": "CPU Cores",
+    "cores": "Cores",
+    "memoryAllocated": "Memory Allocated",
+    "diskAllocated": "Disk Allocated",
+    "quickStats": "Quick Stats",
+    "avgCPU": "Avg CPU",
+    "avgMem": "Avg Memory",
+    "maxCPU": "Max CPU",
+    "maxMem": "Max Memory",
+    "diskIO": "Disk I/O",
+    "diskRead": "Read",
+    "diskWrite": "Write",
+    "networkTraffic": "Network Traffic",
+    "memory": "Memory",
+    "lastUpdate": "Last Update",
+    "dataPoints": "Data Points",
+    "used": "Used"
   },
   "alerts": {
     "alertRules": "Alert Rules",
@@ -672,7 +710,33 @@
     "copy": "Copy",
     "paste": "Paste",
     "connectionFailed": "Connection failed",
-    "reconnect": "Reconnect"
+    "reconnect": "Reconnect",
+    "specialKeys": "Special Keys",
+    "sessionInfo": "Session Info",
+    "connectedAt": "Connected At",
+    "duration": "Duration",
+    "consoleType": "Console Type",
+    "vmNotRunning": "Virtual Machine Not Running",
+    "connectionError": "Connection Error",
+    "sendKey": "Key sent: {{key}}",
+    "clipboardSent": "Clipboard content sent",
+    "clipboardHint": "Enter text to send to the virtual machine",
+    "clipboardPlaceholder": "Enter text here...",
+    "send": "Send",
+    "scaleMode": "Scale Mode",
+    "scaleLocal": "Local Scale",
+    "scaleRemote": "Remote Scale",
+    "scaleNone": "No Scale",
+    "quality": "Image Quality",
+    "qualityLow": "Low (Save Bandwidth)",
+    "qualityMedium": "Medium",
+    "qualityHigh": "High (Best Quality)",
+    "spiceDesc": "SPICE provides better multimedia performance",
+    "vncDesc": "VNC provides wide compatibility",
+    "connectionInfo": "Connection Info",
+    "host": "Host",
+    "port": "Port",
+    "expiresAt": "Expires At"
   },
   "errors": {
     "notFound": "Resource not found",

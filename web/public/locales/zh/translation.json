@@ -552,7 +552,45 @@
     "usageTrend": "使用趋势",
     "resourceStats": "资源统计",
     "realtimeMonitor": "实时监控",
-    "historyData": "历史数据"
+    "historyData": "历史数据",
+    "timeRange": {
+      "1h": "1小时",
+      "6h": "6小时",
+      "24h": "24小时",
+      "7d": "7天"
+    },
+    "chartType": {
+      "area": "面积图",
+      "line": "折线图"
+    },
+    "autoRefresh": {
+      "on": "自动刷新",
+      "off": "已暂停"
+    },
+    "status": {
+      "high": "高负载",
+      "medium": "中等负载",
+      "normal": "正常"
+    },
+    "cpuMemoryChart": "CPU/内存趋势",
+    "resourceAllocation": "资源分配",
+    "cpuCores": "CPU 核心",
+    "cores": "核心",
+    "memoryAllocated": "已分配内存",
+    "diskAllocated": "已分配磁盘",
+    "quickStats": "快速统计",
+    "avgCPU": "平均 CPU",
+    "avgMem": "平均内存",
+    "maxCPU": "最大 CPU",
+    "maxMem": "最大内存",
+    "diskIO": "磁盘 I/O",
+    "diskRead": "读取",
+    "diskWrite": "写入",
+    "networkTraffic": "网络流量",
+    "memory": "内存",
+    "lastUpdate": "最后更新",
+    "dataPoints": "数据点",
+    "used": "已使用"
   },
   "alerts": {
     "alertRules": "告警规则",
@@ -672,7 +710,33 @@
     "copy": "复制",
     "paste": "粘贴",
     "connectionFailed": "连接失败",
-    "reconnect": "重新连接"
+    "reconnect": "重新连接",
+    "specialKeys": "特殊按键",
+    "sessionInfo": "会话信息",
+    "connectedAt": "连接时间",
+    "duration": "持续时间",
+    "consoleType": "控制台类型",
+    "vmNotRunning": "虚拟机未运行",
+    "connectionError": "连接错误",
+    "sendKey": "已发送按键: {{key}}",
+    "clipboardSent": "剪贴板内容已发送",
+    "clipboardHint": "输入要发送到虚拟机的文本内容",
+    "clipboardPlaceholder": "在此输入文本...",
+    "send": "发送",
+    "scaleMode": "缩放模式",
+    "scaleLocal": "本地缩放",
+    "scaleRemote": "远程缩放",
+    "scaleNone": "不缩放",
+    "quality": "图像质量",
+    "qualityLow": "低 (节省带宽)",
+    "qualityMedium": "中等",
+    "qualityHigh": "高 (最佳画质)",
+    "spiceDesc": "SPICE 提供更好的多媒体性能",
+    "vncDesc": "VNC 提供广泛的兼容性",
+    "connectionInfo": "连接信息",
+    "host": "主机",
+    "port": "端口",
+    "expiresAt": "过期时间"
   },
   "errors": {
     "notFound": "资源不存在",
