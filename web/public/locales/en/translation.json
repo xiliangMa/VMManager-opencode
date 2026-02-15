@@ -36,7 +36,9 @@
     "dashboard": "Dashboard",
     "systemMonitor": "System Monitor",
     "auditLogs": "Audit Logs",
-    "alertRules": "Alert Rules"
+    "alertRules": "Alert Rules",
+    "total": "Total",
+    "totalVMs": "Total VMs"
   },
   "auth": {
     "login": "Login",
@@ -102,6 +104,7 @@
     "confirmCreate": "Confirm Creation",
     "operationInProgress": "Operation in progress",
     "openConsole": "Open Console",
+    "items": "items",
     "installation": {
       "title": "System Installation Wizard",
       "prepare": "Prepare",
@@ -192,7 +195,9 @@
     "minMemory": "Min Memory (MB)",
     "maxMemory": "Max Memory (MB)",
     "minDisk": "Min Disk (GB)",
-    "maxDisk": "Max Disk (GB)"
+    "maxDisk": "Max Disk (GB)",
+    "totalTemplates": "Total Templates",
+    "items": "items"
   },
   "iso": {
     "isoList": "ISO Images",
@@ -251,7 +256,12 @@
     "deleteAlertRule": "Delete Alert Rule",
     "systemMonitor": "System Monitor",
     "systemInfo": "System Information",
-    "exportAuditLogs": "Export Audit Logs"
+    "exportAuditLogs": "Export Audit Logs",
+    "userItems": "users"
+  },
+  "audit": {
+    "totalLogs": "Total Logs",
+    "logItems": "logs"
   },
   "console": {
     "connected": "Connected",
@@ -308,6 +318,13 @@
     "time": "Time",
     "message": "Message",
     "totalAlerts": "Total Alerts",
+    "totalRules": "Total Rules",
+    "ruleItems": "rules",
+    "status": "Status",
+    "historyItems": "records",
+    "severityCritical": "Critical",
+    "severityWarning": "Warning",
+    "severityInfo": "Info",
     "resolve": "Resolve",
     "triggered": "Triggered",
     "resolved": "Resolved"

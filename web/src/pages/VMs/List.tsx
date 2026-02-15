@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm } from 'antd'
-import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PoweroffOutlined, SyncOutlined } from '@ant-design/icons'
+import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm, Row, Col, Statistic } from 'antd'
+import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PoweroffOutlined, SyncOutlined, DesktopOutlined } from '@ant-design/icons'
 import { vmsApi, VM } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
@@ -200,44 +200,65 @@ const VMs: React.FC = () => {
   }
 
   return (
-    <Card
-      title={t('vm.vmList')}
-      extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/vms/create')}>
-          {t('vm.createVM')}
-        </Button>
-      }
-    >
-      <Space style={{ marginBottom: 16 }}>
-        <Input
-          placeholder={t('common.search')}
-          prefix={<SearchOutlined />}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 200 }}
-        />
-        <Select
-          placeholder={t('vm.status')}
-          allowClear
-          style={{ width: 150 }}
-          value={statusFilter || undefined}
-          onChange={(value) => setStatusFilter(value || '')}
-          options={[
-            { label: t('vm.running'), value: 'running' },
-            { label: t('vm.stopped'), value: 'stopped' },
-            { label: t('vm.suspended'), value: 'suspended' }
-          ]}
-        />
-      </Space>
+    <div>
+      <Card>
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
+            <Statistic 
+              title={t('common.totalVMs')} 
+              value={pagination.total} 
+              prefix={<DesktopOutlined />} 
+            />
+          </Col>
+        </Row>
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={pagination}
-      />
-    </Card>
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+          <Space>
+            <Input
+              placeholder={t('common.search')}
+              prefix={<SearchOutlined />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onPressEnter={refresh}
+              style={{ width: 200 }}
+            />
+            <Select
+              placeholder={t('vm.status')}
+              allowClear
+              style={{ width: 150 }}
+              value={statusFilter || undefined}
+              onChange={(value) => setStatusFilter(value || '')}
+              options={[
+                { label: t('vm.running'), value: 'running' },
+                { label: t('vm.stopped'), value: 'stopped' },
+                { label: t('vm.suspended'), value: 'suspended' }
+              ]}
+            />
+            <Button onClick={refresh}>{t('common.refresh')}</Button>
+          </Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/vms/create')}>
+            {t('vm.createVM')}
+          </Button>
+        </div>
+
+        <Table
+          columns={columns}
+          dataSource={data}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => `${t('common.total')} ${total} ${t('vm.items')}`
+          }}
+          onChange={(p) => {
+            pagination.onChange(p.current || 1, p.pageSize || 10)
+          }}
+        />
+      </Card>
+    </div>
   )
 }
 

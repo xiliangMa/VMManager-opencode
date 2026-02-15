@@ -165,57 +165,44 @@ const AlertHistoryPage: React.FC = () => {
 
   return (
     <div>
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
-          <Card>
+      <Card>
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
             <Statistic
               title={t('alerts.totalAlerts')}
               value={stats.total}
               valueStyle={{ color: '#cf1322' }}
+              prefix={<ExclamationCircleOutlined />}
             />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
+          </Col>
+          <Col span={6}>
             <Statistic
-              title={t('severity.critical')}
+              title={t('alerts.severityCritical')}
               value={stats.critical}
               valueStyle={{ color: '#cf1322' }}
             />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
+          </Col>
+          <Col span={6}>
             <Statistic
-              title={t('severity.warning')}
+              title={t('alerts.severityWarning')}
               value={stats.warning}
               valueStyle={{ color: '#faad14' }}
             />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
+          </Col>
+          <Col span={6}>
             <Statistic
-              title={t('severity.info')}
+              title={t('alerts.severityInfo')}
               value={stats.info}
               valueStyle={{ color: '#1890ff' }}
             />
-          </Card>
-        </Col>
-      </Row>
+          </Col>
+        </Row>
 
-      <Card
-        title={
-          <Space>
-            <ExclamationCircleOutlined />
-            {t('alerts.alertHistory')}
-          </Space>
-        }
-        extra={
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
           <Space>
             <Select
-              placeholder={t('placeholder.status')}
-              style={{ width: 120 }}
+              placeholder={t('alerts.status')}
+              style={{ width: 150 }}
               allowClear
               onChange={handleStatusFilter}
               options={statusOptions}
@@ -224,14 +211,20 @@ const AlertHistoryPage: React.FC = () => {
               {t('common.refresh')}
             </Button>
           </Space>
-        }
-      >
+        </div>
+
         <Table
           columns={columns}
           dataSource={histories}
           rowKey="id"
           loading={loading}
-          pagination={pagination}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => `${t('common.total')} ${total} ${t('alerts.historyItems')}`
+          }}
           onChange={handleTableChange}
         />
       </Card>

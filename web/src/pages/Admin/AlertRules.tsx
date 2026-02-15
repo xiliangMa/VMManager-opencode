@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Table, Button, Tag, Space, Modal, Form, Input, InputNumber, Select, Switch, message, Popconfirm } from 'antd'
+import { Card, Table, Button, Tag, Space, Modal, Form, Input, InputNumber, Select, Switch, message, Popconfirm, Row, Col, Statistic } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, BellOutlined, ReloadOutlined } from '@ant-design/icons'
 import { alertRulesApi, AlertRule } from '../../api/client'
 
@@ -204,30 +204,40 @@ const AlertRules: React.FC = () => {
 
   return (
     <div>
-      <Card
-        title={
-          <Space>
-            <BellOutlined />
-            {t('alerts.alertRules')}
-          </Space>
-        }
-        extra={
+      <Card>
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
+            <Statistic 
+              title={t('alerts.totalRules')} 
+              value={pagination.total} 
+              prefix={<BellOutlined />} 
+            />
+          </Col>
+        </Row>
+
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
           <Space>
             <Button icon={<ReloadOutlined />} onClick={() => fetchRules()}>
               {t('common.refresh')}
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              {t('alerts.createAlertRule')}
-            </Button>
           </Space>
-        }
-      >
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            {t('alerts.createAlertRule')}
+          </Button>
+        </div>
+
         <Table
           columns={columns}
           dataSource={rules}
           rowKey="id"
           loading={loading}
-          pagination={pagination}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => `${t('common.total')} ${total} ${t('alerts.ruleItems')}`
+          }}
           onChange={handleTableChange}
         />
       </Card>

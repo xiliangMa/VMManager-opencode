@@ -1,8 +1,8 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Table, Button, Card, Tag, Space, message, Popconfirm, Input } from 'antd'
-import { EditOutlined, DeleteOutlined, UploadOutlined, SearchOutlined } from '@ant-design/icons'
+import { Table, Button, Card, Tag, Space, message, Popconfirm, Input, Row, Col, Statistic } from 'antd'
+import { EditOutlined, DeleteOutlined, UploadOutlined, SearchOutlined, FileOutlined } from '@ant-design/icons'
 import { templatesApi, Template } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
@@ -97,33 +97,53 @@ const Templates: React.FC = () => {
   ]
 
   return (
-    <Card
-      title={t('template.templateList')}
-      extra={
-        <Space>
-          <Button icon={<UploadOutlined />} onClick={() => navigate('/templates/upload')}>
+    <div>
+      <Card>
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
+            <Statistic 
+              title={t('template.totalTemplates')} 
+              value={pagination.total} 
+              prefix={<FileOutlined />} 
+            />
+          </Col>
+        </Row>
+
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+          <Space>
+            <Input
+              placeholder={t('common.search')}
+              prefix={<SearchOutlined />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onPressEnter={refresh}
+              style={{ width: 200 }}
+            />
+            <Button onClick={refresh}>{t('common.refresh')}</Button>
+          </Space>
+          <Button type="primary" icon={<UploadOutlined />} onClick={() => navigate('/templates/upload')}>
             {t('template.upload')}
           </Button>
-        </Space>
-      }
-    >
-      <Space style={{ marginBottom: 16 }}>
-        <Input
-          placeholder={t('common.search')}
-          prefix={<SearchOutlined />}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 200 }}
+        </div>
+
+        <Table
+          columns={columns}
+          dataSource={data}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => `${t('common.total')} ${total} ${t('template.items')}`
+          }}
+          onChange={(p) => {
+            pagination.onChange(p.current || 1, p.pageSize || 10)
+          }}
         />
-      </Space>
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={pagination}
-      />
-    </Card>
+      </Card>
+    </div>
   )
 }
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Table, Card, Tag, Space, Input, Select, Button } from 'antd'
-import { ExportOutlined, SearchOutlined } from '@ant-design/icons'
+import { Table, Card, Tag, Space, Input, Select, Button, Row, Col, Statistic } from 'antd'
+import { ExportOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons'
 import { systemApi } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
@@ -24,7 +24,7 @@ const AuditLogs: React.FC = () => {
   const [actionFilter, setActionFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
 
-  const { data, loading, pagination } = useTable<AuditLog>({
+  const { data, loading, pagination, refresh } = useTable<AuditLog>({
     api: systemApi.getAuditLogs
   })
 
@@ -105,54 +105,74 @@ const AuditLogs: React.FC = () => {
   ]
 
   return (
-    <Card
-      title={t('admin.auditLogs')}
-      extra={
-        <Button icon={<ExportOutlined />} onClick={handleExport}>
-          {t('common.export')}
-        </Button>
-      }
-    >
-      <Space style={{ marginBottom: 16 }}>
-        <Input
-          placeholder={t('common.search')}
-          prefix={<SearchOutlined />}
-          style={{ width: 200 }}
-        />
-        <Select
-          placeholder={t('table.action')}
-          allowClear
-          style={{ width: 150 }}
-          value={actionFilter || undefined}
-          onChange={(value) => setActionFilter(value || '')}
-          options={[
-            { label: t('status.login'), value: 'login' },
-            { label: t('status.vmCreate'), value: 'vm.create' },
-            { label: t('status.vmDelete'), value: 'vm.delete' },
-            { label: t('status.templateUpload'), value: 'template.upload' }
-          ]}
-        />
-        <Select
-          placeholder={t('table.status')}
-          allowClear
-          style={{ width: 120 }}
-          value={statusFilter || undefined}
-          onChange={(value) => setStatusFilter(value || '')}
-          options={[
-            { label: t('status.success'), value: 'success' },
-            { label: t('status.failed'), value: 'failed' }
-          ]}
-        />
-      </Space>
+    <div>
+      <Card>
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
+            <Statistic 
+              title={t('audit.totalLogs')} 
+              value={pagination.total} 
+              prefix={<FileTextOutlined />} 
+            />
+          </Col>
+        </Row>
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={pagination}
-      />
-    </Card>
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+          <Space>
+            <Input
+              placeholder={t('common.search')}
+              prefix={<SearchOutlined />}
+              style={{ width: 200 }}
+            />
+            <Select
+              placeholder={t('table.action')}
+              allowClear
+              style={{ width: 150 }}
+              value={actionFilter || undefined}
+              onChange={(value) => setActionFilter(value || '')}
+              options={[
+                { label: t('status.login'), value: 'login' },
+                { label: t('status.vmCreate'), value: 'vm.create' },
+                { label: t('status.vmDelete'), value: 'vm.delete' },
+                { label: t('status.templateUpload'), value: 'template.upload' }
+              ]}
+            />
+            <Select
+              placeholder={t('table.status')}
+              allowClear
+              style={{ width: 120 }}
+              value={statusFilter || undefined}
+              onChange={(value) => setStatusFilter(value || '')}
+              options={[
+                { label: t('status.success'), value: 'success' },
+                { label: t('status.failed'), value: 'failed' }
+              ]}
+            />
+            <Button onClick={refresh}>{t('common.refresh')}</Button>
+          </Space>
+          <Button type="primary" icon={<ExportOutlined />} onClick={handleExport}>
+            {t('common.export')}
+          </Button>
+        </div>
+
+        <Table
+          columns={columns}
+          dataSource={data}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => `${t('common.total')} ${total} ${t('audit.logItems')}`
+          }}
+          onChange={(p) => {
+            pagination.onChange(p.current || 1, p.pageSize || 10)
+          }}
+        />
+      </Card>
+    </div>
   )
 }
 

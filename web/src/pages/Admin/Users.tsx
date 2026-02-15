@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Table, Card, Button, Space, Tag, message, Popconfirm, Modal, Form, Input, InputNumber, Select, Tooltip } from 'antd'
+import { Table, Card, Button, Space, Tag, message, Popconfirm, Modal, Form, Input, InputNumber, Select, Tooltip, Row, Col, Statistic } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons'
 import { usersApi, User } from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
@@ -153,37 +153,58 @@ const Users: React.FC = () => {
   ]
 
   return (
-    <Card
-      title={t('admin.userManagement')}
-      extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          {t('modal.createUser')}
-        </Button>
-      }
-    >
-      <Space style={{ marginBottom: 16 }}>
-        <Input
-          placeholder={t('common.search')}
-          prefix={<SearchOutlined />}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 200 }}
-        />
-      </Space>
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={pagination}
-      />
+    <div>
+      <Card>
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
+            <Statistic 
+              title={t('admin.totalUsers')} 
+              value={pagination.total} 
+              prefix={<UserOutlined />} 
+            />
+          </Col>
+        </Row>
 
-      <Modal
-        title={editingUser ? t('modal.editUser') : t('modal.createUser')}
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={null}
-      >
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+          <Space>
+            <Input
+              placeholder={t('common.search')}
+              prefix={<SearchOutlined />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onPressEnter={refresh}
+              style={{ width: 200 }}
+            />
+            <Button onClick={refresh}>{t('common.refresh')}</Button>
+          </Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            {t('admin.createUser')}
+          </Button>
+        </div>
+
+        <Table
+          columns={columns}
+          dataSource={data}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => `${t('common.total')} ${total} ${t('admin.userItems')}`
+          }}
+          onChange={(p) => {
+            pagination.onChange(p.current || 1, p.pageSize || 10)
+          }}
+        />
+
+        <Modal
+          title={editingUser ? t('admin.editUser') : t('admin.createUser')}
+          open={isModalOpen}
+          onCancel={() => setIsModalOpen(false)}
+          footer={null}
+        >
         <Form
           form={form}
           layout="vertical"
@@ -269,7 +290,8 @@ const Users: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </Card>
+      </Card>
+    </div>
   )
 }
 

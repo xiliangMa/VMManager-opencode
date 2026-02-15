@@ -36,7 +36,9 @@
     "dashboard": "概览",
     "systemMonitor": "系统监控",
     "auditLogs": "审计日志",
-    "alertRules": "告警规则"
+    "alertRules": "告警规则",
+    "total": "共",
+    "totalVMs": "虚拟机总数"
   },
   "auth": {
     "login": "登录",
@@ -102,6 +104,7 @@
     "confirmCreate": "确认创建",
     "operationInProgress": "操作进行中",
     "openConsole": "打开控制台",
+    "items": "项",
     "installation": {
       "title": "系统安装向导",
       "prepare": "准备安装",
@@ -192,7 +195,9 @@
     "minMemory": "最小内存 (MB)",
     "maxMemory": "最大内存 (MB)",
     "minDisk": "最小磁盘 (GB)",
-    "maxDisk": "最大磁盘 (GB)"
+    "maxDisk": "最大磁盘 (GB)",
+    "totalTemplates": "模板总数",
+    "items": "项"
   },
   "iso": {
     "isoList": "ISO 镜像",
@@ -251,7 +256,12 @@
     "deleteAlertRule": "删除告警规则",
     "systemMonitor": "系统监控",
     "systemInfo": "系统信息",
-    "exportAuditLogs": "导出审计日志"
+    "exportAuditLogs": "导出审计日志",
+    "userItems": "个用户"
+  },
+  "audit": {
+    "totalLogs": "日志总数",
+    "logItems": "条日志"
   },
   "console": {
     "connected": "已连接",
@@ -308,6 +318,13 @@
     "time": "时间",
     "message": "消息",
     "totalAlerts": "告警总数",
+    "totalRules": "规则总数",
+    "ruleItems": "条规则",
+    "status": "状态",
+    "historyItems": "条记录",
+    "severityCritical": "严重",
+    "severityWarning": "警告",
+    "severityInfo": "提示",
     "resolve": "解决",
     "triggered": "已触发",
     "resolved": "已解决"
