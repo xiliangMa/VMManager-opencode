@@ -110,6 +110,12 @@ const Profile: React.FC = () => {
       if (response.ok) {
         message.success(t('message.createdSuccessfully') + ' avatar')
         const updatedProfile = await authApi.getProfile()
+        // 添加时间戳参数，强制浏览器重新加载头像
+        if (updatedProfile.data.avatar) {
+          updatedProfile.data.avatar = updatedProfile.data.avatar.includes('?') 
+            ? `${updatedProfile.data.avatar}&t=${Date.now()}`
+            : `${updatedProfile.data.avatar}?t=${Date.now()}`
+        }
         updateUser(updatedProfile.data)
       } else {
         message.error(t('message.failedToCreate') + ' avatar')
