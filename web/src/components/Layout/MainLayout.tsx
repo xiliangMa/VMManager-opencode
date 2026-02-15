@@ -12,7 +12,6 @@ import {
   MenuUnfoldOutlined,
   TranslationOutlined,
   BellOutlined,
-  MonitorOutlined,
   HistoryOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
@@ -35,11 +34,6 @@ const MainLayout: React.FC = () => {
       key: '/',
       icon: <DashboardOutlined />,
       label: t('common.dashboard')
-    },
-    {
-      key: '/dashboard',
-      icon: <MonitorOutlined />,
-      label: t('common.systemMonitor')
     },
     {
       key: '/vms',

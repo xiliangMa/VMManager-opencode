@@ -19,7 +19,6 @@ import UserManagement from './pages/Admin/Users'
 import AuditLogs from './pages/Admin/AuditLogs'
 import AlertRules from './pages/Admin/AlertRules'
 import AlertHistory from './pages/Admin/AlertHistory'
-import SystemDashboard from './pages/Dashboard/SystemDashboard'
 import Profile from './pages/Settings/Profile'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -47,7 +46,6 @@ const App: React.FC = () => {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="dashboard" element={<SystemDashboard />} />
         <Route path="vms" element={<VMs />} />
         <Route path="vms/create" element={<VMCreate />} />
         <Route path="vms/:id/edit" element={<VMEdit />} />
