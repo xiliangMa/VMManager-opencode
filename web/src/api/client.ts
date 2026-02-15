@@ -193,7 +193,16 @@ export const vmsApi = {
     client.post(`/vms/${id}/install-agent`, data || {}).then(res => res.data),
 
   getInstallationStatus: (id: string) =>
-    client.get(`/vms/${id}/installation-status`).then(res => res.data)
+    client.get(`/vms/${id}/installation-status`).then(res => res.data),
+
+  mountISO: (id: string, isoId: string) =>
+    client.post(`/vms/${id}/mount-iso`, { isoId }).then(res => res.data),
+
+  unmountISO: (id: string) =>
+    client.delete(`/vms/${id}/mount-iso`).then(res => res.data),
+
+  getMountedISO: (id: string) =>
+    client.get(`/vms/${id}/mounted-iso`).then(res => res.data)
 }
 
 export const snapshotsApi = {

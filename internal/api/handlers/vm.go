@@ -23,6 +23,7 @@ type VMHandler struct {
 	userRepo     *repository.UserRepository
 	templateRepo *repository.TemplateRepository
 	statsRepo    *repository.VMStatsRepository
+	isoRepo      *repository.ISORepository
 	libvirt      *libvirt.Client
 	storagePath  string
 }
@@ -32,6 +33,7 @@ func NewVMHandler(
 	userRepo *repository.UserRepository,
 	templateRepo *repository.TemplateRepository,
 	statsRepo *repository.VMStatsRepository,
+	isoRepo *repository.ISORepository,
 	libvirtClient *libvirt.Client,
 	storagePath string,
 ) *VMHandler {
@@ -40,6 +42,7 @@ func NewVMHandler(
 		userRepo:     userRepo,
 		templateRepo: templateRepo,
 		statsRepo:    statsRepo,
+		isoRepo:      isoRepo,
 		libvirt:      libvirtClient,
 		storagePath:  storagePath,
 	}
@@ -175,10 +178,10 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 		CPUAllocated:    req.CPUAllocated,
 		MemoryAllocated: req.MemoryAllocated,
 		DiskAllocated:   req.DiskAllocated,
-		DiskPath:       fmt.Sprintf("%s/%s.qcow2", h.storagePath, uuid.New().String()),
-		BootOrder:      req.BootOrder,
-		Autostart:      req.Autostart,
-		Tags:           req.Tags,
+		DiskPath:        fmt.Sprintf("%s/%s.qcow2", h.storagePath, uuid.New().String()),
+		BootOrder:       req.BootOrder,
+		Autostart:       req.Autostart,
+		Tags:            req.Tags,
 	}
 
 	if req.TemplateID != nil {
@@ -1441,10 +1444,10 @@ func (h *VMHandler) FinishInstallation(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
-		"message":       "Installation completed, VM started from hard disk",
-		"status":        "running",
-		"is_installed":  true,
-		"boot_order":    vm.BootOrder,
+		"message":      "Installation completed, VM started from hard disk",
+		"status":       "running",
+		"is_installed": true,
+		"boot_order":   vm.BootOrder,
 	}))
 }
 
@@ -1521,10 +1524,10 @@ echo "SPICE vdagent installation completed"
 	}
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
-		"message":       "Agent installation script prepared",
-		"agent_type":    req.AgentType,
-		"script":        script,
-		"note":          "Please run the script inside the VM manually via console",
+		"message":    "Agent installation script prepared",
+		"agent_type": req.AgentType,
+		"script":     script,
+		"note":       "Please run the script inside the VM manually via console",
 	}))
 }
 
@@ -1539,11 +1542,199 @@ func (h *VMHandler) GetInstallationStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
-		"is_installed":      vm.IsInstalled,
-		"install_status":    vm.InstallStatus,
-		"install_progress":   vm.InstallProgress,
-		"agent_installed":   vm.AgentInstalled,
-		"boot_order":        vm.BootOrder,
-		"current_status":    vm.Status,
+		"is_installed":     vm.IsInstalled,
+		"install_status":   vm.InstallStatus,
+		"install_progress": vm.InstallProgress,
+		"agent_installed":  vm.AgentInstalled,
+		"boot_order":       vm.BootOrder,
+		"current_status":   vm.Status,
+	}))
+}
+
+func (h *VMHandler) MountISO(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	var req struct {
+		ISOID string `json:"isoId" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
+		return
+	}
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.LibvirtDomainUUID == "" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_domain_not_found"), "VM has no libvirt domain"))
+		return
+	}
+
+	iso, err := h.isoRepo.FindByID(ctx, req.ISOID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeNotFound, t(c, "iso_not_found"), req.ISOID))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized"))
+		return
+	}
+
+	if err := h.libvirt.AttachISO(vm.LibvirtDomainUUID, iso.ISOPath); err != nil {
+		log.Printf("[VM] Failed to mount ISO: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_mount_iso"), err.Error()))
+		return
+	}
+
+	log.Printf("[VM] ISO mounted successfully: VM=%s, ISO=%s", id, iso.Name)
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"vmId":    id,
+		"isoId":   iso.ID,
+		"isoName": iso.Name,
+		"isoPath": iso.ISOPath,
+	}))
+}
+
+func (h *VMHandler) UnmountISO(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.LibvirtDomainUUID == "" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_domain_not_found"), "VM has no libvirt domain"))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized"))
+		return
+	}
+
+	if err := h.libvirt.DetachISO(vm.LibvirtDomainUUID); err != nil {
+		log.Printf("[VM] Failed to unmount ISO: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_unmount_iso"), err.Error()))
+		return
+	}
+
+	log.Printf("[VM] ISO unmounted successfully: VM=%s", id)
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"vmId": id,
+	}))
+}
+
+func (h *VMHandler) GetMountedISO(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	vm, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && vm.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	if vm.LibvirtDomainUUID == "" {
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"vmId":    id,
+			"mounted": false,
+			"isoPath": "",
+			"isoId":   "",
+			"isoName": "",
+		}))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"vmId":    id,
+			"mounted": false,
+			"isoPath": "",
+			"isoId":   "",
+			"isoName": "",
+		}))
+		return
+	}
+
+	isoPath, err := h.libvirt.GetMountedISO(vm.LibvirtDomainUUID)
+	if err != nil {
+		log.Printf("[VM] Failed to get mounted ISO: %v", err)
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"vmId":    id,
+			"mounted": false,
+			"isoPath": "",
+			"isoId":   "",
+			"isoName": "",
+		}))
+		return
+	}
+
+	if isoPath == "" {
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"vmId":    id,
+			"mounted": false,
+			"isoPath": "",
+			"isoId":   "",
+			"isoName": "",
+		}))
+		return
+	}
+
+	iso, err := h.isoRepo.FindByPath(ctx, isoPath)
+	if err != nil {
+		c.JSON(http.StatusOK, errors.Success(gin.H{
+			"vmId":    id,
+			"mounted": true,
+			"isoPath": isoPath,
+			"isoId":   "",
+			"isoName": "",
+		}))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"vmId":    id,
+		"mounted": true,
+		"isoPath": isoPath,
+		"isoId":   iso.ID,
+		"isoName": iso.Name,
 	}))
 }

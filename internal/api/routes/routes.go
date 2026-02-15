@@ -15,7 +15,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 	jwtMiddleware := middleware.JWTRequired(cfg.JWT.Secret)
 
 	authHandler := handlers.NewAuthHandler(repos.User, cfg.JWT)
-	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats, libvirtClient, cfg.Storage.Path)
+	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats, repos.ISO, libvirtClient, cfg.Storage.Path)
 	templateHandler := handlers.NewTemplateHandler(repos.Template, repos.TemplateUpload, repos.VM)
 	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
 	auditHandler := handlers.NewAuditHandler(repos.AuditLog)
@@ -60,6 +60,9 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			vms.POST("/:id/finish-installation", vmHandler.FinishInstallation)
 			vms.POST("/:id/install-agent", vmHandler.InstallAgent)
 			vms.GET("/:id/installation-status", vmHandler.GetInstallationStatus)
+			vms.POST("/:id/mount-iso", vmHandler.MountISO)
+			vms.DELETE("/:id/mount-iso", vmHandler.UnmountISO)
+			vms.GET("/:id/mounted-iso", vmHandler.GetMountedISO)
 
 			snapshots := vms.Group("/:id/snapshots")
 			{

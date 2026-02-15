@@ -3,6 +3,8 @@ package libvirt
 import (
 	"fmt"
 	"log"
+	"regexp"
+	"strings"
 
 	"github.com/libvirt/libvirt-go"
 )
@@ -241,4 +243,139 @@ func (c *Client) GetFreeMemory() (uint64, error) {
 
 func (c *Client) GetNodeInfo() (*libvirt.NodeInfo, error) {
 	return c.conn.GetNodeInfo()
+}
+
+func (c *Client) AttachISO(domainUUID string, isoPath string) error {
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	xmlDesc, err := domain.GetXMLDesc(libvirt.DOMAIN_XML_INACTIVE)
+	if err != nil {
+		return fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	newXML, err := updateCDROMXML(xmlDesc, isoPath)
+	if err != nil {
+		return fmt.Errorf("failed to update CDROM XML: %w", err)
+	}
+
+	_, err = c.conn.DomainDefineXML(newXML)
+	if err != nil {
+		return fmt.Errorf("failed to define domain with new ISO: %w", err)
+	}
+
+	log.Printf("[LIBVIRT] ISO attached to domain %s: %s", domainUUID, isoPath)
+	return nil
+}
+
+func (c *Client) DetachISO(domainUUID string) error {
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	xmlDesc, err := domain.GetXMLDesc(libvirt.DOMAIN_XML_INACTIVE)
+	if err != nil {
+		return fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	newXML, err := updateCDROMXML(xmlDesc, "")
+	if err != nil {
+		return fmt.Errorf("failed to update CDROM XML: %w", err)
+	}
+
+	_, err = c.conn.DomainDefineXML(newXML)
+	if err != nil {
+		return fmt.Errorf("failed to define domain without ISO: %w", err)
+	}
+
+	log.Printf("[LIBVIRT] ISO detached from domain %s", domainUUID)
+	return nil
+}
+
+func (c *Client) GetMountedISO(domainUUID string) (string, error) {
+	domain, err := c.conn.LookupDomainByUUIDString(domainUUID)
+	if err != nil {
+		return "", fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	xmlDesc, err := domain.GetXMLDesc(0)
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	return extractISOPath(xmlDesc), nil
+}
+
+func updateCDROMXML(xmlDesc string, isoPath string) (string, error) {
+	cdromRegex := regexp.MustCompile(`(?s)<disk type='file' device='cdrom'>.*?</disk>`)
+
+	if !cdromRegex.MatchString(xmlDesc) {
+		if isoPath == "" {
+			return xmlDesc, nil
+		}
+
+		targetRegex := regexp.MustCompile(`</devices>`)
+		cdromXML := fmt.Sprintf(`<disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='%s'/>
+      <target dev='sda' bus='sata'/>
+      <readonly/>
+    </disk>`, isoPath)
+		return targetRegex.ReplaceAllString(xmlDesc, cdromXML+"</devices>"), nil
+	}
+
+	if isoPath == "" {
+		newDiskXML := `<disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <target dev='sda' bus='sata'/>
+      <readonly/>
+    </disk>`
+		return cdromRegex.ReplaceAllString(xmlDesc, newDiskXML), nil
+	}
+
+	sourceRegex := regexp.MustCompile(`(?s)(<disk type='file' device='cdrom'>.*?<driver[^/]*/>)(.*?)(</disk>)`)
+	if sourceRegex.MatchString(xmlDesc) {
+		newSource := fmt.Sprintf(`$1
+      <source file='%s'/>
+      $3`, isoPath)
+		return sourceRegex.ReplaceAllString(xmlDesc, newSource), nil
+	}
+
+	driverRegex := regexp.MustCompile(`(?s)(<disk type='file' device='cdrom'>.*?<driver[^/]*/>)(</disk>)`)
+	if driverRegex.MatchString(xmlDesc) {
+		newXML := fmt.Sprintf(`$1
+      <source file='%s'/>
+      $2`, isoPath)
+		return driverRegex.ReplaceAllString(xmlDesc, newXML), nil
+	}
+
+	return xmlDesc, nil
+}
+
+func extractISOPath(xmlDesc string) string {
+	sourceRegex := regexp.MustCompile(`<source file='([^']+)'[^/]*/?\s*>`)
+	matches := sourceRegex.FindAllStringSubmatch(xmlDesc, -1)
+
+	for _, match := range matches {
+		if len(match) > 1 && strings.HasSuffix(strings.ToLower(match[1]), ".iso") {
+			return match[1]
+		}
+	}
+
+	cdromRegex := regexp.MustCompile(`(?s)<disk type='file' device='cdrom'>.*?<source file='([^']+)'.*?</disk>`)
+	matches = cdromRegex.FindAllStringSubmatch(xmlDesc, -1)
+
+	for _, match := range matches {
+		if len(match) > 1 {
+			return match[1]
+		}
+	}
+
+	return ""
 }

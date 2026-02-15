@@ -41,6 +41,15 @@ func (r *ISORepository) FindByMD5(ctx context.Context, md5 string) (*models.ISO,
 	return &iso, err
 }
 
+func (r *ISORepository) FindByPath(ctx context.Context, isoPath string) (*models.ISO, error) {
+	var iso models.ISO
+	err := r.db.WithContext(ctx).Where("iso_path = ?", isoPath).First(&iso).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrISONotFound
+	}
+	return &iso, err
+}
+
 func (r *ISORepository) Update(ctx context.Context, iso *models.ISO) error {
 	return r.db.WithContext(ctx).Save(iso).Error
 }

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined } from '@ant-design/icons'
-import { vmsApi } from '../../api/client'
+import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm, Modal, Select, Spin } from 'antd'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons'
+import { vmsApi, isosApi, ISO } from '../../api/client'
 import type { VMDetail } from '../../api/client'
 import dayjs from 'dayjs'
 
@@ -13,6 +13,11 @@ const VMDetail: React.FC = () => {
   const { t } = useTranslation()
   const [vm, setVm] = useState<VMDetail | null>(null)
   const [locked, setLocked] = useState(false)
+  const [mountedISO, setMountedISO] = useState<{ mounted: boolean; isoId: string; isoName: string; isoPath: string } | null>(null)
+  const [isoModalVisible, setIsoModalVisible] = useState(false)
+  const [isoList, setIsoList] = useState<ISO[]>([])
+  const [selectedISO, setSelectedISO] = useState<string>('')
+  const [isoLoading, setIsoLoading] = useState(false)
 
   const fetchVm = async () => {
     if (!id) return
@@ -29,8 +34,20 @@ const VMDetail: React.FC = () => {
     }
   }
 
+  const fetchMountedISO = async () => {
+    if (!id) return
+    try {
+      const response = await vmsApi.getMountedISO(id)
+      const data = response.data || response
+      setMountedISO(data)
+    } catch (error) {
+      console.error('Failed to fetch mounted ISO:', error)
+    }
+  }
+
   useEffect(() => {
     fetchVm()
+    fetchMountedISO()
   }, [id])
 
   // 当 VM 处于中间状态时，自动轮询更新
@@ -92,6 +109,56 @@ const VMDetail: React.FC = () => {
       const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
       message.error(errorMessage)
       setLocked(false)
+    }
+  }
+
+  const handleOpenISOModal = async () => {
+    setIsoLoading(true)
+    setIsoModalVisible(true)
+    try {
+      const response = await isosApi.list({ page: 1, page_size: 100 })
+      const data = response.data || response
+      setIsoList(data.items || data || [])
+      if (mountedISO?.isoId) {
+        setSelectedISO(mountedISO.isoId)
+      }
+    } catch (error) {
+      message.error(t('message.failedToLoad') + ' ISO')
+    } finally {
+      setIsoLoading(false)
+    }
+  }
+
+  const handleMountISO = async () => {
+    if (!selectedISO) {
+      message.warning(t('iso.selectISO'))
+      return
+    }
+    setIsoLoading(true)
+    try {
+      await vmsApi.mountISO(id!, selectedISO)
+      message.success(t('iso.mountSuccess'))
+      setIsoModalVisible(false)
+      fetchMountedISO()
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMessage)
+    } finally {
+      setIsoLoading(false)
+    }
+  }
+
+  const handleUnmountISO = async () => {
+    setIsoLoading(true)
+    try {
+      await vmsApi.unmountISO(id!)
+      message.success(t('iso.unmountSuccess'))
+      fetchMountedISO()
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMessage)
+    } finally {
+      setIsoLoading(false)
     }
   }
 
@@ -218,6 +285,20 @@ const VMDetail: React.FC = () => {
               <Button onClick={handleStop}>{t('vm.stop')}</Button>
               <Button onClick={handleRestart}>{t('vm.restart')}</Button>
               <Button onClick={() => navigate(`/vms/${id}/console`)}>{t('vm.console')}</Button>
+              {mountedISO?.mounted ? (
+                <Popconfirm
+                  title={t('iso.unmountConfirm')}
+                  onConfirm={handleUnmountISO}
+                >
+                  <Button icon={<DisconnectOutlined />} danger>
+                    {t('iso.unmount')}: {mountedISO.isoName}
+                  </Button>
+                </Popconfirm>
+              ) : (
+                <Button icon={<LinkOutlined />} onClick={handleOpenISOModal}>
+                  {t('iso.mount')}
+                </Button>
+              )}
               {(vm.install_status === 'installing') && (
                 <Tag color="processing">{t('installation.installing')}</Tag>
               )}
@@ -225,6 +306,20 @@ const VMDetail: React.FC = () => {
           ) : vm.status === 'stopped' && !locked ? (
             <Space>
               <Button type="primary" onClick={handleStart}>{t('vm.start')}</Button>
+              {mountedISO?.mounted ? (
+                <Popconfirm
+                  title={t('iso.unmountConfirm')}
+                  onConfirm={handleUnmountISO}
+                >
+                  <Button icon={<DisconnectOutlined />} danger>
+                    {t('iso.unmount')}: {mountedISO.isoName}
+                  </Button>
+                </Popconfirm>
+              ) : (
+                <Button icon={<LinkOutlined />} onClick={handleOpenISOModal}>
+                  {t('iso.mount')}
+                </Button>
+              )}
               {(!vm.is_installed || vm.install_status === '') && (
                 <Button 
                   icon={<SettingOutlined />} 
@@ -260,6 +355,39 @@ const VMDetail: React.FC = () => {
 
         <Tabs items={tabItems} />
       </Card>
+
+      <Modal
+        title={t('iso.mount')}
+        open={isoModalVisible}
+        onCancel={() => setIsoModalVisible(false)}
+        onOk={handleMountISO}
+        confirmLoading={isoLoading}
+        okText={t('iso.mount')}
+        cancelText={t('common.cancel')}
+      >
+        <Spin spinning={isoLoading}>
+          <div style={{ marginBottom: 16 }}>
+            <p>{t('iso.selectISOHint')}</p>
+          </div>
+          <Select
+            style={{ width: '100%' }}
+            placeholder={t('iso.selectISO')}
+            value={selectedISO}
+            onChange={setSelectedISO}
+            showSearch
+            optionFilterProp="children"
+          >
+            {isoList.map((iso) => (
+              <Select.Option key={iso.id} value={iso.id}>
+                <Space>
+                  <FileOutlined />
+                  {iso.name} ({iso.osType} - {(iso.fileSize / 1024 / 1024 / 1024).toFixed(2)} GB)
+                </Space>
+              </Select.Option>
+            ))}
+          </Select>
+        </Spin>
+      </Modal>
     </div>
   )
 }
