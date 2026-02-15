@@ -148,7 +148,10 @@ const MainLayout: React.FC = () => {
           </Dropdown>
         </Header>
         <Content style={{ 
-          margin: 24, 
+          marginTop: 0,
+          marginBottom: 24,
+          marginLeft: 24,
+          marginRight: 24,
           padding: 24, 
           minHeight: 280,
           background: colorBgContainer,
