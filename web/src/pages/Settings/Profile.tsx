@@ -3,7 +3,7 @@ import { Card, Form, Input, Button, message, Tabs, Select, Avatar } from 'antd'
 import { UserOutlined, LockOutlined, GlobalOutlined, UploadOutlined, SaveOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
-import { authApi } from '../../api/client'
+import { authApi, client } from '../../api/client'
 
 const Profile: React.FC = () => {
   const { t, i18n } = useTranslation()
@@ -93,36 +93,31 @@ const Profile: React.FC = () => {
     const formData = new FormData()
     formData.append('avatar', file)
     try {
-      const token = localStorage.getItem('auth-storage')
-        ? JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token
-        : ''
-      
-      const response = await fetch('/api/v1/auth/profile/avatar', {
-        method: 'POST',
+      // 使用client实例发送请求，自动处理认证
+      const response = await client.post('/auth/profile/avatar', formData, {
         headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
+          'Content-Type': 'multipart/form-data'
+        }
       })
       
-      console.log('Response status:', response.status)
+      console.log('Avatar upload response:', response)
       
-      if (response.ok) {
-        message.success(t('message.createdSuccessfully') + ' avatar')
-        const updatedProfile = await authApi.getProfile()
-        // 添加时间戳参数，强制浏览器重新加载头像
-        if (updatedProfile.data.avatar) {
-          updatedProfile.data.avatar = updatedProfile.data.avatar.includes('?') 
-            ? `${updatedProfile.data.avatar}&t=${Date.now()}`
-            : `${updatedProfile.data.avatar}?t=${Date.now()}`
-        }
-        updateUser(updatedProfile.data)
-      } else {
-        message.error(t('message.failedToCreate') + ' avatar')
+      message.success(t('message.updatedSuccessfully') + ' avatar')
+      const updatedProfile = await authApi.getProfile()
+      console.log('Updated profile:', updatedProfile)
+      // 添加时间戳参数，强制浏览器重新加载头像
+      if (updatedProfile.data.avatar) {
+        updatedProfile.data.avatar = updatedProfile.data.avatar.includes('?') 
+          ? `${updatedProfile.data.avatar}&t=${Date.now()}`
+          : `${updatedProfile.data.avatar}?t=${Date.now()}`
+        console.log('Updated avatar URL:', updatedProfile.data.avatar)
       }
-    } catch (error) {
+      updateUser(updatedProfile.data)
+      console.log('User updated in store')
+    } catch (error: any) {
       console.error('Upload error:', error)
-      message.error(t('message.failedToCreate') + ' avatar')
+      console.error('Error response:', error.response)
+      message.error((error.response?.data?.message || t('message.failedToUpdate')) + ' avatar')
     }
   }
 
@@ -215,7 +210,7 @@ const Profile: React.FC = () => {
               label={t('form.currentPassword')}
               rules={[{ required: true, message: t('validation.pleaseEnterCurrentPassword') }]}
             >
-              <Input.Password />
+              <Input.Password prefix={<LockOutlined />} />
             </Form.Item>
 
             <Form.Item
@@ -223,13 +218,12 @@ const Profile: React.FC = () => {
               label={t('form.newPassword')}
               rules={[{ required: true, message: t('validation.pleaseEnterNewPassword') }]}
             >
-              <Input.Password />
+              <Input.Password prefix={<LockOutlined />} />
             </Form.Item>
 
             <Form.Item
               name="confirmPassword"
               label={t('form.confirmPassword')}
-              dependencies={['newPassword']}
               rules={[
                 { required: true, message: t('validation.pleaseConfirmPassword') },
                 ({ getFieldValue }) => ({
@@ -242,7 +236,7 @@ const Profile: React.FC = () => {
                 })
               ]}
             >
-              <Input.Password />
+              <Input.Password prefix={<LockOutlined />} />
             </Form.Item>
 
             <Form.Item>
@@ -287,7 +281,7 @@ const Profile: React.FC = () => {
 
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
-                {t('button.savePreferences')}
+                {t('button.saveChanges')}
               </Button>
             </Form.Item>
           </Form>
@@ -297,9 +291,9 @@ const Profile: React.FC = () => {
   ]
 
   return (
-    <Card title={t('common.profile')}>
-      <Tabs defaultActiveKey="profile" items={tabItems} />
-    </Card>
+    <div>
+      <Tabs items={tabItems} />
+    </div>
   )
 }
 
