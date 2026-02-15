@@ -224,14 +224,7 @@
     "uploadSpeed": "Upload Speed",
     "uploaded": "Uploaded",
     "remainingTime": "Remaining Time",
-    "retrying": "Retrying ({{count}}/3)...",
-    "mount": "Mount ISO",
-    "unmount": "Unmount ISO",
-    "mountSuccess": "ISO mounted successfully",
-    "unmountSuccess": "ISO unmounted successfully",
-    "selectISO": "Please select an ISO image",
-    "selectISOHint": "Select an ISO image file to mount to the virtual machine",
-    "unmountConfirm": "Are you sure you want to unmount the current ISO?"
+    "retrying": "Retrying ({{count}}/3)..."
   },
   "iso": {
     "isoList": "ISO Images",
@@ -276,7 +269,14 @@
     "uploadSpeed": "Upload Speed",
     "uploaded": "Uploaded",
     "remainingTime": "Remaining Time",
-    "retrying": "Retrying ({{count}}/3)..."
+    "retrying": "Retrying ({{count}}/3)...",
+    "mount": "Mount ISO",
+    "unmount": "Unmount ISO",
+    "mountSuccess": "ISO mounted successfully",
+    "unmountSuccess": "ISO unmounted successfully",
+    "selectISO": "Please select an ISO image",
+    "selectISOHint": "Select an ISO image file to mount to the virtual machine",
+    "unmountConfirm": "Are you sure you want to unmount the current ISO?"
   },
   "admin": {
     "userManagement": "User Management",
