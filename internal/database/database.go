@@ -333,6 +333,10 @@ func Migrate(db *gorm.DB) error {
 	ALTER TABLE iso_uploads ADD COLUMN IF NOT EXISTS uploaded_chunks TEXT DEFAULT '';
 	ALTER TABLE iso_uploads ADD COLUMN IF NOT EXISTS total_chunks INTEGER DEFAULT 0;
 	ALTER TABLE iso_uploads ADD COLUMN IF NOT EXISTS chunk_size BIGINT DEFAULT 0;
+
+	-- Migration: Add checksum columns to templates
+	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS md5 VARCHAR(32);
+	ALTER TABLE vm_templates ADD COLUMN IF NOT EXISTS sha256 VARCHAR(64);
 	`
 	return db.Exec(sql).Error
 }

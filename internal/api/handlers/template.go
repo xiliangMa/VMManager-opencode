@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"vmmanager/internal/api/errors"
 	"vmmanager/internal/models"
@@ -506,10 +510,36 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 		return
 	}
 
-	if err := h.uploadRepo.Complete(ctx, uploadID); err != nil {
-		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_complete_upload"), err.Error()))
+	file, err := os.Open(finalPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_open_file"), err.Error()))
 		return
 	}
+	defer file.Close()
+
+	md5Hash := md5.New()
+	sha256Hash := sha256.New()
+	tee := io.TeeReader(file, io.MultiWriter(md5Hash, sha256Hash))
+	if _, err := io.Copy(io.Discard, tee); err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_calculate_checksum"), err.Error()))
+		return
+	}
+
+	md5Sum := hex.EncodeToString(md5Hash.Sum(nil))
+	sha256Sum := hex.EncodeToString(sha256Hash.Sum(nil))
+
+	if req.Checksum != "" && !strings.EqualFold(req.Checksum, md5Sum) {
+		os.Remove(finalPath)
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "checksum_mismatch"),
+			fmt.Sprintf("expected: %s, got: %s", req.Checksum, md5Sum)))
+		return
+	}
+
+	now := time.Now()
+	upload.Status = "completed"
+	upload.Progress = 100
+	upload.CompletedAt = &now
+	h.uploadRepo.Update(ctx, upload)
 
 	diskMax := req.DiskMax
 	if diskMax == 0 {
@@ -545,6 +575,8 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 		DiskMax:      diskMax,
 		TemplatePath: finalPath,
 		DiskSize:     upload.FileSize,
+		MD5:          md5Sum,
+		SHA256:       sha256Sum,
 		IsPublic:     req.IsPublic,
 		IsActive:     true,
 		CreatedBy:    upload.UploadedBy,
@@ -556,11 +588,15 @@ func (h *TemplateHandler) CompleteTemplateUpload(c *gin.Context) {
 		return
 	}
 
+	log.Printf("[TEMPLATE] Template upload completed: %s, MD5: %s, SHA256: %s", template.Name, md5Sum, sha256Sum)
+
 	c.JSON(http.StatusOK, errors.Success(gin.H{
 		"upload_id":   uploadID,
 		"template_id": template.ID,
 		"file_path":   finalPath,
 		"file_size":   upload.FileSize,
+		"md5":         md5Sum,
+		"sha256":      sha256Sum,
 	}))
 }
 

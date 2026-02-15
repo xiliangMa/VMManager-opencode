@@ -57,6 +57,8 @@ type VMTemplate struct {
 	IconURL           string     `gorm:"size:500" json:"iconUrl"`
 	ScreenshotURLs    []string   `gorm:"type:text[]" json:"screenshotUrls"`
 	DiskSize          int64      `gorm:"not null" json:"diskSize"`
+	MD5               string     `gorm:"size:32" json:"md5"`
+	SHA256            string     `gorm:"size:64" json:"sha256"`
 	IsPublic          bool       `gorm:"default:true" json:"isPublic"`
 	IsActive          bool       `gorm:"default:true" json:"isActive"`
 	Downloads         int        `gorm:"default:0" json:"downloads"`
