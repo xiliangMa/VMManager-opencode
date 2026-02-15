@@ -726,3 +726,74 @@ export const snapshotApi = {
   syncSnapshots: (vmId: string) =>
     client.post(`/vms/${vmId}/snapshots/sync`).then(res => res.data)
 }
+
+export interface LoginHistory {
+  id: string
+  userId: string
+  username: string
+  email: string
+  loginType: string
+  ipAddress: string
+  userAgent: string
+  location: string
+  deviceInfo: string
+  status: string
+  failureReason: string
+  logoutAt: string
+  sessionDuration: number
+  createdAt: string
+}
+
+export interface ResourceChangeHistory {
+  id: string
+  resourceType: string
+  resourceId: string
+  resourceName: string
+  action: string
+  oldValue: string
+  newValue: string
+  changedBy: string
+  username: string
+  changeReason: string
+  ipAddress: string
+  userAgent: string
+  createdAt: string
+}
+
+export interface VMOperationHistory {
+  id: string
+  vmId: string
+  vmName: string
+  operation: string
+  status: string
+  startedAt: string
+  completedAt: string
+  duration: number
+  triggeredBy: string
+  username: string
+  ipAddress: string
+  userAgent: string
+  requestParams: string
+  responseData: string
+  errorMessage: string
+}
+
+export const operationHistoryApi = {
+  getLoginHistories: (params?: { page?: number; page_size?: number; user_id?: string; status?: string; start_date?: string; end_date?: string }) =>
+    client.get('/admin/login-histories', { params }).then(res => res.data),
+
+  getLoginHistory: (id: string) =>
+    client.get(`/admin/login-histories/${id}`).then(res => res.data),
+
+  getResourceChanges: (params?: { page?: number; page_size?: number; resource_type?: string; resource_id?: string; action?: string }) =>
+    client.get('/admin/resource-changes', { params }).then(res => res.data),
+
+  getResourceChange: (id: string) =>
+    client.get(`/admin/resource-changes/${id}`).then(res => res.data),
+
+  getVMOperations: (params?: { page?: number; page_size?: number; vm_id?: string; operation?: string; status?: string }) =>
+    client.get('/admin/vm-operations', { params }).then(res => res.data),
+
+  getVMOperation: (id: string) =>
+    client.get(`/admin/vm-operations/${id}`).then(res => res.data)
+}

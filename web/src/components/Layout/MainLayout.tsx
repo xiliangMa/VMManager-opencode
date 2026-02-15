@@ -83,6 +83,11 @@ const MainLayout: React.FC = () => {
         key: '/admin/storage',
         icon: <DatabaseOutlined />,
         label: t('storage.pools')
+      },
+      {
+        key: '/admin/operation-history',
+        icon: <HistoryOutlined />,
+        label: t('history.operationHistory')
       }
     ] : [])
   ]

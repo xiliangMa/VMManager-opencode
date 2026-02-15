@@ -23,6 +23,7 @@ import AlertRules from './pages/Admin/AlertRules'
 import AlertHistory from './pages/Admin/AlertHistory'
 import VirtualNetworks from './pages/Admin/VirtualNetworks'
 import StoragePools from './pages/Admin/StoragePools'
+import OperationHistory from './pages/Admin/OperationHistory'
 import Profile from './pages/Settings'
 import { VMStatusProvider } from './context/VMStatusContext'
 
@@ -72,6 +73,7 @@ const App: React.FC = () => {
         <Route path="admin/alert-history" element={<AlertHistory />} />
         <Route path="admin/networks" element={<VirtualNetworks />} />
         <Route path="admin/storage" element={<StoragePools />} />
+        <Route path="admin/operation-history" element={<OperationHistory />} />
         <Route path="settings/profile" element={<Profile />} />
       </Route>
 
