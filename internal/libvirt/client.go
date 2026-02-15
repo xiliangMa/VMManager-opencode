@@ -1,6 +1,7 @@
 package libvirt
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"regexp"
@@ -378,4 +379,92 @@ func extractISOPath(xmlDesc string) string {
 	}
 
 	return ""
+}
+
+func (c *Client) CloneVM(sourceUUID string, newName string, newDiskPath string) (string, error) {
+	sourceDomain, err := c.conn.LookupDomainByUUIDString(sourceUUID)
+	if err != nil {
+		return "", fmt.Errorf("source domain not found: %w", err)
+	}
+	defer sourceDomain.Free()
+
+	xmlDesc, err := sourceDomain.GetXMLDesc(libvirt.DOMAIN_XML_INACTIVE)
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	newUUID := generateUUID()
+	newMAC, err := generateMACAddress()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate MAC address: %w", err)
+	}
+
+	newXML, err := modifyCloneXML(xmlDesc, newName, newUUID, newMAC, newDiskPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to modify XML: %w", err)
+	}
+
+	newDomain, err := c.conn.DomainDefineXML(newXML)
+	if err != nil {
+		return "", fmt.Errorf("failed to define cloned domain: %w", err)
+	}
+	defer newDomain.Free()
+
+	log.Printf("[LIBVIRT] VM cloned: %s -> %s (UUID: %s)", sourceUUID, newName, newUUID)
+
+	return newUUID, nil
+}
+
+func (c *Client) GetDomainXML(uuid string) (string, error) {
+	domain, err := c.conn.LookupDomainByUUIDString(uuid)
+	if err != nil {
+		return "", fmt.Errorf("domain not found: %w", err)
+	}
+	defer domain.Free()
+
+	xmlDesc, err := domain.GetXMLDesc(libvirt.DOMAIN_XML_INACTIVE)
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	return xmlDesc, nil
+}
+
+func modifyCloneXML(xmlDesc string, newName string, newUUID string, newMAC string, newDiskPath string) (string, error) {
+	uuidRegex := regexp.MustCompile(`<uuid>[^<]+</uuid>`)
+	xmlDesc = uuidRegex.ReplaceAllString(xmlDesc, fmt.Sprintf("<uuid>%s</uuid>", newUUID))
+
+	nameRegex := regexp.MustCompile(`<name>[^<]+</name>`)
+	xmlDesc = nameRegex.ReplaceAllString(xmlDesc, fmt.Sprintf("<name>%s</name>", newName))
+
+	macRegex := regexp.MustCompile(`<mac address='[^']+'`)
+	xmlDesc = macRegex.ReplaceAllString(xmlDesc, fmt.Sprintf("<mac address='%s'", newMAC))
+
+	if newDiskPath != "" {
+		diskSourceRegex := regexp.MustCompile(`(<disk type='file' device='disk'>.*?<source file=')[^']+(')`)
+		xmlDesc = diskSourceRegex.ReplaceAllString(xmlDesc, fmt.Sprintf("${1}%s${2}", newDiskPath))
+	}
+
+	return xmlDesc, nil
+}
+
+func generateUUID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		uint32(b[0])<<24|uint32(b[1])<<16|uint32(b[2])<<8|uint32(b[3]),
+		uint32(b[4])<<8|uint32(b[5]),
+		(uint32(b[6])<<8|uint32(b[7]))&0x4fff|0x4000,
+		(uint32(b[8])<<8|uint32(b[9]))&0x3fff|0x8000,
+		uint64(b[10])<<40|uint64(b[11])<<32|uint64(b[12])<<24|uint64(b[13])<<16|uint64(b[14])<<8|uint64(b[15]),
+	)
+}
+
+func generateMACAddress() (string, error) {
+	b := make([]byte, 3)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("52:54:00:%02x:%02x:%02x", b[0], b[1], b[2]), nil
 }

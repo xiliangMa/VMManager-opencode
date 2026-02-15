@@ -106,6 +106,12 @@
     "openConsole": "打开控制台",
     "items": "项",
     "vmCount": "个虚拟机正在使用此模板",
+    "clone": "克隆",
+    "cloneHint": "将创建一个基于当前虚拟机的克隆，使用链接磁盘以节省空间",
+    "cloneNameRequired": "请输入克隆虚拟机名称",
+    "cloneSuccess": "虚拟机克隆成功",
+    "namePlaceholder": "请输入虚拟机名称",
+    "descriptionPlaceholder": "请输入描述信息",
     "monitor": {
       "loading": "正在加载虚拟机监控数据...",
       "cpuUsage": "CPU 使用率",

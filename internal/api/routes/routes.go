@@ -63,6 +63,7 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			vms.POST("/:id/mount-iso", vmHandler.MountISO)
 			vms.DELETE("/:id/mount-iso", vmHandler.UnmountISO)
 			vms.GET("/:id/mounted-iso", vmHandler.GetMountedISO)
+			vms.POST("/:id/clone", vmHandler.CloneVM)
 
 			snapshots := vms.Group("/:id/snapshots")
 			{

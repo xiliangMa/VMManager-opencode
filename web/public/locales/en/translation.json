@@ -106,6 +106,12 @@
     "openConsole": "Open Console",
     "items": "items",
     "vmCount": "VMs are using this template",
+    "clone": "Clone",
+    "cloneHint": "Will create a clone based on the current VM, using linked disk to save space",
+    "cloneNameRequired": "Please enter clone VM name",
+    "cloneSuccess": "VM cloned successfully",
+    "namePlaceholder": "Please enter VM name",
+    "descriptionPlaceholder": "Please enter description",
     "monitor": {
       "loading": "Loading VM statistics...",
       "cpuUsage": "CPU Usage",

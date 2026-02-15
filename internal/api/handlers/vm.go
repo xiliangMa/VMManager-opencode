@@ -1738,3 +1738,110 @@ func (h *VMHandler) GetMountedISO(c *gin.Context) {
 		"isoName": iso.Name,
 	}))
 }
+
+func (h *VMHandler) CloneVM(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	userID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	userUUID, _ := uuid.Parse(userID.(string))
+
+	var req struct {
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeValidation, t(c, "validation_error"), err.Error()))
+		return
+	}
+
+	sourceVM, err := h.vmRepo.FindByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, errors.FailWithDetails(errors.ErrCodeVMNotFound, t(c, "vm_not_found_id"), id))
+		return
+	}
+
+	if role != "admin" && sourceVM.OwnerID != userUUID {
+		c.JSON(http.StatusForbidden, errors.FailWithDetails(errors.ErrCodeForbidden, t(c, "permission_denied_not_vm_owner"), "not VM owner"))
+		return
+	}
+
+	existingVM, _ := h.vmRepo.FindByName(ctx, req.Name)
+	if existingVM != nil {
+		c.JSON(http.StatusConflict, errors.FailWithDetails(errors.ErrCodeVMConflict, t(c, "vm_name_exists"), req.Name))
+		return
+	}
+
+	if h.libvirt == nil {
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithDetails(errors.ErrCodeLibvirt, t(c, "libvirt_service_unavailable"), "libvirt client is not initialized"))
+		return
+	}
+
+	if sourceVM.LibvirtDomainUUID == "" {
+		c.JSON(http.StatusBadRequest, errors.FailWithDetails(errors.ErrCodeBadRequest, t(c, "vm_domain_not_found"), "source VM has no libvirt domain"))
+		return
+	}
+
+	newDiskPath := fmt.Sprintf("%s/%s.qcow2", h.storagePath, uuid.New().String())
+
+	if sourceVM.DiskPath != "" {
+		if _, err := os.Stat(sourceVM.DiskPath); err == nil {
+			cmd := exec.Command("qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", sourceVM.DiskPath, newDiskPath)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				log.Printf("[VM] Failed to create backing file: %v, output: %s", err, string(output))
+				c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_clone_vm"), err.Error()))
+				return
+			}
+			log.Printf("[VM] Created backing disk: %s -> %s", sourceVM.DiskPath, newDiskPath)
+		}
+	}
+
+	newDomainUUID, err := h.libvirt.CloneVM(sourceVM.LibvirtDomainUUID, req.Name, newDiskPath)
+	if err != nil {
+		os.Remove(newDiskPath)
+		log.Printf("[VM] Failed to clone VM in libvirt: %v", err)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_clone_vm"), err.Error()))
+		return
+	}
+
+	newVM := models.VirtualMachine{
+		ID:                uuid.New(),
+		Name:              req.Name,
+		Description:       req.Description,
+		OwnerID:           userUUID,
+		Status:            "stopped",
+		TemplateID:        sourceVM.TemplateID,
+		Architecture:      sourceVM.Architecture,
+		CPUAllocated:      sourceVM.CPUAllocated,
+		MemoryAllocated:   sourceVM.MemoryAllocated,
+		DiskAllocated:     sourceVM.DiskAllocated,
+		DiskPath:          newDiskPath,
+		LibvirtDomainUUID: newDomainUUID,
+		BootOrder:         sourceVM.BootOrder,
+		Autostart:         false,
+	}
+
+	macAddress, _ := models.GenerateMACAddress()
+	newVM.MACAddress = macAddress
+
+	vncPassword, _ := models.GenerateVNCPassword(8)
+	newVM.VNCPassword = vncPassword
+
+	if err := h.vmRepo.Create(ctx, &newVM); err != nil {
+		h.libvirt.UndefineDomain(newDomainUUID)
+		os.Remove(newDiskPath)
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_create_vm"), err.Error()))
+		return
+	}
+
+	log.Printf("[VM] VM cloned successfully: %s -> %s (UUID: %s)", sourceVM.Name, req.Name, newVM.ID)
+
+	c.JSON(http.StatusCreated, errors.Success(gin.H{
+		"id":          newVM.ID,
+		"name":        newVM.Name,
+		"description": newVM.Description,
+		"status":      newVM.Status,
+	}))
+}

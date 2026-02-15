@@ -125,5 +125,7 @@
   "vm.vmCount": "个虚拟机正在使用此模板",
   "iso_not_found": "ISO 镜像不存在",
   "failed_to_mount_iso": "挂载 ISO 失败",
-  "failed_to_unmount_iso": "卸载 ISO 失败"
+  "failed_to_unmount_iso": "卸载 ISO 失败",
+  "failed_to_clone_vm": "克隆虚拟机失败",
+  "vm_domain_not_found": "虚拟机域不存在"
 }

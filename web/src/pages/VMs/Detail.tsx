@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm, Modal, Select, Spin } from 'antd'
-import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons'
+import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm, Modal, Select, Spin, Input } from 'antd'
+import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined, CopyOutlined } from '@ant-design/icons'
 import { vmsApi, isosApi, ISO } from '../../api/client'
 import type { VMDetail } from '../../api/client'
 import dayjs from 'dayjs'
@@ -18,6 +18,10 @@ const VMDetail: React.FC = () => {
   const [isoList, setIsoList] = useState<ISO[]>([])
   const [selectedISO, setSelectedISO] = useState<string>('')
   const [isoLoading, setIsoLoading] = useState(false)
+  const [cloneModalVisible, setCloneModalVisible] = useState(false)
+  const [cloneName, setCloneName] = useState('')
+  const [cloneDescription, setCloneDescription] = useState('')
+  const [cloneLoading, setCloneLoading] = useState(false)
 
   const fetchVm = async () => {
     if (!id) return
@@ -162,6 +166,36 @@ const VMDetail: React.FC = () => {
     }
   }
 
+  const handleOpenCloneModal = () => {
+    if (vm) {
+      setCloneName(`${vm.name}-clone`)
+      setCloneDescription('')
+      setCloneModalVisible(true)
+    }
+  }
+
+  const handleCloneVM = async () => {
+    if (!cloneName.trim()) {
+      message.warning(t('vm.cloneNameRequired'))
+      return
+    }
+    setCloneLoading(true)
+    try {
+      const response = await vmsApi.clone(id!, { 
+        name: cloneName, 
+        description: cloneDescription 
+      })
+      message.success(t('vm.cloneSuccess'))
+      setCloneModalVisible(false)
+      navigate(`/vms/${response.data?.id || response.id}`)
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || t('common.error')
+      message.error(errorMessage)
+    } finally {
+      setCloneLoading(false)
+    }
+  }
+
   const statusColors: Record<string, string> = {
     running: 'green',
     stopped: 'red',
@@ -268,6 +302,9 @@ const VMDetail: React.FC = () => {
             <a href={`/vms/${id}/edit`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: locked ? '#999' : '#1677ff', textDecoration: 'none', pointerEvents: locked ? 'none' : 'auto' }}>
               <EditOutlined /> {t('common.edit')}
             </a>
+            <Button icon={<CopyOutlined />} onClick={handleOpenCloneModal} disabled={locked}>
+              {t('vm.clone')}
+            </Button>
             <Button icon={<PoweroffOutlined />} onClick={() => navigate(`/vms/${id}/console`)} disabled={vm.status !== 'running' || locked}>
               {t('console.fullscreen')}
             </Button>
@@ -386,6 +423,39 @@ const VMDetail: React.FC = () => {
               </Select.Option>
             ))}
           </Select>
+        </Spin>
+      </Modal>
+
+      <Modal
+        title={t('vm.clone')}
+        open={cloneModalVisible}
+        onCancel={() => setCloneModalVisible(false)}
+        onOk={handleCloneVM}
+        confirmLoading={cloneLoading}
+        okText={t('vm.clone')}
+        cancelText={t('common.cancel')}
+      >
+        <Spin spinning={cloneLoading}>
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ marginBottom: 8 }}>{t('vm.cloneHint')}</p>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', marginBottom: 4 }}>{t('vm.name')}</label>
+            <Input
+              value={cloneName}
+              onChange={(e) => setCloneName(e.target.value)}
+              placeholder={t('vm.namePlaceholder')}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4 }}>{t('common.description')}</label>
+            <Input.TextArea
+              value={cloneDescription}
+              onChange={(e) => setCloneDescription(e.target.value)}
+              placeholder={t('vm.descriptionPlaceholder')}
+              rows={3}
+            />
+          </div>
         </Spin>
       </Modal>
     </div>

@@ -202,7 +202,10 @@ export const vmsApi = {
     client.delete(`/vms/${id}/mount-iso`).then(res => res.data),
 
   getMountedISO: (id: string) =>
-    client.get(`/vms/${id}/mounted-iso`).then(res => res.data)
+    client.get(`/vms/${id}/mounted-iso`).then(res => res.data),
+
+  clone: (id: string, data: { name: string; description?: string }) =>
+    client.post(`/vms/${id}/clone`, data).then(res => res.data)
 }
 
 export const snapshotsApi = {
