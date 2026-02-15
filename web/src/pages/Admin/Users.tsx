@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Table, Card, Button, Space, Tag, message, Popconfirm, Modal, Form, Input, InputNumber, Select, Tooltip } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons'
 import { usersApi, User } from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
 import { useTable } from '../../hooks/useTable'
@@ -13,7 +13,7 @@ const Users: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [form] = Form.useForm()
-  const { data, loading, pagination, refresh } = useTable<User>({
+  const { data, loading, pagination, refresh, search, setSearch } = useTable<User>({
     api: usersApi.list
   })
 
@@ -161,6 +161,15 @@ const Users: React.FC = () => {
         </Button>
       }
     >
+      <Space style={{ marginBottom: 16 }}>
+        <Input
+          placeholder={t('common.search')}
+          prefix={<SearchOutlined />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 200 }}
+        />
+      </Space>
       <Table
         columns={columns}
         dataSource={data}

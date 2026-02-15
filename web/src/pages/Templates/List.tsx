@@ -1,8 +1,8 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Table, Button, Card, Tag, Space, message, Popconfirm } from 'antd'
-import { EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons'
+import { Table, Button, Card, Tag, Space, message, Popconfirm, Input } from 'antd'
+import { EditOutlined, DeleteOutlined, UploadOutlined, SearchOutlined } from '@ant-design/icons'
 import { templatesApi, Template } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
 import dayjs from 'dayjs'
@@ -11,7 +11,7 @@ const Templates: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
-  const { data, loading, pagination, refresh } = useTable<Template>({
+  const { data, loading, pagination, refresh, search, setSearch } = useTable<Template>({
     api: templatesApi.list
   })
 
@@ -98,7 +98,7 @@ const Templates: React.FC = () => {
 
   return (
     <Card
-      title={t('template.upload')}
+      title={t('template.templateList')}
       extra={
         <Space>
           <Button icon={<UploadOutlined />} onClick={() => navigate('/templates/upload')}>
@@ -107,6 +107,15 @@ const Templates: React.FC = () => {
         </Space>
       }
     >
+      <Space style={{ marginBottom: 16 }}>
+        <Input
+          placeholder={t('common.search')}
+          prefix={<SearchOutlined />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 200 }}
+        />
+      </Space>
       <Table
         columns={columns}
         dataSource={data}
