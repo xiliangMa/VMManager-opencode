@@ -17,6 +17,7 @@ import (
 	"vmmanager/internal/api/errors"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
+	"vmmanager/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -27,6 +28,7 @@ type TemplateHandler struct {
 	uploadRepo   *repository.TemplateUploadRepository
 	vmRepo       *repository.VMRepository
 	config       *UploadConfig
+	auditService *services.AuditService
 }
 
 type UploadConfig struct {
@@ -58,6 +60,10 @@ func NewTemplateHandler(
 			},
 		},
 	}
+}
+
+func (h *TemplateHandler) SetAuditService(auditService *services.AuditService) {
+	h.auditService = auditService
 }
 
 func (h *TemplateHandler) ListTemplates(c *gin.Context) {
@@ -265,6 +271,14 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 		} else {
 			log.Printf("[TEMPLATE] Successfully removed upload directory: %s", uploadDir)
 		}
+	}
+
+	if h.auditService != nil {
+		templateUUID, _ := uuid.Parse(id)
+		h.auditService.LogSuccess(c, "template.delete", "vm_template", &templateUUID, map[string]interface{}{
+			"name":   template.Name,
+			"format": template.Format,
+		})
 	}
 
 	c.JSON(http.StatusOK, errors.Success(nil))
@@ -743,9 +757,9 @@ func (h *TemplateHandler) GetTemplateVMs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
-		"items": vms,
-		"total": total,
-		"page":  page,
+		"items":     vms,
+		"total":     total,
+		"page":      page,
 		"page_size": pageSize,
 	}))
 }

@@ -125,3 +125,83 @@ func (r *AuditLogRepository) CountByAction(ctx context.Context, action string) (
 		Count(&count).Error
 	return count, err
 }
+
+type AuditLogWithUsername struct {
+	models.AuditLog
+	Username string `json:"username"`
+}
+
+func (r *AuditLogRepository) ListWithUsername(ctx context.Context, offset, limit int) ([]AuditLogWithUsername, int64, error) {
+	var logs []AuditLogWithUsername
+	var total int64
+
+	r.db.WithContext(ctx).Model(&models.AuditLog{}).Count(&total)
+
+	err := r.db.WithContext(ctx).
+		Table("audit_logs").
+		Select("audit_logs.*, users.username").
+		Joins("LEFT JOIN users ON users.id = audit_logs.user_id").
+		Order("audit_logs.created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&logs).Error
+
+	return logs, total, err
+}
+
+func (r *AuditLogRepository) ListByUserWithUsername(ctx context.Context, userID string, offset, limit int) ([]AuditLogWithUsername, int64, error) {
+	var logs []AuditLogWithUsername
+	var total int64
+
+	r.db.WithContext(ctx).Model(&models.AuditLog{}).Where("user_id = ?", userID).Count(&total)
+
+	err := r.db.WithContext(ctx).
+		Table("audit_logs").
+		Select("audit_logs.*, users.username").
+		Joins("LEFT JOIN users ON users.id = audit_logs.user_id").
+		Where("audit_logs.user_id = ?", userID).
+		Order("audit_logs.created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&logs).Error
+
+	return logs, total, err
+}
+
+func (r *AuditLogRepository) ListByActionWithUsername(ctx context.Context, action string, offset, limit int) ([]AuditLogWithUsername, int64, error) {
+	var logs []AuditLogWithUsername
+	var total int64
+
+	r.db.WithContext(ctx).Model(&models.AuditLog{}).Where("action = ?", action).Count(&total)
+
+	err := r.db.WithContext(ctx).
+		Table("audit_logs").
+		Select("audit_logs.*, users.username").
+		Joins("LEFT JOIN users ON users.id = audit_logs.user_id").
+		Where("audit_logs.action = ?", action).
+		Order("audit_logs.created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&logs).Error
+
+	return logs, total, err
+}
+
+func (r *AuditLogRepository) ListByDateRangeWithUsername(ctx context.Context, start, end time.Time, offset, limit int) ([]AuditLogWithUsername, int64, error) {
+	var logs []AuditLogWithUsername
+	var total int64
+
+	r.db.WithContext(ctx).Model(&models.AuditLog{}).Where("created_at BETWEEN ? AND ?", start, end).Count(&total)
+
+	err := r.db.WithContext(ctx).
+		Table("audit_logs").
+		Select("audit_logs.*, users.username").
+		Joins("LEFT JOIN users ON users.id = audit_logs.user_id").
+		Where("audit_logs.created_at BETWEEN ? AND ?", start, end).
+		Order("audit_logs.created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&logs).Error
+
+	return logs, total, err
+}

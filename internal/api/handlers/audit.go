@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+	"time"
 
+	"vmmanager/internal/api/errors"
 	"vmmanager/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -35,31 +38,64 @@ func (h *AuditHandler) ListAuditLogs(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	page := 1
-	pageSize := 50
+	pageSize := 20
 
 	if p := c.Query("page"); p != "" {
-		_, _ = c.GetQuery("page")
+		if v, err := strconv.Atoi(p); err == nil && v > 0 {
+			page = v
+		}
 	}
 
-	logs, total, err := h.auditRepo.List(ctx, (page-1)*pageSize, pageSize)
+	if ps := c.Query("page_size"); ps != "" {
+		if v, err := strconv.Atoi(ps); err == nil && v > 0 && v <= 100 {
+			pageSize = v
+		}
+	}
+
+	action := c.Query("action")
+	status := c.Query("status")
+	userID := c.Query("user_id")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	var logs []repository.AuditLogWithUsername
+	var total int64
+	var err error
+
+	if userID != "" {
+		logs, total, err = h.auditRepo.ListByUserWithUsername(ctx, userID, (page-1)*pageSize, pageSize)
+	} else if action != "" {
+		logs, total, err = h.auditRepo.ListByActionWithUsername(ctx, action, (page-1)*pageSize, pageSize)
+	} else if startDate != "" && endDate != "" {
+		start, err1 := time.Parse("2006-01-02", startDate)
+		end, err2 := time.Parse("2006-01-02", endDate)
+		if err1 == nil && err2 == nil {
+			logs, total, err = h.auditRepo.ListByDateRangeWithUsername(ctx, start, end, (page-1)*pageSize, pageSize)
+		} else {
+			logs, total, err = h.auditRepo.ListWithUsername(ctx, (page-1)*pageSize, pageSize)
+		}
+	} else {
+		logs, total, err = h.auditRepo.ListWithUsername(ctx, (page-1)*pageSize, pageSize)
+	}
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 5001, "message": "failed to fetch audit logs"})
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_fetch_audit_logs"), err.Error()))
 		return
 	}
 
 	result := make([]AuditLogResponse, 0, len(logs))
 	for _, log := range logs {
-		username := ""
-		if log.UserID != nil {
-			username = log.UserID.String()[:8]
+		var resourceID string
+		if log.ResourceID != nil {
+			resourceID = log.ResourceID.String()
 		}
 		result = append(result, AuditLogResponse{
 			ID:           log.ID.String(),
 			UserID:       log.UserID.String(),
-			Username:     username,
+			Username:     log.Username,
 			Action:       log.Action,
 			ResourceType: log.ResourceType,
-			ResourceID:   log.ResourceID.String(),
+			ResourceID:   resourceID,
 			Details:      log.Details,
 			IPAddress:    log.IPAddress.String(),
 			UserAgent:    log.UserAgent,
@@ -69,17 +105,25 @@ func (h *AuditHandler) ListAuditLogs(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    result,
+	filteredResult := result
+	if status != "" {
+		filteredResult = make([]AuditLogResponse, 0)
+		for _, r := range result {
+			if r.Status == status {
+				filteredResult = append(filteredResult, r)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, errors.Success(gin.H{
+		"list": filteredResult,
 		"meta": gin.H{
 			"page":        page,
 			"per_page":    pageSize,
 			"total":       total,
 			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
 		},
-	})
+	}))
 }
 
 func (h *AuditHandler) GetAuditLog(c *gin.Context) {

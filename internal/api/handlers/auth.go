@@ -8,6 +8,7 @@ import (
 	"vmmanager/internal/api/errors"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
+	"vmmanager/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -15,8 +16,9 @@ import (
 )
 
 type AuthHandler struct {
-	userRepo *repository.UserRepository
-	jwtCfg   config.JWTConfig
+	userRepo     *repository.UserRepository
+	jwtCfg       config.JWTConfig
+	auditService *services.AuditService
 }
 
 func NewAuthHandler(userRepo *repository.UserRepository, jwtCfg config.JWTConfig) *AuthHandler {
@@ -24,6 +26,10 @@ func NewAuthHandler(userRepo *repository.UserRepository, jwtCfg config.JWTConfig
 		userRepo: userRepo,
 		jwtCfg:   jwtCfg,
 	}
+}
+
+func (h *AuthHandler) SetAuditService(auditService *services.AuditService) {
+	h.auditService = auditService
 }
 
 type TokenClaims struct {
@@ -159,6 +165,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, _ := generateToken(user.ID.String(), user.Role, h.jwtCfg)
 	refreshToken, _ := generateRefreshToken(user.ID.String(), h.jwtCfg)
+
+	if h.auditService != nil {
+		h.auditService.LogSuccess(c, "auth.login", "user", &user.ID, map[string]interface{}{
+			"username": user.Username,
+		})
+	}
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
 		"user": gin.H{

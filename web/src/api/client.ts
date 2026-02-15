@@ -340,7 +340,7 @@ export const systemApi = {
   getResources: () =>
     client.get('/admin/system/resources').then(res => res.data),
 
-  getAuditLogs: (params?: { page?: number; page_size?: number; user_id?: string; action?: string }) =>
+  getAuditLogs: (params?: { page?: number; page_size?: number; user_id?: string; action?: string; status?: string; start_date?: string; end_date?: string }) =>
     client.get('/admin/audit-logs', { params }).then(res => res.data)
 }
 

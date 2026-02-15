@@ -317,7 +317,18 @@
   },
   "audit": {
     "totalLogs": "Total Logs",
-    "logItems": "logs"
+    "logItems": "logs",
+    "logDetail": "Log Detail",
+    "errorMessage": "Error Message",
+    "userAgent": "User Agent",
+    "details": "Details",
+    "actionLogin": "User Login",
+    "actionVMCreate": "Create VM",
+    "actionVMDelete": "Delete VM",
+    "actionVMStart": "Start VM",
+    "actionVMStop": "Stop VM",
+    "actionVMClone": "Clone VM",
+    "actionTemplateDelete": "Delete Template"
   },
   "console": {
     "connected": "Connected",

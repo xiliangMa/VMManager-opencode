@@ -317,7 +317,18 @@
   },
   "audit": {
     "totalLogs": "日志总数",
-    "logItems": "条日志"
+    "logItems": "条日志",
+    "logDetail": "日志详情",
+    "errorMessage": "错误信息",
+    "userAgent": "用户代理",
+    "details": "详细信息",
+    "actionLogin": "用户登录",
+    "actionVMCreate": "创建虚拟机",
+    "actionVMDelete": "删除虚拟机",
+    "actionVMStart": "启动虚拟机",
+    "actionVMStop": "停止虚拟机",
+    "actionVMClone": "克隆虚拟机",
+    "actionTemplateDelete": "删除模板"
   },
   "console": {
     "connected": "已连接",

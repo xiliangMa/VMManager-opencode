@@ -13,6 +13,7 @@ import (
 	"vmmanager/internal/libvirt"
 	"vmmanager/internal/models"
 	"vmmanager/internal/repository"
+	"vmmanager/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -26,6 +27,7 @@ type VMHandler struct {
 	isoRepo      *repository.ISORepository
 	libvirt      *libvirt.Client
 	storagePath  string
+	auditService *services.AuditService
 }
 
 func NewVMHandler(
@@ -36,6 +38,7 @@ func NewVMHandler(
 	isoRepo *repository.ISORepository,
 	libvirtClient *libvirt.Client,
 	storagePath string,
+	auditService *services.AuditService,
 ) *VMHandler {
 	return &VMHandler{
 		vmRepo:       vmRepo,
@@ -45,6 +48,7 @@ func NewVMHandler(
 		isoRepo:      isoRepo,
 		libvirt:      libvirtClient,
 		storagePath:  storagePath,
+		auditService: auditService,
 	}
 }
 
@@ -207,6 +211,16 @@ func (h *VMHandler) CreateVM(c *gin.Context) {
 	if err := h.vmRepo.Create(ctx, &vm); err != nil {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_create_vm"), err.Error()))
 		return
+	}
+
+	if h.auditService != nil {
+		h.auditService.LogSuccess(c, "vm.create", "virtual_machine", &vm.ID, map[string]interface{}{
+			"name":     vm.Name,
+			"cpu":      vm.CPUAllocated,
+			"memory":   vm.MemoryAllocated,
+			"disk":     vm.DiskAllocated,
+			"template": req.TemplateID,
+		})
 	}
 
 	c.JSON(http.StatusCreated, errors.Success(vm))
@@ -399,6 +413,13 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 		return
 	}
 
+	if h.auditService != nil {
+		h.auditService.LogSuccess(c, "vm.delete", "virtual_machine", &vm.ID, map[string]interface{}{
+			"name":   vm.Name,
+			"status": vm.Status,
+		})
+	}
+
 	c.JSON(http.StatusOK, errors.Success(nil))
 }
 
@@ -564,6 +585,12 @@ func (h *VMHandler) StartVM(c *gin.Context) {
 	if err := h.vmRepo.UpdateStatus(ctx, id, "running"); err != nil {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
 		return
+	}
+
+	if h.auditService != nil {
+		h.auditService.LogSuccess(c, "vm.start", "virtual_machine", &vm.ID, map[string]interface{}{
+			"name": vm.Name,
+		})
 	}
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
@@ -913,6 +940,12 @@ func (h *VMHandler) StopVM(c *gin.Context) {
 	if err := h.vmRepo.UpdateStatus(ctx, id, "stopped"); err != nil {
 		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeDatabase, t(c, "failed_to_update_vm_status"), err.Error()))
 		return
+	}
+
+	if h.auditService != nil {
+		h.auditService.LogSuccess(c, "vm.stop", "virtual_machine", &vm.ID, map[string]interface{}{
+			"name": vm.Name,
+		})
 	}
 
 	c.JSON(http.StatusOK, errors.Success(gin.H{
@@ -1847,6 +1880,14 @@ func (h *VMHandler) CloneVM(c *gin.Context) {
 	}
 
 	log.Printf("[VM] VM cloned successfully: %s -> %s (UUID: %s)", sourceVM.Name, req.Name, newVM.ID)
+
+	if h.auditService != nil {
+		h.auditService.LogSuccess(c, "vm.clone", "virtual_machine", &newVM.ID, map[string]interface{}{
+			"name":           newVM.Name,
+			"source_vm_id":   sourceVM.ID.String(),
+			"source_vm_name": sourceVM.Name,
+		})
+	}
 
 	c.JSON(http.StatusCreated, errors.Success(gin.H{
 		"id":          newVM.ID,

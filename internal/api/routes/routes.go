@@ -6,6 +6,7 @@ import (
 	"vmmanager/internal/api/middleware"
 	"vmmanager/internal/libvirt"
 	"vmmanager/internal/repository"
+	"vmmanager/internal/services"
 	"vmmanager/internal/websocket"
 
 	"github.com/gin-gonic/gin"
@@ -14,9 +15,13 @@ import (
 func Register(router *gin.Engine, cfg *config.Config, repos *repository.Repositories, libvirtClient *libvirt.Client, wsHandler *websocket.Handler) {
 	jwtMiddleware := middleware.JWTRequired(cfg.JWT.Secret)
 
+	auditService := services.NewAuditService(repos.AuditLog)
+
 	authHandler := handlers.NewAuthHandler(repos.User, cfg.JWT)
-	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats, repos.ISO, libvirtClient, cfg.Storage.Path)
+	authHandler.SetAuditService(auditService)
+	vmHandler := handlers.NewVMHandler(repos.VM, repos.User, repos.Template, repos.VMStats, repos.ISO, libvirtClient, cfg.Storage.Path, auditService)
 	templateHandler := handlers.NewTemplateHandler(repos.Template, repos.TemplateUpload, repos.VM)
+	templateHandler.SetAuditService(auditService)
 	adminHandler := handlers.NewAdminHandler(repos.User, repos.VM, repos.Template, repos.AuditLog)
 	auditHandler := handlers.NewAuditHandler(repos.AuditLog)
 	snapshotHandler := handlers.NewSnapshotHandler(repos.VM)
