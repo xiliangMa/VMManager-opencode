@@ -98,6 +98,7 @@ func main() {
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(middleware.RequestID())
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())
 	router.Use(apimiddleware.I18n())

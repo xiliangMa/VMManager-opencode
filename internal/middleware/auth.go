@@ -1,20 +1,27 @@
 package middleware
 
 import (
+	"context"
+	"log"
+	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
+
+const RequestIDKey = "request_id"
 
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Requested-With")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-Request-ID")
 		c.Header("Access-Control-Max-Age", "86400")
-		c.Header("Access-Control-Expose-Headers", "Content-Length, X-Request-Id")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, X-Request-ID")
 		c.Header("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method == "OPTIONS" {
@@ -26,15 +33,159 @@ func CORS() gin.HandlerFunc {
 	}
 }
 
+func RequestID() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+
+		c.Set(RequestIDKey, requestID)
+		c.Header("X-Request-ID", requestID)
+
+		c.Next()
+	}
+}
+
 func Logger() gin.HandlerFunc {
-	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return ""
-	})
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
+
+		c.Next()
+
+		latency := time.Since(start)
+		status := c.Writer.Status()
+		requestID, _ := c.Get(RequestIDKey)
+		userID, _ := c.Get("user_id")
+
+		if query != "" {
+			path = path + "?" + query
+		}
+
+		log.Printf("[HTTP] %s | %3d | %13v | %15s | %-7s %s | user=%s",
+			requestID,
+			status,
+			latency,
+			c.ClientIP(),
+			c.Request.Method,
+			path,
+			userID,
+		)
+	}
+}
+
+type RateLimiter struct {
+	requests map[string]*clientInfo
+	mu       sync.RWMutex
+	rate     int
+	burst    int
+}
+
+type clientInfo struct {
+	tokens    float64
+	lastCheck time.Time
+}
+
+func NewRateLimiter(requestsPerSecond int, burst int) *RateLimiter {
+	return &RateLimiter{
+		requests: make(map[string]*clientInfo),
+		rate:     requestsPerSecond,
+		burst:    burst,
+	}
+}
+
+func (rl *RateLimiter) Allow(key string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	info, exists := rl.requests[key]
+	if !exists {
+		rl.requests[key] = &clientInfo{
+			tokens:    float64(rl.burst - 1),
+			lastCheck: now,
+		}
+		return true
+	}
+
+	elapsed := now.Sub(info.lastCheck).Seconds()
+	info.tokens += elapsed * float64(rl.rate)
+	if info.tokens > float64(rl.burst) {
+		info.tokens = float64(rl.burst)
+	}
+
+	info.lastCheck = now
+
+	if info.tokens >= 1 {
+		info.tokens--
+		return true
+	}
+
+	return false
+}
+
+func (rl *RateLimiter) Cleanup(maxAge time.Duration) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	for key, info := range rl.requests {
+		if now.Sub(info.lastCheck) > maxAge {
+			delete(rl.requests, key)
+		}
+	}
 }
 
 func RateLimit(requestsPerSecond int, burst int) gin.HandlerFunc {
+	limiter := NewRateLimiter(requestsPerSecond, burst)
+
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		for range ticker.C {
+			limiter.Cleanup(2 * time.Minute)
+		}
+	}()
+
 	return func(c *gin.Context) {
+		key := c.ClientIP()
+
+		if !limiter.Allow(key) {
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"code":    429,
+				"message": "rate limit exceeded",
+			})
+			return
+		}
+
 		c.Next()
+	}
+}
+
+func Timeout(timeout time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
+		defer cancel()
+
+		c.Request = c.Request.WithContext(ctx)
+
+		done := make(chan struct{})
+		go func() {
+			c.Next()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			return
+		case <-ctx.Done():
+			c.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{
+				"code":    408,
+				"message": "request timeout",
+			})
+			return
+		}
 	}
 }
 
