@@ -24,6 +24,7 @@ type Handler struct {
 	clients        map[string]*VNCClient
 	libvirt        *libvirt.Client
 	installMonitor *services.InstallMonitor
+	syncService    *services.VMSyncService
 }
 
 type VNCClient struct {
@@ -790,4 +791,38 @@ func (h *Handler) HandleInstallProgress(w http.ResponseWriter, r *http.Request) 
 
 func (h *Handler) SetInstallMonitor(monitor *services.InstallMonitor) {
 	h.installMonitor = monitor
+}
+
+func (h *Handler) SetVMSyncService(syncService *services.VMSyncService) {
+	if syncService != nil {
+		h.syncService = syncService
+	}
+}
+
+func (h *Handler) HandleVMStatus(w http.ResponseWriter, r *http.Request) {
+	conn, err := h.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("[VM_STATUS] Failed to upgrade: %v", err)
+		return
+	}
+
+	if h.syncService == nil {
+		log.Printf("[VM_STATUS] Sync service not available")
+		conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"error","message":"Sync service not available"}`))
+		conn.Close()
+		return
+	}
+
+	h.syncService.GetWebSocketHub().Register(conn)
+
+	defer func() {
+		h.syncService.GetWebSocketHub().Unregister(conn)
+	}()
+
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
 }

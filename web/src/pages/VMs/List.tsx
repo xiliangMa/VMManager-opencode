@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm, Row, Col, Statistic, Dropdown, Modal, List } from 'antd'
+import { Table, Button, Tag, Space, Card, Input, Select, message, Popconfirm, Row, Col, Statistic, Dropdown, Modal, List, Badge } from 'antd'
 import { PlusOutlined, SearchOutlined, VideoCameraOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PoweroffOutlined, SyncOutlined, DesktopOutlined, DownOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { vmsApi, VM } from '../../api/client'
 import { useTable } from '../../hooks/useTable'
+import { useVMStatus } from '../../context/VMStatusContext'
 import dayjs from 'dayjs'
 
 const VMs: React.FC = () => {
@@ -14,6 +15,7 @@ const VMs: React.FC = () => {
   const [lockingVms, setLockingVms] = useState<Set<string>>(new Set())
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [batchLoading, setBatchLoading] = useState(false)
+  const { statuses: realtimeStatuses, connected: wsConnected } = useVMStatus()
 
   const { data, loading, pagination, refresh, search, setSearch } = useTable<VM>({
     api: vmsApi.list
@@ -63,11 +65,21 @@ const VMs: React.FC = () => {
       title: t('vm.status'),
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag color={statusColors[status] || 'default'}>
-          {t(`vm.${status}`) || status}
-        </Tag>
-      )
+      render: (status: string, record: VM) => {
+        const realtimeStatus = realtimeStatuses[record.id]
+        const displayStatus = realtimeStatus?.status || status
+        const isRealtime = !!realtimeStatus && wsConnected
+        return (
+          <Space>
+            <Tag color={statusColors[displayStatus] || 'default'}>
+              {t(`vm.${displayStatus}`) || displayStatus}
+            </Tag>
+            {isRealtime && (
+              <Badge status="success" title={t('sync.syncing')} />
+            )}
+          </Space>
+        )
+      }
     },
     {
       title: t('vm.cpu'),

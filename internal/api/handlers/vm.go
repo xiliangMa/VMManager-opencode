@@ -28,6 +28,7 @@ type VMHandler struct {
 	libvirt      *libvirt.Client
 	storagePath  string
 	auditService *services.AuditService
+	syncService  *services.VMSyncService
 }
 
 func NewVMHandler(
@@ -50,6 +51,38 @@ func NewVMHandler(
 		storagePath:  storagePath,
 		auditService: auditService,
 	}
+}
+
+func (h *VMHandler) SetSyncService(syncService *services.VMSyncService) {
+	h.syncService = syncService
+}
+
+func (h *VMHandler) SyncVMStatus(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	if h.syncService == nil {
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithCode(errors.ErrCodeInternalError, t(c, "sync_service_unavailable")))
+		return
+	}
+
+	info, err := h.syncService.ForceSyncVM(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errors.FailWithDetails(errors.ErrCodeInternalError, t(c, "failed_to_sync_vm_status"), err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, errors.Success(info))
+}
+
+func (h *VMHandler) GetAllVMStatuses(c *gin.Context) {
+	if h.syncService == nil {
+		c.JSON(http.StatusServiceUnavailable, errors.FailWithCode(errors.ErrCodeInternalError, t(c, "sync_service_unavailable")))
+		return
+	}
+
+	statuses := h.syncService.GetAllStatuses()
+	c.JSON(http.StatusOK, errors.Success(statuses))
 }
 
 func (h *VMHandler) ListVMs(c *gin.Context) {

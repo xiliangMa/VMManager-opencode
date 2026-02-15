@@ -90,6 +90,8 @@ func main() {
 	scheduler := tasks.NewScheduler(db, libvirtClient, alertService, backupService)
 	go scheduler.Start()
 
+	wsHandler.SetVMSyncService(scheduler.GetVMSyncService())
+
 	if !cfg.App.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -139,6 +141,11 @@ func main() {
 		vmID := c.Param("vm_id")
 		log.Printf("[Main] Install Progress WebSocket request for VM: %s", vmID)
 		wsHandler.HandleInstallProgress(c.Writer, c.Request)
+	})
+
+	router.GET("/ws/vm-status", func(c *gin.Context) {
+		log.Printf("[Main] VM Status WebSocket request")
+		wsHandler.HandleVMStatus(c.Writer, c.Request)
 	})
 
 	routes.Register(router, cfg, repos, libvirtClient, wsHandler, backupService)

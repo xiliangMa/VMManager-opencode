@@ -24,6 +24,7 @@ import AlertHistory from './pages/Admin/AlertHistory'
 import VirtualNetworks from './pages/Admin/VirtualNetworks'
 import StoragePools from './pages/Admin/StoragePools'
 import Profile from './pages/Settings'
+import { VMStatusProvider } from './context/VMStatusContext'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -45,7 +46,9 @@ const App: React.FC = () => {
         path="/"
         element={
           <ProtectedRoute>
-            <MainLayout />
+            <VMStatusProvider>
+              <MainLayout />
+            </VMStatusProvider>
           </ProtectedRoute>
         }
       >

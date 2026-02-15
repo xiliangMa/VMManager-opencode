@@ -224,6 +224,12 @@
     "memorySuccess": "内存配置已成功应用",
     "fetchFailed": "获取热插拔状态失败"
   },
+  "sync": {
+    "syncServiceUnavailable": "状态同步服务不可用",
+    "failedToSyncVMStatus": "同步虚拟机状态失败",
+    "syncSuccess": "状态同步成功",
+    "syncing": "正在同步状态..."
+  },
   "batch": {
     "operations": "批量操作",
     "start": "批量启动",

@@ -28,26 +28,30 @@ type Scheduler struct {
 	libvirt            *libvirt.Client
 	alertService       *services.AlertService
 	backupService      *services.BackupService
+	vmSyncService      *services.VMSyncService
 	stopChan           chan struct{}
 }
 
 func NewScheduler(db *gorm.DB, libvirtClient *libvirt.Client, alertService *services.AlertService, backupService *services.BackupService) *Scheduler {
+	vmRepo := repository.NewVMRepository(db)
+
 	return &Scheduler{
 		db:                 db,
-		vmRepo:             repository.NewVMRepository(db),
+		vmRepo:             vmRepo,
 		statsRepo:          repository.NewVMStatsRepository(db),
 		isoUploadRepo:      repository.NewISOUploadRepository(db),
 		templateUploadRepo: repository.NewTemplateUploadRepository(db),
 		libvirt:            libvirtClient,
 		alertService:       alertService,
 		backupService:      backupService,
+		vmSyncService:      services.NewVMSyncService(libvirtClient, vmRepo, 10*time.Second),
 		stopChan:           make(chan struct{}),
 	}
 }
 
 func (s *Scheduler) Start() {
-	ticker := time.NewTicker(30 * time.Second)
 	cleanupTicker := time.NewTicker(UploadCleanupInterval)
+	statsTicker := time.NewTicker(30 * time.Second)
 
 	if s.alertService != nil {
 		s.alertService.Start()
@@ -57,22 +61,28 @@ func (s *Scheduler) Start() {
 		s.backupService.Start()
 	}
 
+	if s.vmSyncService != nil {
+		s.vmSyncService.Start()
+	}
+
 	go func() {
 		for {
 			select {
-			case <-ticker.C:
+			case <-statsTicker.C:
 				s.collectStats()
-				s.syncVMStatus()
 			case <-cleanupTicker.C:
 				s.cleanupExpiredUploads()
 			case <-s.stopChan:
-				ticker.Stop()
+				statsTicker.Stop()
 				cleanupTicker.Stop()
 				if s.alertService != nil {
 					s.alertService.Stop()
 				}
 				if s.backupService != nil {
 					s.backupService.Stop()
+				}
+				if s.vmSyncService != nil {
+					s.vmSyncService.Stop()
 				}
 				return
 			}
@@ -82,60 +92,13 @@ func (s *Scheduler) Start() {
 	log.Println("Task scheduler started")
 }
 
-func (s *Scheduler) syncVMStatus() {
-	if s.libvirt == nil || s.vmRepo == nil {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	vms, _, err := s.vmRepo.List(ctx, 0, 0)
-	if err != nil {
-		return
-	}
-
-	for _, vm := range vms {
-		if vm.LibvirtDomainUUID == "" || vm.LibvirtDomainUUID == "new-uuid" || vm.LibvirtDomainUUID == "defined-uuid" {
-			continue
-		}
-
-		domain, err := s.libvirt.LookupByUUID(vm.LibvirtDomainUUID)
-		if err != nil {
-			continue
-		}
-
-		state, _, _ := domain.GetState()
-
-		var expectedStatus string
-		switch state {
-		case 1:
-			expectedStatus = "running"
-		case 0:
-			expectedStatus = "stopped"
-		case 3:
-			expectedStatus = "suspended"
-		default:
-			continue
-		}
-
-		// 避免覆盖中间状态（starting/stopping/creating）
-		if vm.Status != expectedStatus && !isTransitionalStatus(vm.Status) {
-			log.Printf("[SCHEDULER] Syncing VM %s status: %s -> %s", vm.Name, vm.Status, expectedStatus)
-			s.vmRepo.UpdateStatus(ctx, vm.ID.String(), expectedStatus)
-		}
-	}
-}
-
 func (s *Scheduler) Stop() {
 	close(s.stopChan)
 	log.Println("Task scheduler stopped")
 }
 
-// isTransitionalStatus 检查状态是否为中间状态
-// 中间状态表示 VM 正在执行操作中，不应被调度器覆盖
-func isTransitionalStatus(status string) bool {
-	return status == "starting" || status == "stopping" || status == "creating"
+func (s *Scheduler) GetVMSyncService() *services.VMSyncService {
+	return s.vmSyncService
 }
 
 func (s *Scheduler) collectStats() {

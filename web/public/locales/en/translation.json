@@ -224,6 +224,12 @@
     "memorySuccess": "Memory configuration applied successfully",
     "fetchFailed": "Failed to fetch hotplug status"
   },
+  "sync": {
+    "syncServiceUnavailable": "Sync service unavailable",
+    "failedToSyncVMStatus": "Failed to sync VM status",
+    "syncSuccess": "Status sync successful",
+    "syncing": "Syncing status..."
+  },
   "batch": {
     "operations": "Batch Operations",
     "start": "Batch Start",

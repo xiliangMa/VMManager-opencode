@@ -75,6 +75,9 @@ func Register(router *gin.Engine, cfg *config.Config, repos *repository.Reposito
 			vms.GET("/:id/hotplug", vmHandler.GetHotplugStatus)
 			vms.POST("/:id/hotplug/cpu", vmHandler.HotplugCPU)
 			vms.POST("/:id/hotplug/memory", vmHandler.HotplugMemory)
+			vms.POST("/:id/sync", vmHandler.SyncVMStatus)
+
+			vms.GET("/statuses", vmHandler.GetAllVMStatuses)
 
 			snapshots := vms.Group("/:id/snapshots")
 			{
