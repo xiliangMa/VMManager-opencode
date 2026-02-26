@@ -484,11 +484,11 @@ func (h *VMHandler) DeleteVM(c *gin.Context) {
 				}
 				domain.Free()
 
-				cmd := exec.Command("virsh", "undefine", "--nvram", vm.LibvirtDomainUUID)
+				cmd := exec.Command("virsh", "undefine", "--nvram", "--uuid", vm.LibvirtDomainUUID)
 				if output, err := cmd.CombinedOutput(); err != nil {
 					log.Printf("[VM] Failed to undefine domain by UUID: %v, output: %s", err, string(output))
 					if strings.Contains(string(output), "cannot undefine domain with nvram") {
-						cmd = exec.Command("virsh", "undefine", vm.LibvirtDomainUUID)
+						cmd = exec.Command("virsh", "undefine", "--uuid", vm.LibvirtDomainUUID)
 						if output, err := cmd.CombinedOutput(); err != nil {
 							log.Printf("[VM] Failed to undefine domain by UUID (fallback): %v, output: %s", err, string(output))
 						} else {

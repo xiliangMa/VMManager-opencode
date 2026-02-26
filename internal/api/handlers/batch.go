@@ -272,11 +272,11 @@ func (h *BatchHandler) BatchDelete(c *gin.Context) {
 				}
 				domain.Free()
 
-				cmd := exec.Command("virsh", "undefine", "--nvram", vm.LibvirtDomainUUID)
+				cmd := exec.Command("virsh", "undefine", "--nvram", "--uuid", vm.LibvirtDomainUUID)
 				if output, err := cmd.CombinedOutput(); err != nil {
 					log.Printf("[BATCH] Failed to undefine domain: %v, output: %s", err, string(output))
 					if strings.Contains(string(output), "cannot undefine domain with nvram") {
-						cmd = exec.Command("virsh", "undefine", vm.LibvirtDomainUUID)
+						cmd = exec.Command("virsh", "undefine", "--uuid", vm.LibvirtDomainUUID)
 						cmd.CombinedOutput()
 					}
 				}
