@@ -42,12 +42,16 @@ export interface VMDetail extends VM {
   owner_id?: string
   vnc_port?: number
   mac_address?: string
+  isInstalled?: boolean
+  installStatus?: string
+  installProgress?: number
+  agentInstalled?: boolean
+  vcpu_hotplug?: boolean
+  memory_hotplug?: boolean
   is_installed?: boolean
   install_status?: string
   install_progress?: number
   agent_installed?: boolean
-  vcpu_hotplug?: boolean
-  memory_hotplug?: boolean
 }
 
 export interface CreateVMRequest {

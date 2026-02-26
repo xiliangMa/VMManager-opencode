@@ -118,6 +118,9 @@
     "cloneSuccess": "虚拟机克隆成功",
     "namePlaceholder": "请输入虚拟机名称",
     "descriptionPlaceholder": "请输入描述信息",
+    "cpuUsage": "CPU使用率",
+    "memoryUsage": "内存使用率",
+    "used": "已用",
     "monitor": {
       "loading": "正在加载虚拟机监控数据...",
       "cpuUsage": "CPU 使用率",

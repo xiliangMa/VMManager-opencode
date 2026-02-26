@@ -532,15 +532,20 @@ func (c *VNCClient) readPump() {
 	}()
 
 	c.conn.SetReadLimit(512 * 1024)
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.conn.SetReadDeadline(time.Now().Add(120 * time.Second))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		c.conn.SetReadDeadline(time.Now().Add(120 * time.Second))
 		return nil
 	})
 
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				log.Printf("%s WebSocket read timeout, continuing...", c.logPrefix())
+				c.conn.SetReadDeadline(time.Now().Add(120 * time.Second))
+				continue
+			}
 			log.Printf("%s WebSocket read error: %v", c.logPrefix(), err)
 			break
 		}
@@ -596,7 +601,7 @@ func (c *VNCClient) readPump() {
 }
 
 func (c *VNCClient) writePump() {
-	ticker := time.NewTicker(25 * time.Second)
+	ticker := time.NewTicker(30 * time.Second)
 	defer func() {
 		ticker.Stop()
 		c.connMu.Lock()
@@ -615,7 +620,7 @@ func (c *VNCClient) writePump() {
 				c.connMu.Unlock()
 				return
 			}
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			c.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 			if !ok {
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				c.connMu.Unlock()
@@ -634,7 +639,7 @@ func (c *VNCClient) writePump() {
 				c.connMu.Unlock()
 				return
 			}
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			c.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				c.connMu.Unlock()
 				return

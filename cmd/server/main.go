@@ -96,6 +96,7 @@ func main() {
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.SetTrustedProxies([]string{"0.0.0.0/0"})
 	router.Use(middleware.RequestID())
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())

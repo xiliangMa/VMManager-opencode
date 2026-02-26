@@ -118,6 +118,9 @@
     "cloneSuccess": "VM cloned successfully",
     "namePlaceholder": "Please enter VM name",
     "descriptionPlaceholder": "Please enter description",
+    "cpuUsage": "CPU Usage",
+    "memoryUsage": "Memory Usage",
+    "used": "Used",
     "monitor": {
       "loading": "Loading VM statistics...",
       "cpuUsage": "CPU Usage",

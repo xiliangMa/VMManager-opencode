@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm, Modal, Select, Spin, Input } from 'antd'
+import { Card, Row, Col, Statistic, Button, Space, Tag, Descriptions, Tabs, message, Popconfirm, Modal, Select, Spin, Input, Progress } from 'antd'
 import { ArrowLeftOutlined, PoweroffOutlined, DeleteOutlined, CloudUploadOutlined, EditOutlined, SyncOutlined, SettingOutlined, FileOutlined, LinkOutlined, DisconnectOutlined, CopyOutlined, ClockCircleOutlined, CameraOutlined, ThunderboltOutlined } from '@ant-design/icons'
-import { vmsApi, isosApi, ISO } from '../../api/client'
+import { vmsApi, isosApi, ISO, VMResourceStats } from '../../api/client'
 import type { VMDetail } from '../../api/client'
 import VMBackups from './Backups'
 import VMSnapshots from './Snapshots'
@@ -26,6 +26,23 @@ const VMDetail: React.FC = () => {
   const [cloneDescription, setCloneDescription] = useState('')
   const [cloneLoading, setCloneLoading] = useState(false)
   const [hotplugModalVisible, setHotplugModalVisible] = useState(false)
+  const [stats, setStats] = useState<VMResourceStats>({ cpuUsage: 0, memoryUsage: 0, diskUsage: 0, networkIn: 0, networkOut: 0, cpuHistory: [], memoryHistory: [], diskHistory: [] })
+
+  const fetchStats = async () => {
+    if (!id) return
+    try {
+      const response = await vmsApi.getStats(id)
+      const data = response.data || response
+      setStats(data)
+    } catch (error) {
+    }
+  }
+
+  useEffect(() => {
+    fetchStats()
+    const interval = setInterval(fetchStats, 10000)
+    return () => clearInterval(interval)
+  }, [id])
 
   const fetchVm = async () => {
     if (!id) return
@@ -273,25 +290,47 @@ const VMDetail: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title={t('vm.status')}
-              value={vm.status}
-              valueStyle={{ color: statusColors[vm.status] === 'green' ? '#3f8600' : '#cf1322' }}
+              title={t('vm.cpuUsage')}
+              value={(stats.cpuUsage || 0).toFixed(1)}
+              suffix="%"
+              valueStyle={{ color: (stats.cpuUsage || 0) > 80 ? '#cf1322' : (stats.cpuUsage || 0) > 50 ? '#fa8c16' : '#3f8600' }}
+            />
+            <Progress 
+              percent={Math.min(100, Math.max(0, stats.cpuUsage || 0))} 
+              size="small" 
+              showInfo={false}
+              strokeColor={(stats.cpuUsage || 0) > 80 ? '#cf1322' : (stats.cpuUsage || 0) > 50 ? '#fa8c16' : '#3f8600'}
+              style={{ marginTop: 8 }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title={t('vm.cpu')} value={vm.cpuAllocated} suffix="vCPU" />
+            <Statistic
+              title={t('vm.memoryUsage')}
+              value={vm && vm.memoryAllocated > 0 ? ((stats.memoryUsage || 0) / (vm.memoryAllocated * 1024 * 1024) * 100).toFixed(1) : '0.0'}
+              suffix="%"
+              valueStyle={{ color: vm && vm.memoryAllocated > 0 && ((stats.memoryUsage || 0) / (vm.memoryAllocated * 1024 * 1024)) > 0.8 ? '#cf1322' : '#3f8600' }}
+            />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4, marginBottom: 8 }}>
+              {t('vm.used')}: {((stats.memoryUsage || 0) / 1024 / 1024 / 1024).toFixed(2)} GB / {vm ? (vm.memoryAllocated / 1024).toFixed(1) : '0'} GB
+            </div>
+            <Progress 
+              percent={vm && vm.memoryAllocated > 0 ? Math.min(100, Math.max(0, ((stats.memoryUsage || 0) / (vm.memoryAllocated * 1024 * 1024)) * 100)) : 0} 
+              size="small"
+              showInfo={false}
+              strokeColor={vm && vm.memoryAllocated > 0 && ((stats.memoryUsage || 0) / (vm.memoryAllocated * 1024 * 1024)) > 0.8 ? '#cf1322' : '#3f8600'}
+            />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title={t('vm.memory')} value={vm.memoryAllocated} suffix="MB" />
+            <Statistic title={t('vm.cpu')} value={vm?.cpuAllocated || 0} suffix="vCPU" />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title={t('vm.disk')} value={vm.diskAllocated} suffix="GB" />
+            <Statistic title={t('vm.memory')} value={vm ? (vm.memoryAllocated / 1024).toFixed(1) : '0'} suffix="GB" />
           </Card>
         </Col>
       </Row>
@@ -343,7 +382,7 @@ const VMDetail: React.FC = () => {
                   {t('iso.mount')}
                 </Button>
               )}
-              {(vm.install_status === 'installing') && (
+              {((vm.installStatus || vm.install_status) === 'installing') && (
                 <Tag color="processing">{t('installation.installing')}</Tag>
               )}
             </>
@@ -364,7 +403,7 @@ const VMDetail: React.FC = () => {
                   {t('iso.mount')}
                 </Button>
               )}
-              {(!vm.is_installed || vm.install_status === '') && (
+              {(!(vm.isInstalled || vm.is_installed) || (vm.installStatus || vm.install_status) === '') && (
                 <Button 
                   icon={<SettingOutlined />} 
                   onClick={() => navigate(`/vms/${id}/installation`)}
@@ -372,7 +411,7 @@ const VMDetail: React.FC = () => {
                   {t('installation.install')}
                 </Button>
               )}
-              {vm.install_status === 'completed' && !vm.agent_installed && (
+              {(vm.installStatus || vm.install_status) === 'completed' && !(vm.agentInstalled || vm.agent_installed) && (
                 <Button 
                   icon={<SettingOutlined />} 
                   onClick={() => navigate(`/vms/${id}/installation`)}
@@ -380,7 +419,7 @@ const VMDetail: React.FC = () => {
                   {t('installation.installAgent')}
                 </Button>
               )}
-              {vm.agent_installed && (
+              {(vm.agentInstalled || vm.agent_installed) && (
                 <Tag color="success" icon={<CloudUploadOutlined />}>
                   {t('installation.agentInstalled')}
                 </Tag>
